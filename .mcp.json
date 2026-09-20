@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "radarr": {
+      "command": "radarr-mcp",
+      "args": ["serve"]
+    }
+  }
+}

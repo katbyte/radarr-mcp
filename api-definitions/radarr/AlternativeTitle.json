@@ -1,0 +1,66 @@
+{
+  "Name": "AlternativeTitle",
+  "Tag": "AlternativeTitle",
+  "Operations": [
+    {
+      "Name": "GetAlttitle",
+      "Method": "GET",
+      "Path": "/api/v3/alttitle",
+      "Options": [
+        {
+          "Name": "movieId",
+          "Field": "MovieId",
+          "In": "Query",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "movieMetadataId",
+          "Field": "MovieMetadataId",
+          "In": "Query",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "AlternativeTitleResource"
+          }
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetAlttitleById",
+      "Method": "GET",
+      "Path": "/api/v3/alttitle/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "AlternativeTitleResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    }
+  ]
+}

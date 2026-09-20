@@ -1,0 +1,414 @@
+{
+  "Name": "ImportListExclusion",
+  "Tag": "ImportListExclusion",
+  "Operations": [
+    {
+      "Name": "DeleteExclusionsBulk",
+      "Method": "DELETE",
+      "Path": "/api/v3/exclusions/bulk",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "ImportListExclusionBulkResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "DeleteExclusionsById",
+      "Method": "DELETE",
+      "Path": "/api/v3/exclusions/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetExclusions",
+      "Method": "GET",
+      "Path": "/api/v3/exclusions",
+      "Deprecated": true,
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "ImportListExclusionResource"
+          }
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetExclusionsById",
+      "Method": "GET",
+      "Path": "/api/v3/exclusions/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "ImportListExclusionResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetExclusionsPaged",
+      "Method": "GET",
+      "Path": "/api/v3/exclusions/paged",
+      "Options": [
+        {
+          "Name": "page",
+          "Field": "Page",
+          "In": "Query",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "pageSize",
+          "Field": "PageSize",
+          "In": "Query",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "sortKey",
+          "Field": "SortKey",
+          "In": "Query",
+          "Type": {
+            "Type": "String"
+          }
+        },
+        {
+          "Name": "sortDirection",
+          "Field": "SortDirection",
+          "In": "Query",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "SortDirection"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "ImportListExclusionResourcePagingResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ],
+      "Pageable": {
+        "PageOption": "Page",
+        "PageSizeOption": "PageSize",
+        "ItemsField": "Records",
+        "TotalField": "TotalRecords",
+        "ItemType": {
+          "Type": "Reference",
+          "ReferenceName": "ImportListExclusionResource"
+        }
+      }
+    },
+    {
+      "Name": "PostExclusions",
+      "Method": "POST",
+      "Path": "/api/v3/exclusions",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "ImportListExclusionResource"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "ImportListExclusionResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        201
+      ]
+    },
+    {
+      "Name": "PostExclusionsBulk",
+      "Method": "POST",
+      "Path": "/api/v3/exclusions/bulk",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "ImportListExclusionResource"
+          }
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "ImportListExclusionResource"
+          }
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "PutExclusionsById",
+      "Method": "PUT",
+      "Path": "/api/v3/exclusions/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "ImportListExclusionResource"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "ImportListExclusionResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        202
+      ]
+    }
+  ],
+  "Models": [
+    {
+      "Name": "ImportListExclusionBulkResource",
+      "SchemaName": "ImportListExclusionBulkResource",
+      "Fields": [
+        {
+          "Name": "Ids",
+          "JsonName": "ids",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Integer"
+            }
+          },
+          "Nullable": true
+        }
+      ]
+    },
+    {
+      "Name": "ImportListExclusionResource",
+      "SchemaName": "ImportListExclusionResource",
+      "Fields": [
+        {
+          "Name": "ConfigContract",
+          "JsonName": "configContract",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Fields",
+          "JsonName": "fields",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "Field"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Implementation",
+          "JsonName": "implementation",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "ImplementationName",
+          "JsonName": "implementationName",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "InfoLink",
+          "JsonName": "infoLink",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Message",
+          "JsonName": "message",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "ProviderMessage"
+          }
+        },
+        {
+          "Name": "MovieTitle",
+          "JsonName": "movieTitle",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "MovieYear",
+          "JsonName": "movieYear",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Presets",
+          "JsonName": "presets",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "ImportListExclusionResource"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Tags",
+          "JsonName": "tags",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Integer"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "TmdbId",
+          "JsonName": "tmdbId",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "ImportListExclusionResourcePagingResource",
+      "SchemaName": "ImportListExclusionResourcePagingResource",
+      "Fields": [
+        {
+          "Name": "Page",
+          "JsonName": "page",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "PageSize",
+          "JsonName": "pageSize",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Records",
+          "JsonName": "records",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "ImportListExclusionResource"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "SortDirection",
+          "JsonName": "sortDirection",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "SortDirection"
+          }
+        },
+        {
+          "Name": "SortKey",
+          "JsonName": "sortKey",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "TotalRecords",
+          "JsonName": "totalRecords",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ]
+    }
+  ]
+}

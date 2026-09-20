@@ -1,0 +1,36 @@
+{
+  "Name": "MediaCover",
+  "Tag": "MediaCover",
+  "Operations": [
+    {
+      "Name": "GetMediacoverByMovieIdByFilename",
+      "Method": "GET",
+      "Path": "/api/v3/mediacover/{movieId}/{filename}",
+      "PathParameters": [
+        {
+          "Name": "movieId",
+          "Argument": "movieId",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "filename",
+          "Argument": "filename",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "image/*",
+        "Type": {
+          "Type": "RawFile"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    }
+  ]
+}

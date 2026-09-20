@@ -1,0 +1,37 @@
+# Default always-on deployment: runs the released image from ghcr.io and serves MCP over HTTP.
+# To run a local build instead: make docker, then set image: radarr-mcp (or add build: .).
+# Secrets (RADARR_TOKEN, RADARR_AUTH_TOKEN) come from a gitignored .env next to this file,
+# see .env.example. Then register it in Claude Code:
+#   claude mcp add --transport http radarr http://<host>:8080/mcp \
+#     --header "Authorization: Bearer <RADARR_AUTH_TOKEN>"
+
+networks:
+  net:
+    name: net
+
+services:
+  radarr-mcp:
+    image: ghcr.io/katbyte/radarr-mcp:latest
+    container_name: radarr-mcp
+    restart: always
+    logging:
+      options:
+        max-size: 100m
+        max-file: "1"
+    networks:
+      net:
+    # no dns override: the container uses Docker's resolver, which forwards to
+    # the host's, so a LAN name like nas in RADARR_SERVER resolves the way it
+    # does on the host. Pinning a public resolver here would break exactly that
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - "TZ=America/Vancouver"
+      - "RADARR_SERVER=http://nas:7878"
+      - "RADARR_LISTEN=:8080"
+      - "RADARR_LOG=INFO"
+      # - "RADARR_TOOLSETS=curation"  # the audits and everything that fixes what they find; default core
+      # - "RADARR_READ_ONLY=true"     # only register tools that never change server state
+      # - "RADARR_ENABLE_DELETE=true" # opt in to movie_delete, moviefile_delete and the other deletes

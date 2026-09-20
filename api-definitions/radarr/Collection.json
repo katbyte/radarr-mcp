@@ -1,0 +1,432 @@
+{
+  "Name": "Collection",
+  "Tag": "Collection",
+  "Operations": [
+    {
+      "Name": "GetCollection",
+      "Method": "GET",
+      "Path": "/api/v3/collection",
+      "Options": [
+        {
+          "Name": "tmdbId",
+          "Field": "TmdbId",
+          "In": "Query",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "CollectionResource"
+          }
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetCollectionById",
+      "Method": "GET",
+      "Path": "/api/v3/collection/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CollectionResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "PutCollection",
+      "Method": "PUT",
+      "Path": "/api/v3/collection",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CollectionUpdateResource"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "CollectionResource"
+          }
+        }
+      },
+      "ExpectedStatusCodes": [
+        202
+      ]
+    },
+    {
+      "Name": "PutCollectionById",
+      "Method": "PUT",
+      "Path": "/api/v3/collection/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CollectionResource"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CollectionResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        202
+      ]
+    }
+  ],
+  "Models": [
+    {
+      "Name": "CollectionMovieResource",
+      "SchemaName": "CollectionMovieResource",
+      "Fields": [
+        {
+          "Name": "CleanTitle",
+          "JsonName": "cleanTitle",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Folder",
+          "JsonName": "folder",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Genres",
+          "JsonName": "genres",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "String"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Images",
+          "JsonName": "images",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "MediaCover"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "ImdbId",
+          "JsonName": "imdbId",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "IsExcluded",
+          "JsonName": "isExcluded",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "IsExisting",
+          "JsonName": "isExisting",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "Overview",
+          "JsonName": "overview",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Ratings",
+          "JsonName": "ratings",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "Ratings"
+          }
+        },
+        {
+          "Name": "Runtime",
+          "JsonName": "runtime",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "SortTitle",
+          "JsonName": "sortTitle",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Status",
+          "JsonName": "status",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "MovieStatusType"
+          }
+        },
+        {
+          "Name": "Title",
+          "JsonName": "title",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "TmdbId",
+          "JsonName": "tmdbId",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Year",
+          "JsonName": "year",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "CollectionResource",
+      "SchemaName": "CollectionResource",
+      "Fields": [
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Images",
+          "JsonName": "images",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "MediaCover"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "MinimumAvailability",
+          "JsonName": "minimumAvailability",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "MovieStatusType"
+          }
+        },
+        {
+          "Name": "MissingMovies",
+          "JsonName": "missingMovies",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Monitored",
+          "JsonName": "monitored",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "Movies",
+          "JsonName": "movies",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "CollectionMovieResource"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Overview",
+          "JsonName": "overview",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "QualityProfileId",
+          "JsonName": "qualityProfileId",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "RootFolderPath",
+          "JsonName": "rootFolderPath",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "SearchOnAdd",
+          "JsonName": "searchOnAdd",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "SortTitle",
+          "JsonName": "sortTitle",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Tags",
+          "JsonName": "tags",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Integer"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Title",
+          "JsonName": "title",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "TmdbId",
+          "JsonName": "tmdbId",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "CollectionUpdateResource",
+      "SchemaName": "CollectionUpdateResource",
+      "Fields": [
+        {
+          "Name": "CollectionIds",
+          "JsonName": "collectionIds",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Integer"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "MinimumAvailability",
+          "JsonName": "minimumAvailability",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "MovieStatusType"
+          }
+        },
+        {
+          "Name": "MonitorMovies",
+          "JsonName": "monitorMovies",
+          "Type": {
+            "Type": "Boolean"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Monitored",
+          "JsonName": "monitored",
+          "Type": {
+            "Type": "Boolean"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "QualityProfileId",
+          "JsonName": "qualityProfileId",
+          "Type": {
+            "Type": "Integer"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "RootFolderPath",
+          "JsonName": "rootFolderPath",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "SearchOnAdd",
+          "JsonName": "searchOnAdd",
+          "Type": {
+            "Type": "Boolean"
+          },
+          "Nullable": true
+        }
+      ]
+    }
+  ]
+}

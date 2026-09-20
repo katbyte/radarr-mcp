@@ -1,0 +1,48 @@
+{
+  "Name": "ApiInfo",
+  "Tag": "ApiInfo",
+  "Operations": [
+    {
+      "Name": "GetApi",
+      "Method": "GET",
+      "Path": "/api",
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "ApiInfoResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    }
+  ],
+  "Models": [
+    {
+      "Name": "ApiInfoResource",
+      "SchemaName": "ApiInfoResource",
+      "Fields": [
+        {
+          "Name": "Current",
+          "JsonName": "current",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Deprecated",
+          "JsonName": "deprecated",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "String"
+            }
+          },
+          "Nullable": true
+        }
+      ]
+    }
+  ]
+}

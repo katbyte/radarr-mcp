@@ -1,0 +1,42 @@
+{
+  "Name": "QueueDetails",
+  "Tag": "QueueDetails",
+  "Operations": [
+    {
+      "Name": "GetQueueDetails",
+      "Method": "GET",
+      "Path": "/api/v3/queue/details",
+      "Options": [
+        {
+          "Name": "movieId",
+          "Field": "MovieId",
+          "In": "Query",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "includeMovie",
+          "Field": "IncludeMovie",
+          "In": "Query",
+          "Type": {
+            "Type": "Boolean"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "QueueResource"
+          }
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    }
+  ]
+}

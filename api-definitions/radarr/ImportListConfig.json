@@ -1,0 +1,99 @@
+{
+  "Name": "ImportListConfig",
+  "Tag": "ImportListConfig",
+  "Operations": [
+    {
+      "Name": "GetConfigImportlist",
+      "Method": "GET",
+      "Path": "/api/v3/config/importlist",
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "ImportListConfigResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetConfigImportlistById",
+      "Method": "GET",
+      "Path": "/api/v3/config/importlist/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "ImportListConfigResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "PutConfigImportlistById",
+      "Method": "PUT",
+      "Path": "/api/v3/config/importlist/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "ImportListConfigResource"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "ImportListConfigResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        202
+      ]
+    }
+  ],
+  "Models": [
+    {
+      "Name": "ImportListConfigResource",
+      "SchemaName": "ImportListConfigResource",
+      "Fields": [
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "ListSyncLevel",
+          "JsonName": "listSyncLevel",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        }
+      ]
+    }
+  ]
+}

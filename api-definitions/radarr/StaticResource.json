@@ -1,0 +1,80 @@
+{
+  "Name": "StaticResource",
+  "Tag": "StaticResource",
+  "Operations": [
+    {
+      "Name": "Get",
+      "Method": "GET",
+      "Path": "/",
+      "Response": {
+        "ContentType": "text/html",
+        "Type": {
+          "Type": "RawFile"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetByPath",
+      "Method": "GET",
+      "Path": "/{path}",
+      "PathParameters": [
+        {
+          "Name": "path",
+          "Argument": "path",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/octet-stream",
+        "Type": {
+          "Type": "RawFile"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetContentByPath",
+      "Method": "GET",
+      "Path": "/content/{path}",
+      "PathParameters": [
+        {
+          "Name": "path",
+          "Argument": "path",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/octet-stream",
+        "Type": {
+          "Type": "RawFile"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetLogin",
+      "Method": "GET",
+      "Path": "/login",
+      "Response": {
+        "ContentType": "text/html",
+        "Type": {
+          "Type": "RawFile"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    }
+  ]
+}

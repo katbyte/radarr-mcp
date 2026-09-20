@@ -1,0 +1,127 @@
+{
+  "Name": "ExtraFile",
+  "Tag": "ExtraFile",
+  "Operations": [
+    {
+      "Name": "GetExtrafile",
+      "Method": "GET",
+      "Path": "/api/v3/extrafile",
+      "Options": [
+        {
+          "Name": "movieId",
+          "Field": "MovieId",
+          "In": "Query",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "ExtraFileResource"
+          }
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    }
+  ],
+  "Models": [
+    {
+      "Name": "ExtraFileResource",
+      "SchemaName": "ExtraFileResource",
+      "Fields": [
+        {
+          "Name": "Extension",
+          "JsonName": "extension",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "LanguageTags",
+          "JsonName": "languageTags",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "String"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "MovieFileId",
+          "JsonName": "movieFileId",
+          "Type": {
+            "Type": "Integer"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "MovieId",
+          "JsonName": "movieId",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "RelativePath",
+          "JsonName": "relativePath",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Title",
+          "JsonName": "title",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Type",
+          "JsonName": "type",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "ExtraFileType"
+          }
+        }
+      ]
+    }
+  ],
+  "Constants": [
+    {
+      "Name": "ExtraFileType",
+      "SchemaName": "ExtraFileType",
+      "Values": [
+        {
+          "Name": "ExtraFileTypeSubtitle",
+          "Value": "subtitle"
+        },
+        {
+          "Name": "ExtraFileTypeMetadata",
+          "Value": "metadata"
+        },
+        {
+          "Name": "ExtraFileTypeOther",
+          "Value": "other"
+        }
+      ]
+    }
+  ]
+}

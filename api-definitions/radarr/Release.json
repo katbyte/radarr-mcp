@@ -1,0 +1,56 @@
+{
+  "Name": "Release",
+  "Tag": "Release",
+  "Operations": [
+    {
+      "Name": "GetRelease",
+      "Method": "GET",
+      "Path": "/api/v3/release",
+      "Options": [
+        {
+          "Name": "movieId",
+          "Field": "MovieId",
+          "In": "Query",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "ReleaseResource"
+          }
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "PostRelease",
+      "Method": "POST",
+      "Path": "/api/v3/release",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "ReleaseResource"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "ReleaseResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    }
+  ]
+}

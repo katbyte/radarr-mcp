@@ -1,0 +1,22 @@
+{
+  "Name": "radarr",
+  "Package": "radarr",
+  "Title": "Radarr",
+  "ApiVersion": "3.0.0",
+  "Source": "docs/radarr-openapi.json",
+  "Auth": "Radarr",
+  "Workarounds": [
+    "radarr-text-plain-twin",
+    "radarr-undeclared-responses",
+    "radarr-root-path-parameter",
+    "radarr-command-body",
+    "radarr-statuses",
+    "radarr-undeclared-fields",
+    "radarr-command-resource-body",
+    "radarr-required-parameters",
+    "radarr-write-responses",
+    "radarr-bulk-responses",
+    "radarr-host-required",
+    "radarr-put-ids"
+  ]
+}

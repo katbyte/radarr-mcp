@@ -1,0 +1,86 @@
+{
+  "Name": "CalendarFeed",
+  "Tag": "CalendarFeed",
+  "Operations": [
+    {
+      "Name": "GetFeedV3CalendarRadarrIcs",
+      "Method": "GET",
+      "Path": "/feed/v3/calendar/radarr.ics",
+      "Options": [
+        {
+          "Name": "pastDays",
+          "Field": "PastDays",
+          "In": "Query",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "futureDays",
+          "Field": "FutureDays",
+          "In": "Query",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "tags",
+          "Field": "Tags",
+          "In": "Query",
+          "Type": {
+            "Type": "String"
+          }
+        },
+        {
+          "Name": "unmonitored",
+          "Field": "Unmonitored",
+          "In": "Query",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "releaseTypes",
+          "Field": "ReleaseTypes",
+          "In": "Query",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "CalendarReleaseType"
+            }
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "text/calendar",
+        "Type": {
+          "Type": "RawFile"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    }
+  ],
+  "Constants": [
+    {
+      "Name": "CalendarReleaseType",
+      "SchemaName": "CalendarReleaseType",
+      "Values": [
+        {
+          "Name": "CalendarReleaseTypeCinemaRelease",
+          "Value": "cinemaRelease"
+        },
+        {
+          "Name": "CalendarReleaseTypeDigitalRelease",
+          "Value": "digitalRelease"
+        },
+        {
+          "Name": "CalendarReleaseTypePhysicalRelease",
+          "Value": "physicalRelease"
+        }
+      ]
+    }
+  ]
+}

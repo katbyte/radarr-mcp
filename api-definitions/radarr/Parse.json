@@ -1,0 +1,233 @@
+{
+  "Name": "Parse",
+  "Tag": "Parse",
+  "Operations": [
+    {
+      "Name": "GetParse",
+      "Method": "GET",
+      "Path": "/api/v3/parse",
+      "Options": [
+        {
+          "Name": "title",
+          "Field": "Title",
+          "In": "Query",
+          "Required": true,
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "ParseResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    }
+  ],
+  "Models": [
+    {
+      "Name": "ParseResource",
+      "SchemaName": "ParseResource",
+      "Fields": [
+        {
+          "Name": "CustomFormatScore",
+          "JsonName": "customFormatScore",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "CustomFormats",
+          "JsonName": "customFormats",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "CustomFormatResource"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Languages",
+          "JsonName": "languages",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "Language"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Movie",
+          "JsonName": "movie",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "MovieResource"
+          }
+        },
+        {
+          "Name": "ParsedMovieInfo",
+          "JsonName": "parsedMovieInfo",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "ParsedMovieInfo"
+          }
+        },
+        {
+          "Name": "Title",
+          "JsonName": "title",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        }
+      ]
+    },
+    {
+      "Name": "ParsedMovieInfo",
+      "SchemaName": "ParsedMovieInfo",
+      "Fields": [
+        {
+          "Name": "Edition",
+          "JsonName": "edition",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "HardcodedSubs",
+          "JsonName": "hardcodedSubs",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "ImdbId",
+          "JsonName": "imdbId",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Languages",
+          "JsonName": "languages",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "Language"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "MovieTitle",
+          "JsonName": "movieTitle",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "MovieTitles",
+          "JsonName": "movieTitles",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "String"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "OriginalTitle",
+          "JsonName": "originalTitle",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "PrimaryMovieTitle",
+          "JsonName": "primaryMovieTitle",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Quality",
+          "JsonName": "quality",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "QualityModel"
+          }
+        },
+        {
+          "Name": "ReleaseGroup",
+          "JsonName": "releaseGroup",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "ReleaseHash",
+          "JsonName": "releaseHash",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "ReleaseTitle",
+          "JsonName": "releaseTitle",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "SimpleReleaseTitle",
+          "JsonName": "simpleReleaseTitle",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "TmdbId",
+          "JsonName": "tmdbId",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Year",
+          "JsonName": "year",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "Name": "QualityProfile",
+  "Tag": "QualityProfile",
+  "Operations": [
+    {
+      "Name": "DeleteQualityprofileById",
+      "Method": "DELETE",
+      "Path": "/api/v3/qualityprofile/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetQualityprofile",
+      "Method": "GET",
+      "Path": "/api/v3/qualityprofile",
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "QualityProfileResource"
+          }
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetQualityprofileById",
+      "Method": "GET",
+      "Path": "/api/v3/qualityprofile/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "QualityProfileResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "PostQualityprofile",
+      "Method": "POST",
+      "Path": "/api/v3/qualityprofile",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "QualityProfileResource"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "QualityProfileResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        201
+      ]
+    },
+    {
+      "Name": "PutQualityprofileById",
+      "Method": "PUT",
+      "Path": "/api/v3/qualityprofile/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "QualityProfileResource"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "QualityProfileResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        202
+      ]
+    }
+  ]
+}

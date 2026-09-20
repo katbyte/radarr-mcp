@@ -1,0 +1,260 @@
+{
+  "Name": "MovieFile",
+  "Tag": "MovieFile",
+  "Operations": [
+    {
+      "Name": "DeleteMoviefileBulk",
+      "Method": "DELETE",
+      "Path": "/api/v3/moviefile/bulk",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "MovieFileListResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "DeleteMoviefileById",
+      "Method": "DELETE",
+      "Path": "/api/v3/moviefile/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetMoviefile",
+      "Method": "GET",
+      "Path": "/api/v3/moviefile",
+      "Options": [
+        {
+          "Name": "movieId",
+          "Field": "MovieId",
+          "In": "Query",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Integer"
+            }
+          }
+        },
+        {
+          "Name": "movieFileIds",
+          "Field": "MovieFileIds",
+          "In": "Query",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Integer"
+            }
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "MovieFileResource"
+          }
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetMoviefileById",
+      "Method": "GET",
+      "Path": "/api/v3/moviefile/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "MovieFileResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "PutMoviefileBulk",
+      "Method": "PUT",
+      "Path": "/api/v3/moviefile/bulk",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "MovieFileResource"
+          }
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "MovieFileResource"
+          }
+        }
+      },
+      "ExpectedStatusCodes": [
+        202
+      ]
+    },
+    {
+      "Name": "PutMoviefileById",
+      "Method": "PUT",
+      "Path": "/api/v3/moviefile/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "MovieFileResource"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "MovieFileResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        202
+      ]
+    },
+    {
+      "Name": "PutMoviefileEditor",
+      "Method": "PUT",
+      "Path": "/api/v3/moviefile/editor",
+      "Deprecated": true,
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "MovieFileListResource"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "MovieFileResource"
+          }
+        }
+      },
+      "ExpectedStatusCodes": [
+        202
+      ]
+    }
+  ],
+  "Models": [
+    {
+      "Name": "MovieFileListResource",
+      "SchemaName": "MovieFileListResource",
+      "Fields": [
+        {
+          "Name": "Edition",
+          "JsonName": "edition",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "IndexerFlags",
+          "JsonName": "indexerFlags",
+          "Type": {
+            "Type": "Integer"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Languages",
+          "JsonName": "languages",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "Language"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "MovieFileIds",
+          "JsonName": "movieFileIds",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Integer"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Quality",
+          "JsonName": "quality",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "QualityModel"
+          }
+        },
+        {
+          "Name": "ReleaseGroup",
+          "JsonName": "releaseGroup",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "SceneName",
+          "JsonName": "sceneName",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "Name": "MovieLookup",
+  "Tag": "MovieLookup",
+  "Operations": [
+    {
+      "Name": "GetMovieLookup",
+      "Method": "GET",
+      "Path": "/api/v3/movie/lookup",
+      "Options": [
+        {
+          "Name": "term",
+          "Field": "Term",
+          "In": "Query",
+          "Required": true,
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "MovieResource"
+          }
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetMovieLookupImdb",
+      "Method": "GET",
+      "Path": "/api/v3/movie/lookup/imdb",
+      "Options": [
+        {
+          "Name": "imdbId",
+          "Field": "ImdbId",
+          "In": "Query",
+          "Required": true,
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "MovieResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetMovieLookupTmdb",
+      "Method": "GET",
+      "Path": "/api/v3/movie/lookup/tmdb",
+      "Options": [
+        {
+          "Name": "tmdbId",
+          "Field": "TmdbId",
+          "In": "Query",
+          "Required": true,
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "MovieResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    }
+  ]
+}

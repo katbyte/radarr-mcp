@@ -1,0 +1,58 @@
+{
+  "Name": "Calendar",
+  "Tag": "Calendar",
+  "Operations": [
+    {
+      "Name": "GetCalendar",
+      "Method": "GET",
+      "Path": "/api/v3/calendar",
+      "Options": [
+        {
+          "Name": "start",
+          "Field": "Start",
+          "In": "Query",
+          "Type": {
+            "Type": "String"
+          }
+        },
+        {
+          "Name": "end",
+          "Field": "End",
+          "In": "Query",
+          "Type": {
+            "Type": "String"
+          }
+        },
+        {
+          "Name": "unmonitored",
+          "Field": "Unmonitored",
+          "In": "Query",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "tags",
+          "Field": "Tags",
+          "In": "Query",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "MovieResource"
+          }
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+.claude/
+.DS_Store
+.idea/
+dist/
+radarr-mcp
+.tools/bin/
+.tools/venv/
+.env
+.radarr-mcp
+.testenv*.sh
+.coverage/

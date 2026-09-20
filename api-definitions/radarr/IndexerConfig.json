@@ -1,0 +1,148 @@
+{
+  "Name": "IndexerConfig",
+  "Tag": "IndexerConfig",
+  "Operations": [
+    {
+      "Name": "GetConfigIndexer",
+      "Method": "GET",
+      "Path": "/api/v3/config/indexer",
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "IndexerConfigResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetConfigIndexerById",
+      "Method": "GET",
+      "Path": "/api/v3/config/indexer/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "IndexerConfigResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "PutConfigIndexerById",
+      "Method": "PUT",
+      "Path": "/api/v3/config/indexer/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "IndexerConfigResource"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "IndexerConfigResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        202
+      ]
+    }
+  ],
+  "Models": [
+    {
+      "Name": "IndexerConfigResource",
+      "SchemaName": "IndexerConfigResource",
+      "Fields": [
+        {
+          "Name": "AllowHardcodedSubs",
+          "JsonName": "allowHardcodedSubs",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "AvailabilityDelay",
+          "JsonName": "availabilityDelay",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "MaximumSize",
+          "JsonName": "maximumSize",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "MinimumAge",
+          "JsonName": "minimumAge",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "PreferIndexerFlags",
+          "JsonName": "preferIndexerFlags",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "Retention",
+          "JsonName": "retention",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "RssSyncInterval",
+          "JsonName": "rssSyncInterval",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "WhitelistedHardcodedSubs",
+          "JsonName": "whitelistedHardcodedSubs",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,172 @@
+{
+  "Name": "Movie",
+  "Tag": "Movie",
+  "Operations": [
+    {
+      "Name": "DeleteMovieById",
+      "Method": "DELETE",
+      "Path": "/api/v3/movie/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Options": [
+        {
+          "Name": "deleteFiles",
+          "Field": "DeleteFiles",
+          "In": "Query",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "addImportExclusion",
+          "Field": "AddImportExclusion",
+          "In": "Query",
+          "Type": {
+            "Type": "Boolean"
+          }
+        }
+      ],
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetMovie",
+      "Method": "GET",
+      "Path": "/api/v3/movie",
+      "Options": [
+        {
+          "Name": "tmdbId",
+          "Field": "TmdbId",
+          "In": "Query",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "excludeLocalCovers",
+          "Field": "ExcludeLocalCovers",
+          "In": "Query",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "languageId",
+          "Field": "LanguageId",
+          "In": "Query",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "MovieResource"
+          }
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetMovieById",
+      "Method": "GET",
+      "Path": "/api/v3/movie/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "MovieResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "PostMovie",
+      "Method": "POST",
+      "Path": "/api/v3/movie",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "MovieResource"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "MovieResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        201
+      ]
+    },
+    {
+      "Name": "PutMovieById",
+      "Method": "PUT",
+      "Path": "/api/v3/movie/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Options": [
+        {
+          "Name": "moveFiles",
+          "Field": "MoveFiles",
+          "In": "Query",
+          "Type": {
+            "Type": "Boolean"
+          }
+        }
+      ],
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "MovieResource"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "MovieResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        202
+      ]
+    }
+  ]
+}

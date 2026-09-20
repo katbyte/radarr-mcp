@@ -1,0 +1,178 @@
+{
+  "Name": "Credit",
+  "Tag": "Credit",
+  "Operations": [
+    {
+      "Name": "GetCredit",
+      "Method": "GET",
+      "Path": "/api/v3/credit",
+      "Options": [
+        {
+          "Name": "movieId",
+          "Field": "MovieId",
+          "In": "Query",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "movieMetadataId",
+          "Field": "MovieMetadataId",
+          "In": "Query",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "CreditResource"
+          }
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetCreditById",
+      "Method": "GET",
+      "Path": "/api/v3/credit/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CreditResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    }
+  ],
+  "Models": [
+    {
+      "Name": "CreditResource",
+      "SchemaName": "CreditResource",
+      "Fields": [
+        {
+          "Name": "Character",
+          "JsonName": "character",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "CreditTmdbId",
+          "JsonName": "creditTmdbId",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Department",
+          "JsonName": "department",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Images",
+          "JsonName": "images",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "MediaCover"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Job",
+          "JsonName": "job",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "MovieMetadataId",
+          "JsonName": "movieMetadataId",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Order",
+          "JsonName": "order",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "PersonName",
+          "JsonName": "personName",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "PersonTmdbId",
+          "JsonName": "personTmdbId",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Type",
+          "JsonName": "type",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "CreditType"
+          }
+        }
+      ]
+    }
+  ],
+  "Constants": [
+    {
+      "Name": "CreditType",
+      "SchemaName": "CreditType",
+      "Values": [
+        {
+          "Name": "CreditTypeCast",
+          "Value": "cast"
+        },
+        {
+          "Name": "CreditTypeCrew",
+          "Value": "crew"
+        }
+      ]
+    }
+  ]
+}

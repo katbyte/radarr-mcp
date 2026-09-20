@@ -1,0 +1,96 @@
+{
+  "Name": "FileSystem",
+  "Tag": "FileSystem",
+  "Operations": [
+    {
+      "Name": "GetFilesystem",
+      "Method": "GET",
+      "Path": "/api/v3/filesystem",
+      "Options": [
+        {
+          "Name": "path",
+          "Field": "Path",
+          "In": "Query",
+          "Type": {
+            "Type": "String"
+          }
+        },
+        {
+          "Name": "includeFiles",
+          "Field": "IncludeFiles",
+          "In": "Query",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "allowFoldersWithoutTrailingSlashes",
+          "Field": "AllowFoldersWithoutTrailingSlashes",
+          "In": "Query",
+          "Type": {
+            "Type": "Boolean"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "RawObject"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetFilesystemMediafiles",
+      "Method": "GET",
+      "Path": "/api/v3/filesystem/mediafiles",
+      "Options": [
+        {
+          "Name": "path",
+          "Field": "Path",
+          "In": "Query",
+          "Required": true,
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "RawObject"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetFilesystemType",
+      "Method": "GET",
+      "Path": "/api/v3/filesystem/type",
+      "Options": [
+        {
+          "Name": "path",
+          "Field": "Path",
+          "In": "Query",
+          "Required": true,
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "RawObject"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    }
+  ]
+}

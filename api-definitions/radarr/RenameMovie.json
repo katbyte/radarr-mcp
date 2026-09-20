@@ -1,0 +1,83 @@
+{
+  "Name": "RenameMovie",
+  "Tag": "RenameMovie",
+  "Operations": [
+    {
+      "Name": "GetRename",
+      "Method": "GET",
+      "Path": "/api/v3/rename",
+      "Options": [
+        {
+          "Name": "movieId",
+          "Field": "MovieId",
+          "In": "Query",
+          "Required": true,
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Integer"
+            }
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "RenameMovieResource"
+          }
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    }
+  ],
+  "Models": [
+    {
+      "Name": "RenameMovieResource",
+      "SchemaName": "RenameMovieResource",
+      "Fields": [
+        {
+          "Name": "ExistingPath",
+          "JsonName": "existingPath",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "MovieFileId",
+          "JsonName": "movieFileId",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "MovieId",
+          "JsonName": "movieId",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "NewPath",
+          "JsonName": "newPath",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        }
+      ]
+    }
+  ]
+}

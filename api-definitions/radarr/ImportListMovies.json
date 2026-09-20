@@ -1,0 +1,74 @@
+{
+  "Name": "ImportListMovies",
+  "Tag": "ImportListMovies",
+  "Operations": [
+    {
+      "Name": "GetImportlistMovie",
+      "Method": "GET",
+      "Path": "/api/v3/importlist/movie",
+      "Options": [
+        {
+          "Name": "includeRecommendations",
+          "Field": "IncludeRecommendations",
+          "In": "Query",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "includeTrending",
+          "Field": "IncludeTrending",
+          "In": "Query",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "includePopular",
+          "Field": "IncludePopular",
+          "In": "Query",
+          "Type": {
+            "Type": "Boolean"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "RawObject"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "PostImportlistMovie",
+      "Method": "POST",
+      "Path": "/api/v3/importlist/movie",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "MovieResource"
+          }
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "MovieResource"
+          }
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    }
+  ]
+}

@@ -1,0 +1,137 @@
+{
+  "Name": "MovieEditor",
+  "Tag": "MovieEditor",
+  "Operations": [
+    {
+      "Name": "DeleteMovieEditor",
+      "Method": "DELETE",
+      "Path": "/api/v3/movie/editor",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "MovieEditorResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "PutMovieEditor",
+      "Method": "PUT",
+      "Path": "/api/v3/movie/editor",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "MovieEditorResource"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "List",
+          "NestedItem": {
+            "Type": "Reference",
+            "ReferenceName": "MovieResource"
+          }
+        }
+      },
+      "ExpectedStatusCodes": [
+        202
+      ]
+    }
+  ],
+  "Models": [
+    {
+      "Name": "MovieEditorResource",
+      "SchemaName": "MovieEditorResource",
+      "Fields": [
+        {
+          "Name": "AddImportExclusion",
+          "JsonName": "addImportExclusion",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "ApplyTags",
+          "JsonName": "applyTags",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "ApplyTags"
+          }
+        },
+        {
+          "Name": "DeleteFiles",
+          "JsonName": "deleteFiles",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "MinimumAvailability",
+          "JsonName": "minimumAvailability",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "MovieStatusType"
+          }
+        },
+        {
+          "Name": "Monitored",
+          "JsonName": "monitored",
+          "Type": {
+            "Type": "Boolean"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "MoveFiles",
+          "JsonName": "moveFiles",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "MovieIds",
+          "JsonName": "movieIds",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Integer"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "QualityProfileId",
+          "JsonName": "qualityProfileId",
+          "Type": {
+            "Type": "Integer"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "RootFolderPath",
+          "JsonName": "rootFolderPath",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Tags",
+          "JsonName": "tags",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Integer"
+            }
+          },
+          "Nullable": true
+        }
+      ]
+    }
+  ]
+}

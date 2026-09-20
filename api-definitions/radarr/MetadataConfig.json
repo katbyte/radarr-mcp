@@ -1,0 +1,159 @@
+{
+  "Name": "MetadataConfig",
+  "Tag": "MetadataConfig",
+  "Operations": [
+    {
+      "Name": "GetConfigMetadata",
+      "Method": "GET",
+      "Path": "/api/v3/config/metadata",
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "MetadataConfigResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetConfigMetadataById",
+      "Method": "GET",
+      "Path": "/api/v3/config/metadata/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "MetadataConfigResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "PutConfigMetadataById",
+      "Method": "PUT",
+      "Path": "/api/v3/config/metadata/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "MetadataConfigResource"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "MetadataConfigResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        202
+      ]
+    }
+  ],
+  "Models": [
+    {
+      "Name": "MetadataConfigResource",
+      "SchemaName": "MetadataConfigResource",
+      "Fields": [
+        {
+          "Name": "CertificationCountry",
+          "JsonName": "certificationCountry",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "TMDbCountryCode"
+          }
+        },
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ]
+    }
+  ],
+  "Constants": [
+    {
+      "Name": "TMDbCountryCode",
+      "SchemaName": "TMDbCountryCode",
+      "Values": [
+        {
+          "Name": "TMDbCountryCodeAu",
+          "Value": "au"
+        },
+        {
+          "Name": "TMDbCountryCodeBr",
+          "Value": "br"
+        },
+        {
+          "Name": "TMDbCountryCodeCa",
+          "Value": "ca"
+        },
+        {
+          "Name": "TMDbCountryCodeFr",
+          "Value": "fr"
+        },
+        {
+          "Name": "TMDbCountryCodeDe",
+          "Value": "de"
+        },
+        {
+          "Name": "TMDbCountryCodeGb",
+          "Value": "gb"
+        },
+        {
+          "Name": "TMDbCountryCodeIn",
+          "Value": "in"
+        },
+        {
+          "Name": "TMDbCountryCodeIe",
+          "Value": "ie"
+        },
+        {
+          "Name": "TMDbCountryCodeIt",
+          "Value": "it"
+        },
+        {
+          "Name": "TMDbCountryCodeNz",
+          "Value": "nz"
+        },
+        {
+          "Name": "TMDbCountryCodeRo",
+          "Value": "ro"
+        },
+        {
+          "Name": "TMDbCountryCodeEs",
+          "Value": "es"
+        },
+        {
+          "Name": "TMDbCountryCodeUs",
+          "Value": "us"
+        }
+      ]
+    }
+  ]
+}

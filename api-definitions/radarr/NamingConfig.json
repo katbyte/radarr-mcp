@@ -1,0 +1,230 @@
+{
+  "Name": "NamingConfig",
+  "Tag": "NamingConfig",
+  "Operations": [
+    {
+      "Name": "GetConfigNaming",
+      "Method": "GET",
+      "Path": "/api/v3/config/naming",
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "NamingConfigResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetConfigNamingById",
+      "Method": "GET",
+      "Path": "/api/v3/config/naming/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "NamingConfigResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "GetConfigNamingExamples",
+      "Method": "GET",
+      "Path": "/api/v3/config/naming/examples",
+      "Options": [
+        {
+          "Name": "renameMovies",
+          "Field": "RenameMovies",
+          "In": "Query",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "replaceIllegalCharacters",
+          "Field": "ReplaceIllegalCharacters",
+          "In": "Query",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "colonReplacementFormat",
+          "Field": "ColonReplacementFormat",
+          "In": "Query",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "ColonReplacementFormat"
+          }
+        },
+        {
+          "Name": "standardMovieFormat",
+          "Field": "StandardMovieFormat",
+          "In": "Query",
+          "Type": {
+            "Type": "String"
+          }
+        },
+        {
+          "Name": "movieFolderFormat",
+          "Field": "MovieFolderFormat",
+          "In": "Query",
+          "Type": {
+            "Type": "String"
+          }
+        },
+        {
+          "Name": "id",
+          "Field": "Id",
+          "In": "Query",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "resourceName",
+          "Field": "ResourceName",
+          "In": "Query",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ],
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "RawObject"
+        }
+      },
+      "ExpectedStatusCodes": [
+        200
+      ]
+    },
+    {
+      "Name": "PutConfigNamingById",
+      "Method": "PUT",
+      "Path": "/api/v3/config/naming/{id}",
+      "PathParameters": [
+        {
+          "Name": "id",
+          "Argument": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ],
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "NamingConfigResource"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "NamingConfigResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        202
+      ]
+    }
+  ],
+  "Models": [
+    {
+      "Name": "NamingConfigResource",
+      "SchemaName": "NamingConfigResource",
+      "Fields": [
+        {
+          "Name": "ColonReplacementFormat",
+          "JsonName": "colonReplacementFormat",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "ColonReplacementFormat"
+          }
+        },
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "MovieFolderFormat",
+          "JsonName": "movieFolderFormat",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "RenameMovies",
+          "JsonName": "renameMovies",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "ReplaceIllegalCharacters",
+          "JsonName": "replaceIllegalCharacters",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "StandardMovieFormat",
+          "JsonName": "standardMovieFormat",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        }
+      ]
+    }
+  ],
+  "Constants": [
+    {
+      "Name": "ColonReplacementFormat",
+      "SchemaName": "ColonReplacementFormat",
+      "Values": [
+        {
+          "Name": "ColonReplacementFormatDelete",
+          "Value": "delete"
+        },
+        {
+          "Name": "ColonReplacementFormatDash",
+          "Value": "dash"
+        },
+        {
+          "Name": "ColonReplacementFormatSpaceDash",
+          "Value": "spaceDash"
+        },
+        {
+          "Name": "ColonReplacementFormatSpaceDashSpace",
+          "Value": "spaceDashSpace"
+        },
+        {
+          "Name": "ColonReplacementFormatSmart",
+          "Value": "smart"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,2900 @@
+{
+  "Name": "Common",
+  "Models": [
+    {
+      "Name": "AddMovieOptions",
+      "SchemaName": "AddMovieOptions",
+      "Fields": [
+        {
+          "Name": "AddMethod",
+          "JsonName": "addMethod",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "AddMovieMethod"
+          }
+        },
+        {
+          "Name": "IgnoreEpisodesWithFiles",
+          "JsonName": "ignoreEpisodesWithFiles",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "IgnoreEpisodesWithoutFiles",
+          "JsonName": "ignoreEpisodesWithoutFiles",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "Monitor",
+          "JsonName": "monitor",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "MonitorTypes"
+          }
+        },
+        {
+          "Name": "SearchForMovie",
+          "JsonName": "searchForMovie",
+          "Type": {
+            "Type": "Boolean"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "AlternativeTitleResource",
+      "SchemaName": "AlternativeTitleResource",
+      "Fields": [
+        {
+          "Name": "CleanTitle",
+          "JsonName": "cleanTitle",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "MovieMetadataId",
+          "JsonName": "movieMetadataId",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "SourceType",
+          "JsonName": "sourceType",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "SourceType"
+          }
+        },
+        {
+          "Name": "Title",
+          "JsonName": "title",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        }
+      ]
+    },
+    {
+      "Name": "Command",
+      "SchemaName": "Command",
+      "Fields": [
+        {
+          "Name": "ClientUserAgent",
+          "JsonName": "clientUserAgent",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "CompletionMessage",
+          "JsonName": "completionMessage",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "IsExclusive",
+          "JsonName": "isExclusive",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "IsLongRunning",
+          "JsonName": "isLongRunning",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "IsTypeExclusive",
+          "JsonName": "isTypeExclusive",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "LastExecutionTime",
+          "JsonName": "lastExecutionTime",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "LastStartTime",
+          "JsonName": "lastStartTime",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "RequiresDiskAccess",
+          "JsonName": "requiresDiskAccess",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "SendUpdatesToClient",
+          "JsonName": "sendUpdatesToClient",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "SuppressMessages",
+          "JsonName": "suppressMessages",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "Trigger",
+          "JsonName": "trigger",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "CommandTrigger"
+          }
+        },
+        {
+          "Name": "UpdateScheduledTask",
+          "JsonName": "updateScheduledTask",
+          "Type": {
+            "Type": "Boolean"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "CustomFormatResource",
+      "SchemaName": "CustomFormatResource",
+      "Fields": [
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "IncludeCustomFormatWhenRenaming",
+          "JsonName": "includeCustomFormatWhenRenaming",
+          "Type": {
+            "Type": "Boolean"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Specifications",
+          "JsonName": "specifications",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "CustomFormatSpecificationSchema"
+            }
+          },
+          "Nullable": true
+        }
+      ]
+    },
+    {
+      "Name": "CustomFormatSpecificationSchema",
+      "SchemaName": "CustomFormatSpecificationSchema",
+      "Fields": [
+        {
+          "Name": "Fields",
+          "JsonName": "fields",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "Field"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Implementation",
+          "JsonName": "implementation",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "ImplementationName",
+          "JsonName": "implementationName",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "InfoLink",
+          "JsonName": "infoLink",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Negate",
+          "JsonName": "negate",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "Presets",
+          "JsonName": "presets",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "CustomFormatSpecificationSchema"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Required",
+          "JsonName": "required",
+          "Type": {
+            "Type": "Boolean"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "Field",
+      "SchemaName": "Field",
+      "Fields": [
+        {
+          "Name": "Advanced",
+          "JsonName": "advanced",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "HelpLink",
+          "JsonName": "helpLink",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "HelpText",
+          "JsonName": "helpText",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "HelpTextWarning",
+          "JsonName": "helpTextWarning",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Hidden",
+          "JsonName": "hidden",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "IsFloat",
+          "JsonName": "isFloat",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "Label",
+          "JsonName": "label",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Order",
+          "JsonName": "order",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Placeholder",
+          "JsonName": "placeholder",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Privacy",
+          "JsonName": "privacy",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "PrivacyLevel"
+          }
+        },
+        {
+          "Name": "Section",
+          "JsonName": "section",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "SelectOptions",
+          "JsonName": "selectOptions",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "SelectOption"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "SelectOptionsProviderAction",
+          "JsonName": "selectOptionsProviderAction",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Type",
+          "JsonName": "type",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Unit",
+          "JsonName": "unit",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Value",
+          "JsonName": "value",
+          "Type": {
+            "Type": "Any"
+          },
+          "Nullable": true
+        }
+      ]
+    },
+    {
+      "Name": "Language",
+      "SchemaName": "Language",
+      "Fields": [
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        }
+      ]
+    },
+    {
+      "Name": "LogFileResource",
+      "SchemaName": "LogFileResource",
+      "Fields": [
+        {
+          "Name": "ContentsUrl",
+          "JsonName": "contentsUrl",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "DownloadUrl",
+          "JsonName": "downloadUrl",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Filename",
+          "JsonName": "filename",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "LastWriteTime",
+          "JsonName": "lastWriteTime",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "MediaCover",
+      "SchemaName": "MediaCover",
+      "Fields": [
+        {
+          "Name": "CoverType",
+          "JsonName": "coverType",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "MediaCoverTypes"
+          }
+        },
+        {
+          "Name": "RemoteUrl",
+          "JsonName": "remoteUrl",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Url",
+          "JsonName": "url",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        }
+      ]
+    },
+    {
+      "Name": "MediaInfoResource",
+      "SchemaName": "MediaInfoResource",
+      "Fields": [
+        {
+          "Name": "AudioBitrate",
+          "JsonName": "audioBitrate",
+          "Type": {
+            "Type": "Integer64"
+          }
+        },
+        {
+          "Name": "AudioChannels",
+          "JsonName": "audioChannels",
+          "Type": {
+            "Type": "Double"
+          }
+        },
+        {
+          "Name": "AudioCodec",
+          "JsonName": "audioCodec",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "AudioLanguages",
+          "JsonName": "audioLanguages",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "AudioStreamCount",
+          "JsonName": "audioStreamCount",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Resolution",
+          "JsonName": "resolution",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "RunTime",
+          "JsonName": "runTime",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "ScanType",
+          "JsonName": "scanType",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Subtitles",
+          "JsonName": "subtitles",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "VideoBitDepth",
+          "JsonName": "videoBitDepth",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "VideoBitrate",
+          "JsonName": "videoBitrate",
+          "Type": {
+            "Type": "Integer64"
+          }
+        },
+        {
+          "Name": "VideoCodec",
+          "JsonName": "videoCodec",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "VideoDynamicRange",
+          "JsonName": "videoDynamicRange",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "VideoDynamicRangeType",
+          "JsonName": "videoDynamicRangeType",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "VideoFps",
+          "JsonName": "videoFps",
+          "Type": {
+            "Type": "Double"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "MovieCollectionResource",
+      "SchemaName": "MovieCollectionResource",
+      "Fields": [
+        {
+          "Name": "Title",
+          "JsonName": "title",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "TmdbId",
+          "JsonName": "tmdbId",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "MovieFileResource",
+      "SchemaName": "MovieFileResource",
+      "Fields": [
+        {
+          "Name": "CustomFormatScore",
+          "JsonName": "customFormatScore",
+          "Type": {
+            "Type": "Integer"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "CustomFormats",
+          "JsonName": "customFormats",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "CustomFormatResource"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "DateAdded",
+          "JsonName": "dateAdded",
+          "Type": {
+            "Type": "String"
+          }
+        },
+        {
+          "Name": "Edition",
+          "JsonName": "edition",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "IndexerFlags",
+          "JsonName": "indexerFlags",
+          "Type": {
+            "Type": "Integer"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Languages",
+          "JsonName": "languages",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "Language"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "MediaInfo",
+          "JsonName": "mediaInfo",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "MediaInfoResource"
+          }
+        },
+        {
+          "Name": "MovieId",
+          "JsonName": "movieId",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "OriginalFilePath",
+          "JsonName": "originalFilePath",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Path",
+          "JsonName": "path",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Quality",
+          "JsonName": "quality",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "QualityModel"
+          }
+        },
+        {
+          "Name": "QualityCutoffNotMet",
+          "JsonName": "qualityCutoffNotMet",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "RelativePath",
+          "JsonName": "relativePath",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "ReleaseGroup",
+          "JsonName": "releaseGroup",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "SceneName",
+          "JsonName": "sceneName",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Size",
+          "JsonName": "size",
+          "Type": {
+            "Type": "Integer64"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "MovieResource",
+      "SchemaName": "MovieResource",
+      "Fields": [
+        {
+          "Name": "AddOptions",
+          "JsonName": "addOptions",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "AddMovieOptions"
+          }
+        },
+        {
+          "Name": "Added",
+          "JsonName": "added",
+          "Type": {
+            "Type": "String"
+          }
+        },
+        {
+          "Name": "AlternateTitles",
+          "JsonName": "alternateTitles",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "AlternativeTitleResource"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Certification",
+          "JsonName": "certification",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "CleanTitle",
+          "JsonName": "cleanTitle",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Collection",
+          "JsonName": "collection",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "MovieCollectionResource"
+          }
+        },
+        {
+          "Name": "DigitalRelease",
+          "JsonName": "digitalRelease",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Folder",
+          "JsonName": "folder",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "FolderName",
+          "JsonName": "folderName",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Genres",
+          "JsonName": "genres",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "String"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "HasFile",
+          "JsonName": "hasFile",
+          "Type": {
+            "Type": "Boolean"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Images",
+          "JsonName": "images",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "MediaCover"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "ImdbId",
+          "JsonName": "imdbId",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "InCinemas",
+          "JsonName": "inCinemas",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "IsAvailable",
+          "JsonName": "isAvailable",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "IsExcluded",
+          "JsonName": "isExcluded",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "Keywords",
+          "JsonName": "keywords",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "String"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "LastSearchTime",
+          "JsonName": "lastSearchTime",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "MinimumAvailability",
+          "JsonName": "minimumAvailability",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "MovieStatusType"
+          }
+        },
+        {
+          "Name": "Monitored",
+          "JsonName": "monitored",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "MovieFile",
+          "JsonName": "movieFile",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "MovieFileResource"
+          }
+        },
+        {
+          "Name": "MovieFileId",
+          "JsonName": "movieFileId",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "OriginalLanguage",
+          "JsonName": "originalLanguage",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "Language"
+          }
+        },
+        {
+          "Name": "OriginalTitle",
+          "JsonName": "originalTitle",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Overview",
+          "JsonName": "overview",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Path",
+          "JsonName": "path",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "PhysicalRelease",
+          "JsonName": "physicalRelease",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "PhysicalReleaseNote",
+          "JsonName": "physicalReleaseNote",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Popularity",
+          "JsonName": "popularity",
+          "Type": {
+            "Type": "Float"
+          }
+        },
+        {
+          "Name": "QualityProfileId",
+          "JsonName": "qualityProfileId",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Ratings",
+          "JsonName": "ratings",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "Ratings"
+          }
+        },
+        {
+          "Name": "ReleaseDate",
+          "JsonName": "releaseDate",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "RemotePoster",
+          "JsonName": "remotePoster",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "RootFolderPath",
+          "JsonName": "rootFolderPath",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Runtime",
+          "JsonName": "runtime",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "SecondaryYear",
+          "JsonName": "secondaryYear",
+          "Type": {
+            "Type": "Integer"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "SecondaryYearSourceId",
+          "JsonName": "secondaryYearSourceId",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "SizeOnDisk",
+          "JsonName": "sizeOnDisk",
+          "Type": {
+            "Type": "Integer64"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "SortTitle",
+          "JsonName": "sortTitle",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Statistics",
+          "JsonName": "statistics",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "MovieStatisticsResource"
+          }
+        },
+        {
+          "Name": "Status",
+          "JsonName": "status",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "MovieStatusType"
+          }
+        },
+        {
+          "Name": "Studio",
+          "JsonName": "studio",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Tags",
+          "JsonName": "tags",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Integer"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Title",
+          "JsonName": "title",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "TitleSlug",
+          "JsonName": "titleSlug",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "TmdbId",
+          "JsonName": "tmdbId",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Website",
+          "JsonName": "website",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Year",
+          "JsonName": "year",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "YouTubeTrailerId",
+          "JsonName": "youTubeTrailerId",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        }
+      ]
+    },
+    {
+      "Name": "MovieResourcePagingResource",
+      "SchemaName": "MovieResourcePagingResource",
+      "Fields": [
+        {
+          "Name": "Page",
+          "JsonName": "page",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "PageSize",
+          "JsonName": "pageSize",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Records",
+          "JsonName": "records",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "MovieResource"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "SortDirection",
+          "JsonName": "sortDirection",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "SortDirection"
+          }
+        },
+        {
+          "Name": "SortKey",
+          "JsonName": "sortKey",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "TotalRecords",
+          "JsonName": "totalRecords",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "MovieStatisticsResource",
+      "SchemaName": "MovieStatisticsResource",
+      "Fields": [
+        {
+          "Name": "MovieFileCount",
+          "JsonName": "movieFileCount",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "MovieFileQualities",
+          "JsonName": "movieFileQualities",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "Quality"
+            }
+          }
+        },
+        {
+          "Name": "ReleaseGroups",
+          "JsonName": "releaseGroups",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "String"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "SizeOnDisk",
+          "JsonName": "sizeOnDisk",
+          "Type": {
+            "Type": "Integer64"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "ProfileFormatItemResource",
+      "SchemaName": "ProfileFormatItemResource",
+      "Fields": [
+        {
+          "Name": "Format",
+          "JsonName": "format",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Score",
+          "JsonName": "score",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "ProviderMessage",
+      "SchemaName": "ProviderMessage",
+      "Fields": [
+        {
+          "Name": "Message",
+          "JsonName": "message",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Type",
+          "JsonName": "type",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "ProviderMessageType"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "ProviderTestAllResult",
+      "SchemaName": "ProviderTestAllResult",
+      "Fields": [
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "IsValid",
+          "JsonName": "isValid",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "ValidationFailures",
+          "JsonName": "validationFailures",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "ValidationFailure"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "Name": "Quality",
+      "SchemaName": "Quality",
+      "Fields": [
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Modifier",
+          "JsonName": "modifier",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "Modifier"
+          }
+        },
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Resolution",
+          "JsonName": "resolution",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Source",
+          "JsonName": "source",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "QualitySource"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "QualityModel",
+      "SchemaName": "QualityModel",
+      "Fields": [
+        {
+          "Name": "Quality",
+          "JsonName": "quality",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "Quality"
+          }
+        },
+        {
+          "Name": "Revision",
+          "JsonName": "revision",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "Revision"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "QualityProfileQualityItemResource",
+      "SchemaName": "QualityProfileQualityItemResource",
+      "Fields": [
+        {
+          "Name": "Allowed",
+          "JsonName": "allowed",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Items",
+          "JsonName": "items",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "QualityProfileQualityItemResource"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Quality",
+          "JsonName": "quality",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "Quality"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "QualityProfileResource",
+      "SchemaName": "QualityProfileResource",
+      "Fields": [
+        {
+          "Name": "Cutoff",
+          "JsonName": "cutoff",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "CutoffFormatScore",
+          "JsonName": "cutoffFormatScore",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "FormatItems",
+          "JsonName": "formatItems",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "ProfileFormatItemResource"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Items",
+          "JsonName": "items",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "QualityProfileQualityItemResource"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Language",
+          "JsonName": "language",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "Language"
+          }
+        },
+        {
+          "Name": "MinFormatScore",
+          "JsonName": "minFormatScore",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "MinUpgradeFormatScore",
+          "JsonName": "minUpgradeFormatScore",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "UpgradeAllowed",
+          "JsonName": "upgradeAllowed",
+          "Type": {
+            "Type": "Boolean"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "QueueBulkResource",
+      "SchemaName": "QueueBulkResource",
+      "Fields": [
+        {
+          "Name": "Ids",
+          "JsonName": "ids",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Integer"
+            }
+          },
+          "Nullable": true
+        }
+      ]
+    },
+    {
+      "Name": "QueueResource",
+      "SchemaName": "QueueResource",
+      "Fields": [
+        {
+          "Name": "Added",
+          "JsonName": "added",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "CustomFormatScore",
+          "JsonName": "customFormatScore",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "CustomFormats",
+          "JsonName": "customFormats",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "CustomFormatResource"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "DownloadClient",
+          "JsonName": "downloadClient",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "DownloadClientHasPostImportCategory",
+          "JsonName": "downloadClientHasPostImportCategory",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "DownloadId",
+          "JsonName": "downloadId",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "ErrorMessage",
+          "JsonName": "errorMessage",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "EstimatedCompletionTime",
+          "JsonName": "estimatedCompletionTime",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Indexer",
+          "JsonName": "indexer",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Languages",
+          "JsonName": "languages",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "Language"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Movie",
+          "JsonName": "movie",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "MovieResource"
+          }
+        },
+        {
+          "Name": "MovieId",
+          "JsonName": "movieId",
+          "Type": {
+            "Type": "Integer"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "OutputPath",
+          "JsonName": "outputPath",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Protocol",
+          "JsonName": "protocol",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "DownloadProtocol"
+          }
+        },
+        {
+          "Name": "Quality",
+          "JsonName": "quality",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "QualityModel"
+          }
+        },
+        {
+          "Name": "Size",
+          "JsonName": "size",
+          "Type": {
+            "Type": "Double"
+          }
+        },
+        {
+          "Name": "Sizeleft",
+          "JsonName": "sizeleft",
+          "Type": {
+            "Type": "Double"
+          }
+        },
+        {
+          "Name": "Status",
+          "JsonName": "status",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "QueueStatus"
+          }
+        },
+        {
+          "Name": "StatusMessages",
+          "JsonName": "statusMessages",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "TrackedDownloadStatusMessage"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Timeleft",
+          "JsonName": "timeleft",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Title",
+          "JsonName": "title",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "TrackedDownloadState",
+          "JsonName": "trackedDownloadState",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "TrackedDownloadState"
+          }
+        },
+        {
+          "Name": "TrackedDownloadStatus",
+          "JsonName": "trackedDownloadStatus",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "TrackedDownloadStatus"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "RatingChild",
+      "SchemaName": "RatingChild",
+      "Fields": [
+        {
+          "Name": "Type",
+          "JsonName": "type",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "RatingType"
+          }
+        },
+        {
+          "Name": "Value",
+          "JsonName": "value",
+          "Type": {
+            "Type": "Double"
+          }
+        },
+        {
+          "Name": "Votes",
+          "JsonName": "votes",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "Ratings",
+      "SchemaName": "Ratings",
+      "Fields": [
+        {
+          "Name": "Imdb",
+          "JsonName": "imdb",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "RatingChild"
+          }
+        },
+        {
+          "Name": "Metacritic",
+          "JsonName": "metacritic",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "RatingChild"
+          }
+        },
+        {
+          "Name": "RottenTomatoes",
+          "JsonName": "rottenTomatoes",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "RatingChild"
+          }
+        },
+        {
+          "Name": "Tmdb",
+          "JsonName": "tmdb",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "RatingChild"
+          }
+        },
+        {
+          "Name": "Trakt",
+          "JsonName": "trakt",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "RatingChild"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "ReleaseResource",
+      "SchemaName": "ReleaseResource",
+      "Fields": [
+        {
+          "Name": "Age",
+          "JsonName": "age",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "AgeHours",
+          "JsonName": "ageHours",
+          "Type": {
+            "Type": "Double"
+          }
+        },
+        {
+          "Name": "AgeMinutes",
+          "JsonName": "ageMinutes",
+          "Type": {
+            "Type": "Double"
+          }
+        },
+        {
+          "Name": "Approved",
+          "JsonName": "approved",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "CommentUrl",
+          "JsonName": "commentUrl",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "CustomFormatScore",
+          "JsonName": "customFormatScore",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "CustomFormats",
+          "JsonName": "customFormats",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "CustomFormatResource"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "DownloadAllowed",
+          "JsonName": "downloadAllowed",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "DownloadClient",
+          "JsonName": "downloadClient",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "DownloadClientId",
+          "JsonName": "downloadClientId",
+          "Type": {
+            "Type": "Integer"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "DownloadUrl",
+          "JsonName": "downloadUrl",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Edition",
+          "JsonName": "edition",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Guid",
+          "JsonName": "guid",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Id",
+          "JsonName": "id",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "ImdbId",
+          "JsonName": "imdbId",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Indexer",
+          "JsonName": "indexer",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "IndexerFlags",
+          "JsonName": "indexerFlags",
+          "Type": {
+            "Type": "Any"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "IndexerId",
+          "JsonName": "indexerId",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "InfoHash",
+          "JsonName": "infoHash",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "InfoUrl",
+          "JsonName": "infoUrl",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Languages",
+          "JsonName": "languages",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "Language"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Leechers",
+          "JsonName": "leechers",
+          "Type": {
+            "Type": "Integer"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "MagnetUrl",
+          "JsonName": "magnetUrl",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "MappedMovieId",
+          "JsonName": "mappedMovieId",
+          "Type": {
+            "Type": "Integer"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "MovieId",
+          "JsonName": "movieId",
+          "Type": {
+            "Type": "Integer"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "MovieRequested",
+          "JsonName": "movieRequested",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "MovieTitles",
+          "JsonName": "movieTitles",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "String"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Protocol",
+          "JsonName": "protocol",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "DownloadProtocol"
+          }
+        },
+        {
+          "Name": "PublishDate",
+          "JsonName": "publishDate",
+          "Type": {
+            "Type": "String"
+          }
+        },
+        {
+          "Name": "Quality",
+          "JsonName": "quality",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "QualityModel"
+          }
+        },
+        {
+          "Name": "QualityWeight",
+          "JsonName": "qualityWeight",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Rejected",
+          "JsonName": "rejected",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "Rejections",
+          "JsonName": "rejections",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "String"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "ReleaseGroup",
+          "JsonName": "releaseGroup",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "ReleaseHash",
+          "JsonName": "releaseHash",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "ReleaseWeight",
+          "JsonName": "releaseWeight",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "SceneSource",
+          "JsonName": "sceneSource",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "Seeders",
+          "JsonName": "seeders",
+          "Type": {
+            "Type": "Integer"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "ShouldOverride",
+          "JsonName": "shouldOverride",
+          "Type": {
+            "Type": "Boolean"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Size",
+          "JsonName": "size",
+          "Type": {
+            "Type": "Integer64"
+          }
+        },
+        {
+          "Name": "SubGroup",
+          "JsonName": "subGroup",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "TemporarilyRejected",
+          "JsonName": "temporarilyRejected",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "Title",
+          "JsonName": "title",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "TmdbId",
+          "JsonName": "tmdbId",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "Revision",
+      "SchemaName": "Revision",
+      "Fields": [
+        {
+          "Name": "IsRepack",
+          "JsonName": "isRepack",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "Real",
+          "JsonName": "real",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Version",
+          "JsonName": "version",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "SelectOption",
+      "SchemaName": "SelectOption",
+      "Fields": [
+        {
+          "Name": "DividerAfter",
+          "JsonName": "dividerAfter",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "Hint",
+          "JsonName": "hint",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Order",
+          "JsonName": "order",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Value",
+          "JsonName": "value",
+          "Type": {
+            "Type": "Integer"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "TrackedDownloadStatusMessage",
+      "SchemaName": "TrackedDownloadStatusMessage",
+      "Fields": [
+        {
+          "Name": "Messages",
+          "JsonName": "messages",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "String"
+            }
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Title",
+          "JsonName": "title",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        }
+      ]
+    },
+    {
+      "Name": "ValidationFailure",
+      "SchemaName": "ValidationFailure",
+      "Fields": [
+        {
+          "Name": "DetailedDescription",
+          "JsonName": "detailedDescription",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "ErrorMessage",
+          "JsonName": "errorMessage",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "InfoLink",
+          "JsonName": "infoLink",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "IsWarning",
+          "JsonName": "isWarning",
+          "Type": {
+            "Type": "Boolean"
+          }
+        },
+        {
+          "Name": "PropertyName",
+          "JsonName": "propertyName",
+          "Type": {
+            "Type": "String"
+          },
+          "Nullable": true
+        },
+        {
+          "Name": "Severity",
+          "JsonName": "severity",
+          "Description": "error, warning or info",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ]
+    }
+  ],
+  "Constants": [
+    {
+      "Name": "AddMovieMethod",
+      "SchemaName": "AddMovieMethod",
+      "Values": [
+        {
+          "Name": "AddMovieMethodManual",
+          "Value": "manual"
+        },
+        {
+          "Name": "AddMovieMethodList",
+          "Value": "list"
+        },
+        {
+          "Name": "AddMovieMethodCollection",
+          "Value": "collection"
+        }
+      ]
+    },
+    {
+      "Name": "ApplyTags",
+      "SchemaName": "ApplyTags",
+      "Values": [
+        {
+          "Name": "ApplyTagsAdd",
+          "Value": "add"
+        },
+        {
+          "Name": "ApplyTagsRemove",
+          "Value": "remove"
+        },
+        {
+          "Name": "ApplyTagsReplace",
+          "Value": "replace"
+        }
+      ]
+    },
+    {
+      "Name": "AuthenticationType",
+      "SchemaName": "AuthenticationType",
+      "Values": [
+        {
+          "Name": "AuthenticationTypeNone",
+          "Value": "none"
+        },
+        {
+          "Name": "AuthenticationTypeBasic",
+          "Value": "basic"
+        },
+        {
+          "Name": "AuthenticationTypeForms",
+          "Value": "forms"
+        },
+        {
+          "Name": "AuthenticationTypeExternal",
+          "Value": "external"
+        }
+      ]
+    },
+    {
+      "Name": "DownloadProtocol",
+      "SchemaName": "DownloadProtocol",
+      "Values": [
+        {
+          "Name": "DownloadProtocolUnknown",
+          "Value": "unknown"
+        },
+        {
+          "Name": "DownloadProtocolUsenet",
+          "Value": "usenet"
+        },
+        {
+          "Name": "DownloadProtocolTorrent",
+          "Value": "torrent"
+        }
+      ]
+    },
+    {
+      "Name": "MediaCoverTypes",
+      "SchemaName": "MediaCoverTypes",
+      "Values": [
+        {
+          "Name": "MediaCoverTypesUnknown",
+          "Value": "unknown"
+        },
+        {
+          "Name": "MediaCoverTypesPoster",
+          "Value": "poster"
+        },
+        {
+          "Name": "MediaCoverTypesBanner",
+          "Value": "banner"
+        },
+        {
+          "Name": "MediaCoverTypesFanart",
+          "Value": "fanart"
+        },
+        {
+          "Name": "MediaCoverTypesScreenshot",
+          "Value": "screenshot"
+        },
+        {
+          "Name": "MediaCoverTypesHeadshot",
+          "Value": "headshot"
+        },
+        {
+          "Name": "MediaCoverTypesClearlogo",
+          "Value": "clearlogo"
+        }
+      ]
+    },
+    {
+      "Name": "Modifier",
+      "SchemaName": "Modifier",
+      "Values": [
+        {
+          "Name": "ModifierNone",
+          "Value": "none"
+        },
+        {
+          "Name": "ModifierRegional",
+          "Value": "regional"
+        },
+        {
+          "Name": "ModifierScreener",
+          "Value": "screener"
+        },
+        {
+          "Name": "ModifierRawhd",
+          "Value": "rawhd"
+        },
+        {
+          "Name": "ModifierBrdisk",
+          "Value": "brdisk"
+        },
+        {
+          "Name": "ModifierRemux",
+          "Value": "remux"
+        }
+      ]
+    },
+    {
+      "Name": "MonitorTypes",
+      "SchemaName": "MonitorTypes",
+      "Values": [
+        {
+          "Name": "MonitorTypesMovieOnly",
+          "Value": "movieOnly"
+        },
+        {
+          "Name": "MonitorTypesMovieAndCollection",
+          "Value": "movieAndCollection"
+        },
+        {
+          "Name": "MonitorTypesNone",
+          "Value": "none"
+        }
+      ]
+    },
+    {
+      "Name": "MovieStatusType",
+      "SchemaName": "MovieStatusType",
+      "Values": [
+        {
+          "Name": "MovieStatusTypeTba",
+          "Value": "tba"
+        },
+        {
+          "Name": "MovieStatusTypeAnnounced",
+          "Value": "announced"
+        },
+        {
+          "Name": "MovieStatusTypeInCinemas",
+          "Value": "inCinemas"
+        },
+        {
+          "Name": "MovieStatusTypeReleased",
+          "Value": "released"
+        },
+        {
+          "Name": "MovieStatusTypeDeleted",
+          "Value": "deleted"
+        }
+      ]
+    },
+    {
+      "Name": "PrivacyLevel",
+      "SchemaName": "PrivacyLevel",
+      "Values": [
+        {
+          "Name": "PrivacyLevelNormal",
+          "Value": "normal"
+        },
+        {
+          "Name": "PrivacyLevelPassword",
+          "Value": "password"
+        },
+        {
+          "Name": "PrivacyLevelApiKey",
+          "Value": "apiKey"
+        },
+        {
+          "Name": "PrivacyLevelUserName",
+          "Value": "userName"
+        }
+      ]
+    },
+    {
+      "Name": "ProviderMessageType",
+      "SchemaName": "ProviderMessageType",
+      "Values": [
+        {
+          "Name": "ProviderMessageTypeInfo",
+          "Value": "info"
+        },
+        {
+          "Name": "ProviderMessageTypeWarning",
+          "Value": "warning"
+        },
+        {
+          "Name": "ProviderMessageTypeError",
+          "Value": "error"
+        }
+      ]
+    },
+    {
+      "Name": "QualitySource",
+      "SchemaName": "QualitySource",
+      "Values": [
+        {
+          "Name": "QualitySourceUnknown",
+          "Value": "unknown"
+        },
+        {
+          "Name": "QualitySourceCam",
+          "Value": "cam"
+        },
+        {
+          "Name": "QualitySourceTelesync",
+          "Value": "telesync"
+        },
+        {
+          "Name": "QualitySourceTelecine",
+          "Value": "telecine"
+        },
+        {
+          "Name": "QualitySourceWorkprint",
+          "Value": "workprint"
+        },
+        {
+          "Name": "QualitySourceDvd",
+          "Value": "dvd"
+        },
+        {
+          "Name": "QualitySourceTv",
+          "Value": "tv"
+        },
+        {
+          "Name": "QualitySourceWebdl",
+          "Value": "webdl"
+        },
+        {
+          "Name": "QualitySourceWebrip",
+          "Value": "webrip"
+        },
+        {
+          "Name": "QualitySourceBluray",
+          "Value": "bluray"
+        }
+      ]
+    },
+    {
+      "Name": "QueueStatus",
+      "SchemaName": "QueueStatus",
+      "Values": [
+        {
+          "Name": "QueueStatusUnknown",
+          "Value": "unknown"
+        },
+        {
+          "Name": "QueueStatusQueued",
+          "Value": "queued"
+        },
+        {
+          "Name": "QueueStatusPaused",
+          "Value": "paused"
+        },
+        {
+          "Name": "QueueStatusDownloading",
+          "Value": "downloading"
+        },
+        {
+          "Name": "QueueStatusCompleted",
+          "Value": "completed"
+        },
+        {
+          "Name": "QueueStatusFailed",
+          "Value": "failed"
+        },
+        {
+          "Name": "QueueStatusWarning",
+          "Value": "warning"
+        },
+        {
+          "Name": "QueueStatusDelay",
+          "Value": "delay"
+        },
+        {
+          "Name": "QueueStatusDownloadClientUnavailable",
+          "Value": "downloadClientUnavailable"
+        },
+        {
+          "Name": "QueueStatusFallback",
+          "Value": "fallback"
+        }
+      ]
+    },
+    {
+      "Name": "RatingType",
+      "SchemaName": "RatingType",
+      "Values": [
+        {
+          "Name": "RatingTypeUser",
+          "Value": "user"
+        },
+        {
+          "Name": "RatingTypeCritic",
+          "Value": "critic"
+        }
+      ]
+    },
+    {
+      "Name": "SortDirection",
+      "SchemaName": "SortDirection",
+      "Values": [
+        {
+          "Name": "SortDirectionDefault",
+          "Value": "default"
+        },
+        {
+          "Name": "SortDirectionAscending",
+          "Value": "ascending"
+        },
+        {
+          "Name": "SortDirectionDescending",
+          "Value": "descending"
+        }
+      ]
+    },
+    {
+      "Name": "SourceType",
+      "SchemaName": "SourceType",
+      "Values": [
+        {
+          "Name": "SourceTypeTmdb",
+          "Value": "tmdb"
+        },
+        {
+          "Name": "SourceTypeMappings",
+          "Value": "mappings"
+        },
+        {
+          "Name": "SourceTypeUser",
+          "Value": "user"
+        },
+        {
+          "Name": "SourceTypeIndexer",
+          "Value": "indexer"
+        }
+      ]
+    },
+    {
+      "Name": "TrackedDownloadState",
+      "SchemaName": "TrackedDownloadState",
+      "Values": [
+        {
+          "Name": "TrackedDownloadStateDownloading",
+          "Value": "downloading"
+        },
+        {
+          "Name": "TrackedDownloadStateImportBlocked",
+          "Value": "importBlocked"
+        },
+        {
+          "Name": "TrackedDownloadStateImportPending",
+          "Value": "importPending"
+        },
+        {
+          "Name": "TrackedDownloadStateImporting",
+          "Value": "importing"
+        },
+        {
+          "Name": "TrackedDownloadStateImported",
+          "Value": "imported"
+        },
+        {
+          "Name": "TrackedDownloadStateFailedPending",
+          "Value": "failedPending"
+        },
+        {
+          "Name": "TrackedDownloadStateFailed",
+          "Value": "failed"
+        },
+        {
+          "Name": "TrackedDownloadStateIgnored",
+          "Value": "ignored"
+        }
+      ]
+    },
+    {
+      "Name": "TrackedDownloadStatus",
+      "SchemaName": "TrackedDownloadStatus",
+      "Values": [
+        {
+          "Name": "TrackedDownloadStatusOk",
+          "Value": "ok"
+        },
+        {
+          "Name": "TrackedDownloadStatusWarning",
+          "Value": "warning"
+        },
+        {
+          "Name": "TrackedDownloadStatusError",
+          "Value": "error"
+        }
+      ]
+    },
+    {
+      "Name": "UpdateMechanism",
+      "SchemaName": "UpdateMechanism",
+      "Values": [
+        {
+          "Name": "UpdateMechanismBuiltIn",
+          "Value": "builtIn"
+        },
+        {
+          "Name": "UpdateMechanismScript",
+          "Value": "script"
+        },
+        {
+          "Name": "UpdateMechanismExternal",
+          "Value": "external"
+        },
+        {
+          "Name": "UpdateMechanismApt",
+          "Value": "apt"
+        },
+        {
+          "Name": "UpdateMechanismDocker",
+          "Value": "docker"
+        }
+      ]
+    }
+  ]
+}
