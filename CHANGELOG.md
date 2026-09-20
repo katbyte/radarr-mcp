@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 (2026-09-19)
 
 The first version: an MCP server, CLI and Go SDK for curating a Radarr film library, built
 on the same pattern as embyfin-mcp and abs-mcp.
