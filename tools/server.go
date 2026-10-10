@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"slices"
 	"strings"
 
@@ -72,8 +73,9 @@ type logRow struct {
 }
 
 type logFileIn struct {
-	Name string `json:"name,omitempty" jsonschema:"the log file to read, as the list names it; empty lists the files"`
-	Tail int    `json:"tail,omitempty" jsonschema:"lines from the end of the file to return, default 100"`
+	Name   string `json:"name,omitempty"   jsonschema:"the log file to read, as the list names it; empty lists the files"`
+	Tail   int    `json:"tail,omitempty"   jsonschema:"lines from the end of the file to return, default 100"`
+	Update bool   `json:"update,omitempty" jsonschema:"the logs Radarr's updater writes when it installs a release, in place of Radarr's own; an install updated by replacing it (Docker) has none"`
 }
 
 type logFileRow struct {
@@ -153,7 +155,7 @@ func registerServerTools(r *registry) {
 		for _, h := range health.Model {
 			out.HealthProblems++
 			if h.Type == radarr.HealthCheckResultError {
-				out.HealthErrorOnly = append(out.HealthErrorOnly, h.Source+": "+h.Message)
+				out.HealthErrorOnly = append(out.HealthErrorOnly, h.Source+": "+addressesHidden(h.Message))
 			}
 		}
 
@@ -173,7 +175,7 @@ func registerServerTools(r *registry) {
 		}
 		out := healthOut{}
 		for _, h := range res.Model {
-			out.Checks = append(out.Checks, healthRow{Source: h.Source, Type: string(h.Type), Message: h.Message, WikiURL: h.WikiUrl})
+			out.Checks = append(out.Checks, healthRow{Source: h.Source, Type: string(h.Type), Message: addressesHidden(h.Message), WikiURL: h.WikiUrl})
 		}
 		// errors first: they are what stops Radarr working
 		slices.SortStableFunc(out.Checks, func(a, b healthRow) int {
@@ -234,7 +236,7 @@ func registerServerTools(r *registry) {
 		}
 		out := logsOut{Entries: make([]logRow, 0, len(records)), pageOut: paged}
 		for _, l := range records {
-			out.Entries = append(out.Entries, logRow{Time: l.Time, Level: l.Level, Logger: l.Logger, Message: l.Message, Exception: firstLines(l.Exception, 5)})
+			out.Entries = append(out.Entries, logRow{Time: l.Time, Level: l.Level, Logger: l.Logger, Message: radarrSays(l.Message), Exception: addressesHidden(firstLines(l.Exception, 5))})
 		}
 
 		return nil, out, nil
@@ -249,10 +251,29 @@ func registerServerTools(r *registry) {
 		Name:        "server_log_file",
 		Description: "List Radarr's log files on disk, or with a name read the last lines of one (default 100): the full record, where server_logs holds only the recent entries Radarr keeps in its database.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in logFileIn) (*mcp.CallToolResult, logFileOut, error) {
-		files, err := client.GetLogFile(ctx)
+		// the updater's logs are kept apart from Radarr's own, and listed and read by calls of their own
+		list := func() ([]radarr.LogFileResource, error) {
+			if in.Update {
+				res, err := client.GetLogFileUpdate(ctx)
+				return res.Model, err
+			}
+			res, err := client.GetLogFile(ctx)
+			return res.Model, err
+		}
+		read := func(name string) (*http.Response, error) {
+			if in.Update {
+				res, err := client.GetLogFileUpdateByFilename(ctx, name)
+				return res.HttpResponse, err
+			}
+			res, err := client.GetLogFileByFilename(ctx, name)
+			return res.HttpResponse, err
+		}
+
+		found, err := list()
 		if err != nil {
 			return nil, logFileOut{}, err
 		}
+		files := struct{ Model []radarr.LogFileResource }{found}
 		if in.Name == "" {
 			out := logFileOut{}
 			for _, f := range files.Model {
@@ -267,12 +288,12 @@ func registerServerTools(r *registry) {
 		if !slices.Contains(names, in.Name) {
 			return nil, logFileOut{}, fmt.Errorf("no log file %q; the files are %s", in.Name, strings.Join(names, ", "))
 		}
-		res, err := client.GetLogFileByFilename(ctx, in.Name)
+		resp, err := read(in.Name)
 		if err != nil {
 			return nil, logFileOut{}, err
 		}
-		defer func() { _ = res.HttpResponse.Body.Close() }()
-		body, err := io.ReadAll(io.LimitReader(res.HttpResponse.Body, 32<<20))
+		defer func() { _ = resp.Body.Close() }()
+		body, err := io.ReadAll(io.LimitReader(resp.Body, 32<<20))
 		if err != nil {
 			return nil, logFileOut{}, err
 		}
@@ -359,21 +380,28 @@ func severity(level string) int {
 }
 
 // firstLines keeps the first n lines of s, for a stack trace that would
-// otherwise fill the answer.
+// otherwise fill the answer. A log quotes the names of the releases it is
+// about, so each line is made safe to show.
 func firstLines(s string, n int) string {
 	lines := strings.Split(strings.TrimSpace(s), "\n")
 	if len(lines) > n {
 		lines = append(lines[:n], "...")
 	}
+	for i, line := range lines {
+		lines[i] = radarrSays(line)
+	}
 
 	return strings.Join(lines, "\n")
 }
 
-// lastLines keeps the last n lines of s.
+// lastLines keeps the last n lines of s, each made safe to show.
 func lastLines(s string, n int) []string {
 	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
 	if len(lines) > n {
 		lines = lines[len(lines)-n:]
+	}
+	for i, line := range lines {
+		lines[i] = radarrSays(line)
 	}
 
 	return lines

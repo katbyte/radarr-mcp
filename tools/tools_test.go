@@ -560,7 +560,8 @@ func TestSmallParsers(t *testing.T) {
 			t.Errorf("canonicalTask(%q) = %q, %v", name, got, ok)
 		}
 	}
-	for _, name := range []string{"Restart", "Shutdown", "ApplicationUpdate", ""} {
+	// a restart and a shutdown are not tasks: they have tools of their own, which ask first
+	for _, name := range []string{"Restart", "Shutdown", ""} {
 		if _, ok := canonicalTask(name); ok {
 			t.Errorf("task_run would start %q", name)
 		}

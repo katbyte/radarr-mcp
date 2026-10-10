@@ -41,7 +41,7 @@ var connectionParams = []string{"server", "token"}
 
 // toolsetOrder is how `radarr-mcp tools` lists the sets: the base first,
 // then the job most sessions are for.
-var toolsetOrder = []string{"core", "curation", "acquire", "organise", "admin"}
+var toolsetOrder = []string{"core", "curation", "acquire", "organise", "setup", "admin"}
 
 func Make() (*cobra.Command, error) {
 	root := &cobra.Command{
@@ -80,6 +80,7 @@ Needs no server: it reports what would be registered, not what a server accepts.
   radarr-mcp tools                        # the default set (core)
   radarr-mcp tools --toolsets all         # every tool
   radarr-mcp tools --toolsets curation    # audits and the tools that fix what they find
+  radarr-mcp tools --toolsets setup       # indexers, download clients, lists, notifications, profiles, settings
   radarr-mcp tools --read-only            # only the tools that never change state
   radarr-mcp tools -q                     # names only`,
 		Args:          cobra.NoArgs,

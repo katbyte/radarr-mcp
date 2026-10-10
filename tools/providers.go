@@ -13,34 +13,38 @@ import (
 )
 
 type indexerRow struct {
-	ID                      int      `json:"id"`
-	Name                    string   `json:"name"`
-	Implementation          string   `json:"implementation"            jsonschema:"Newznab, Torznab, ..."`
-	Protocol                string   `json:"protocol"                  jsonschema:"usenet or torrent"`
-	EnableRSS               bool     `json:"enable_rss"                jsonschema:"read its feed on the RSS sync"`
-	EnableAutomaticSearch   bool     `json:"enable_automatic_search"`
-	EnableInteractiveSearch bool     `json:"enable_interactive_search"`
-	Priority                int      `json:"priority"                  jsonschema:"1 is tried first"`
-	Tags                    []string `json:"tags,omitempty"            jsonschema:"only films with these tags use it"`
+	ID                      int            `json:"id"`
+	Name                    string         `json:"name"`
+	Implementation          string         `json:"implementation"            jsonschema:"Newznab, Torznab, ..."`
+	Protocol                string         `json:"protocol"                  jsonschema:"usenet or torrent"`
+	EnableRSS               bool           `json:"enable_rss"                jsonschema:"read its feed on the RSS sync"`
+	EnableAutomaticSearch   bool           `json:"enable_automatic_search"`
+	EnableInteractiveSearch bool           `json:"enable_interactive_search"`
+	Priority                int            `json:"priority"                  jsonschema:"1 is tried first"`
+	Tags                    []string       `json:"tags,omitempty"            jsonschema:"only films with these tags use it"`
+	Settings                map[string]any `json:"settings,omitempty"        jsonschema:"its settings by the name indexer_edit takes, without credentials"`
+	Credentials             []string       `json:"credentials,omitempty"     jsonschema:"the credentials that are set, by name; never shown"`
 }
 
 type downloadClientRow struct {
-	ID                       int      `json:"id"`
-	Name                     string   `json:"name"`
-	Implementation           string   `json:"implementation"             jsonschema:"SABnzbd, qBittorrent, Usenet Blackhole, ..."`
-	Protocol                 string   `json:"protocol"`
-	Enabled                  bool     `json:"enabled"`
-	Priority                 int      `json:"priority"`
-	RemoveCompletedDownloads bool     `json:"remove_completed_downloads"`
-	RemoveFailedDownloads    bool     `json:"remove_failed_downloads"`
-	Tags                     []string `json:"tags,omitempty"`
+	ID                       int            `json:"id"`
+	Name                     string         `json:"name"`
+	Implementation           string         `json:"implementation"             jsonschema:"SABnzbd, qBittorrent, Usenet Blackhole, ..."`
+	Protocol                 string         `json:"protocol"`
+	Enabled                  bool           `json:"enabled"`
+	Priority                 int            `json:"priority"`
+	RemoveCompletedDownloads bool           `json:"remove_completed_downloads"`
+	RemoveFailedDownloads    bool           `json:"remove_failed_downloads"`
+	Tags                     []string       `json:"tags,omitempty"`
+	Settings                 map[string]any `json:"settings,omitempty"         jsonschema:"its settings by the name downloadclient_edit takes, without credentials"`
+	Credentials              []string       `json:"credentials,omitempty"      jsonschema:"the credentials that are set, by name; never shown"`
 }
 
 // testResult is one indexer's or download client's answer to a test.
 type testResult struct {
 	ID       int      `json:"id"`
 	Name     string   `json:"name"`
-	Valid    bool     `json:"valid"`
+	Valid    bool     `json:"valid"              jsonschema:"false when the test failed; one that only warns is valid, with the warning under failures"`
 	Failures []string `json:"failures,omitempty" jsonschema:"what failed, as Radarr says it; a warning says so"`
 }
 
@@ -65,13 +69,18 @@ func toResults(tests []radarr.ProviderTestAllResult, names map[int]string) []tes
 	out := make([]testResult, 0, len(tests))
 	for _, t := range tests {
 		row := testResult{ID: t.Id, Name: names[t.Id], Valid: isTrue(t.IsValid)}
+		failed := false
 		for i := range t.ValidationFailures {
-			msg := t.ValidationFailures[i].ErrorMessage
+			msg := radarrSays(t.ValidationFailures[i].ErrorMessage)
 			if isWarning(&t.ValidationFailures[i]) {
 				msg = "warning: " + msg
+			} else {
+				failed = true
 			}
 			row.Failures = append(row.Failures, msg)
 		}
+		// a test of one provider is answered as failed when it only warns: it is one Radarr would still save
+		row.Valid = row.Valid || (len(row.Failures) > 0 && !failed)
 		out = append(out, row)
 	}
 
@@ -99,11 +108,13 @@ func registerProviderTools(r *registry) {
 		}
 		rows := make([]indexerRow, 0, len(res.Model))
 		for _, i := range res.Model {
-			rows = append(rows, indexerRow{
-				ID: i.Id, Name: i.Name, Implementation: i.ImplementationName, Protocol: string(i.Protocol),
+			row := indexerRow{
+				ID: i.Id, Name: outsideName(i.Name), Implementation: i.ImplementationName, Protocol: string(i.Protocol),
 				EnableRSS: isTrue(i.EnableRss), EnableAutomaticSearch: isTrue(i.EnableAutomaticSearch), EnableInteractiveSearch: isTrue(i.EnableInteractiveSearch),
 				Priority: i.Priority, Tags: lk.tagLabels(i.Tags),
-			})
+			}
+			row.Settings, row.Credentials = shownFields(i.Fields)
+			rows = append(rows, row)
 		}
 		slices.SortFunc(rows, func(a, b indexerRow) int { return a.Priority - b.Priority })
 
@@ -114,14 +125,14 @@ func registerProviderTools(r *registry) {
 	})
 
 	type testIn struct {
-		Name string `json:"name,omitempty" jsonschema:"test only this one, by name or id; default tests them all"`
+		Name string `json:"name,omitempty" jsonschema:"test only this one, by name or id, switched on or not; default tests every one that is switched on"`
 	}
 	type testOut struct {
 		Results []testResult `json:"results"`
 	}
 	add(r, readTool, &mcp.Tool{
 		Name:        "indexer_test",
-		Description: "Test the indexers - can Radarr reach each, is its API key accepted, does it answer a search - and say what failed for each one that did.",
+		Description: "Test the indexers - can Radarr reach each, is its API key accepted, does it answer a search - one by name, or every one that is switched on, and say what failed for each one that did.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in testIn) (*mcp.CallToolResult, testOut, error) {
 		res, err := c.GetIndexer(ctx)
 		if err != nil {
@@ -175,11 +186,13 @@ func registerProviderTools(r *registry) {
 		}
 		rows := make([]downloadClientRow, 0, len(res.Model))
 		for _, d := range res.Model {
-			rows = append(rows, downloadClientRow{
-				ID: d.Id, Name: d.Name, Implementation: d.ImplementationName, Protocol: string(d.Protocol), Enabled: isTrue(d.Enable),
+			row := downloadClientRow{
+				ID: d.Id, Name: outsideName(d.Name), Implementation: d.ImplementationName, Protocol: string(d.Protocol), Enabled: isTrue(d.Enable),
 				Priority: d.Priority, RemoveCompletedDownloads: isTrue(d.RemoveCompletedDownloads), RemoveFailedDownloads: isTrue(d.RemoveFailedDownloads),
 				Tags: lk.tagLabels(d.Tags),
-			})
+			}
+			row.Settings, row.Credentials = shownFields(d.Fields)
+			rows = append(rows, row)
 		}
 		slices.SortFunc(rows, func(a, b downloadClientRow) int { return a.Priority - b.Priority })
 
@@ -191,7 +204,7 @@ func registerProviderTools(r *registry) {
 
 	add(r, readTool, &mcp.Tool{
 		Name:        "downloadclient_test",
-		Description: "Test the download clients - can Radarr reach each, log in, and see its folders - and say what failed for each one that did.",
+		Description: "Test the download clients - can Radarr reach each, log in, and see its folders - one by name, or every one that is switched on, and say what failed for each one that did.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in testIn) (*mcp.CallToolResult, testOut, error) {
 		res, err := c.GetDownloadClient(ctx)
 		if err != nil {

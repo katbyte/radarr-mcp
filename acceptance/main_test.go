@@ -6,8 +6,9 @@
 // against the thing radarr-mcp actually talks to rather than a stub.
 //
 // Fixtures are built through the tools themselves (rootfolder_add,
-// movie_add), so the setup is part of the coverage; the fake indexer and the
-// blackhole download client, which no tool adds, go in through the SDK.
+// movie_add, indexer_add, downloadclient_add), so the setup is part of the
+// coverage: the fake indexer and the blackhole download client every grab
+// runs through are ones the tools added.
 //
 //	make testacc-acceptance                        # container started and torn down
 //

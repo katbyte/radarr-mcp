@@ -33,6 +33,7 @@ var runnableTasks = map[string]string{
 	"Housekeeping":              "clean up the database",
 	"CleanUpRecycleBin":         "empty the recycle bin of what is older than its retention",
 	"Backup":                    "back up the database and settings",
+	"ApplicationUpdate":         "install the newest release, where Radarr updates itself; a Docker install is updated by pulling a newer image, and this does nothing there",
 }
 
 // taskNames lists runnableTasks sorted, for errors and descriptions.
@@ -118,7 +119,7 @@ func registerTaskTools(r *registry) {
 	})
 
 	type taskRunIn struct {
-		Task string `json:"task"           jsonschema:"the task: RssSync, RefreshMonitoredDownloads, RefreshMovie, RefreshCollections, ImportListSync, MissingMoviesSearch, CutOffUnmetMoviesSearch, CheckHealth, Housekeeping, CleanUpRecycleBin or Backup (as task_list names them, spaces or not)"`
+		Task string `json:"task"           jsonschema:"the task: RssSync, RefreshMonitoredDownloads, RefreshMovie, RefreshCollections, ImportListSync, MissingMoviesSearch, CutOffUnmetMoviesSearch, CheckHealth, ApplicationUpdate, Housekeeping, CleanUpRecycleBin or Backup (as task_list names them, spaces or not)"`
 		Wait int    `json:"wait,omitempty" jsonschema:"seconds to wait for it to finish, default 120; -1 starts it and returns at once"`
 	}
 	type taskRunOut struct {
@@ -129,7 +130,7 @@ func registerTaskTools(r *registry) {
 	add(r, writeTool, &mcp.Tool{
 		Name: "task_run",
 		Description: "Run one of Radarr's library-wide tasks now rather than waiting for its schedule - an RSS sync, checking the download clients for finished downloads, refreshing every film, searching for everything missing or below cutoff - and wait for it to finish. " +
-			"Restart, shutdown and updates are not offered.",
+			"A restart and a shutdown have tools of their own (server_restart, server_shutdown), and server_updates says what there is to update to.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in taskRunIn) (*mcp.CallToolResult, taskRunOut, error) {
 		task, ok := canonicalTask(in.Task)
 		if !ok {

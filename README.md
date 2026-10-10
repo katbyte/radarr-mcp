@@ -40,9 +40,9 @@ The design principle: **detection is code, correction is judgment.** The server 
 
 ### What else is in the box
 
-- **78 tools, in toolsets.** Find, read and add films, edit them one at a time or in bulk, correct a file's grade, import files by hand, search the indexers and grab a release yourself, watch the queue and the history, blocklist and exclude, collections, tags, root folders, quality profiles and size limits, naming, indexer and download client checks, health, logs, backups and tasks. Each sits in a toolset a session can load on its own, so a client spends about 850 tokens of context by default rather than 11,900.
+- **137 tools, in toolsets: everything Radarr can do.** Find, read and add films, edit them one at a time or in bulk, correct a file's grade, import files by hand, search the indexers and grab a release yourself, watch the queue and the history, blocklist and exclude, collections, tags, root folders, quality profiles and size limits, naming. And Radarr's own setup: indexers, download clients, import lists, notifications, metadata, custom formats, delay and release profiles, auto tagging, its settings, backups and restores, updates, restarts and tasks. A test holds the tools to it: every one of the 237 operations of Radarr's API is called by a tool, or listed with the reason none calls it. Each tool sits in a toolset a session can load on its own, so a client spends about 950 tokens of context by default rather than 26,500.
 - **A Go SDK.** `sdk/radarr` is a complete typed client for Radarr's v3 API - all 237 operations, generated from Radarr's own OpenAPI document, standard library only, no knowledge of MCP. Useful on its own, whether or not you care about AI.
-- **Tested against a real Radarr.** Every tool runs against a real Radarr in Docker, with a fake indexer and a download client so grabs really download and import. The suite fails if a registered tool has no test, and Radarr's calls out to its metadata service are recorded once and replayed, so CI needs no network.
+- **Tested against a real Radarr.** Every tool runs against a real Radarr in Docker, with a fake indexer and a download client, both set up by the tools themselves, so grabs really download and import. The suite fails if a registered tool has no test, and Radarr's calls out to its metadata service are recorded once and replayed, so CI needs no network.
 
 ## Installation
 
@@ -62,10 +62,10 @@ All options can be passed as command-line flags, environment variables, or via a
 | `RADARR_TOKEN` | `--token`, `-t` | API key (Radarr: Settings → General → Security → API Key) |
 | `RADARR_READ_ONLY` | `--read-only` | register only tools that never change server state |
 | `RADARR_ENABLE_DELETE` | `--enable-delete` | register `movie_delete` and `moviefile_delete`, the two tools that can remove films and their files |
-| `RADARR_TOOLSETS` | `--toolsets` | groups of tools to register, default `core`: `all`, `core`, `curation`, `acquire`, `organise`, `admin`, or a resource family like `movie` (`core` is always included) |
+| `RADARR_TOOLSETS` | `--toolsets` | groups of tools to register, default `core`: `all`, `core`, `curation`, `acquire`, `organise`, `setup`, `admin`, or a resource family like `movie` (`core` is always included) |
 | `RADARR_ALLOW_TOOLS` | `--allow-tools` | register these tools as well as the toolsets asked for, or only these when no toolset is (names, `movie_*` globs, or `essential`) |
 | `RADARR_DENY_TOOLS` | `--deny-tools` | never register these tools, whatever asked for them (names or globs such as `*_delete`) |
-| `RADARR_LOG` | | log level (`WARN` default; `DEBUG`, `TRACE`, ...) |
+| `RADARR_LOG` | | log level (`WARN` default; `INFO` adds a line for every call of a tool that writes or deletes; `DEBUG`, `TRACE`, ...) |
 | `RADARR_LISTEN` | `--listen` | serve MCP over HTTP on this address (e.g. `:8080`) instead of stdio |
 | `RADARR_AUTH_TOKEN` | `--auth-token` | bearer token required on the HTTP endpoint (required with `--listen`) |
 | `RADARR_ALLOW_NO_AUTH` | `--allow-no-auth` | serve HTTP with no bearer token at all: anyone who can reach the port can use every tool |
@@ -143,49 +143,72 @@ Tools are named resource-first (`movie_*`, `audit_*`, `queue_*`...) so they grou
 
 | Resource | Tools |
 |---|---|
-| server | `server_info`, `server_health`, `server_disk_space`, `server_logs`, `server_log_file`, `server_backups`, `server_backup_create` |
-| tasks | `task_list`, `task_run` (an RSS sync, a check for finished downloads, a refresh or a search of everything, waiting for it to finish) |
+| server | `server_info`, `server_health`, `server_disk_space`, `server_logs`, `server_log_file` (Radarr's own logs, or with `update` its updater's), `server_updates` (the releases there are to update to, and whether this install is behind), `server_backups`, `server_backup_create`, `server_backup_restore`, `server_backup_delete`, `server_restart`, `server_shutdown`, `filesystem_browse` (the folders Radarr can reach) |
+| settings | `server_settings` (Radarr's own settings by section: host, ui, mediamanagement, and what holds for every indexer, download client, import list and metadata consumer), `server_settings_edit` |
+| tasks | `task_list`, `task_run` (an RSS sync, a check for finished downloads, a refresh or a search of everything, an update, waiting for it to finish), `task_cancel` (a command still waiting its turn) |
 | films | `movie_list` (filters: title, monitored, has a file, status, profile, root folder, tag, genre, year; sorted and paged), `movie_get` (metadata, the file and what is inside it, its downloads and recent history), `movie_lookup` (TMDB, to find one to add), `movie_credits`, `movie_add`, `movie_edit` (including `folder`, which points a film at a folder already on disk), `movie_batch_edit` (the same change to many films; tags replaced, added or removed), `movie_refresh`, `movie_rescan`, `movie_rename` (previews unless told otherwise), `movie_download` (Radarr's automatic search), `movie_delete` |
 | files | `moviefile_edit` (the quality, languages, release group or edition Radarr believes a file has), `moviefile_delete` |
 | import | `import_identify` (which film each folder no film is in holds: what is in it, and what TMDB offers for its name) → `movie_add`; `import_scan` (what Radarr makes of a folder's files, and why it would refuse each) → `import_apply` |
 | audits | `audit_all` and the 18 audits in [the table above](#the-audits) |
-| releases | `release_search` (every release the indexers offer, with why Radarr would reject each) → `release_grab`, `release_parse` (a name read the way Radarr reads it) |
-| downloads | `queue_list`, `queue_remove` (optionally blocklisting the release), `history_list`, `history_mark_failed`, `blocklist_list`, `blocklist_remove`, `calendar_list` |
+| releases | `release_search` (every release the indexers offer, with why Radarr would reject each) → `release_grab`, `release_push` (a release found elsewhere, for Radarr to decide on), `release_parse` (a name read the way Radarr reads it) |
+| downloads | `queue_list`, `queue_grab` (a release Radarr is holding back, sent now), `queue_remove` (optionally blocklisting the release), `history_list`, `history_mark_failed`, `blocklist_list`, `blocklist_remove`, `calendar_list` |
 | collections | `collection_list`, `collection_edit` (monitor one, so Radarr adds the films it is missing) |
 | exclusions | `exclusion_list`, `exclusion_add`, `exclusion_remove` |
 | tags | `tag_list` (with what carries each), `tag_create`, `tag_rename`, `tag_delete` (taking it off its films first) |
 | root folders | `rootfolder_list`, `rootfolder_add`, `rootfolder_delete` |
-| quality | `qualityprofile_list`, `qualityprofile_edit` (upgrades, cutoff, format scores), `qualitydefinition_list`, `qualitydefinition_edit` (size limits), `customformat_list` |
+| quality | `qualityprofile_list`, `qualityprofile_add` (a copy of another, or from nothing), `qualityprofile_edit` (its name, the qualities it accepts, upgrades, cutoff, format scores), `qualityprofile_delete`, `qualitydefinition_list`, `qualitydefinition_edit` (size limits), `customformat_list`, `customformat_add`, `customformat_edit`, `customformat_delete` |
 | naming | `naming_get` (with an example of each pattern), `naming_edit` |
-| indexers and clients | `indexer_list`, `indexer_test`, `downloadclient_list`, `downloadclient_test` |
+| indexers and clients | `indexer_list`, `indexer_test`, `indexer_add`, `indexer_edit`, `indexer_delete`, and the same five for `downloadclient_*` |
+| import lists | `importlist_list`, `importlist_test`, `importlist_add`, `importlist_edit`, `importlist_delete`, `importlist_movies` (what the lists offer, and with it what TMDB recommends, and what is trending and popular there) |
+| notifications and metadata | `notification_list`, `notification_test`, `notification_add`, `notification_edit`, `notification_delete`; `metadata_list`, `metadata_test`, `metadata_edit` (the files written beside a film for Kodi, Emby and the like) |
+| what there is to set up | `provider_kinds` (the kinds of each, and the settings a kind takes), `provider_options` (what a setting can be set to when the service itself decides: an indexer's categories, another Radarr's profiles) |
+| rules for grabbing | `delayprofile_list`, `delayprofile_add`, `delayprofile_edit`, `delayprofile_reorder`, `delayprofile_delete`; list, add, edit and delete for `releaseprofile_*` (words a release must or must not have) |
+| rules and records | list, add, edit and delete for `autotagging_*` (tags given to films that meet conditions), `remotepathmapping_*` (where a download client on another machine puts its downloads) and `customfilter_*` (filters saved in the web interface) |
 
 Every list is paged the same way: it takes `limit` (100 unless given, 1000 at most) and `offset`, and answers `total`, `offset` and, while there is another page, the `next_offset` to pass back. `server_logs` is paged that way too.
 
-`movie_delete` (removes a film, and with `delete_files` its folder) and `moviefile_delete` are only registered when `--enable-delete` / `RADARR_ENABLE_DELETE` is set, and even then change nothing without `confirm`: called without it, each answers `would_delete`, what a confirmed call would remove. `--read-only` registers the 50 read tools and nothing else, so a write tool is absent from `tools/list` rather than refused when called.
+Text that came from outside Radarr - a release's name, a download's title and messages, a history or blocklist entry, an overview, a log line - is shown with the characters that do not display taken out, and cut short when very long: strangers write it and a model reads it. A path, a release's guid and a film's title are left as they came, because a later call hands them back.
+
+The 14 tools that delete - `movie_delete` (a film, and with `delete_files` its folder), `moviefile_delete`, and the `_delete` of an indexer, download client, import list, notification, quality profile, custom format, delay profile, release profile, auto tagging rule, remote path mapping, saved filter and backup - are only registered when `--enable-delete` / `RADARR_ENABLE_DELETE` is set, and even then change nothing without `confirm`: called without it, each answers `would_delete`, what a confirmed call would remove, and what goes with it. `server_backup_restore`, `server_restart` and `server_shutdown` wait for `confirm` the same way, and so does a change through `server_settings_edit` to how Radarr is reached or who may sign in, since each can take Radarr away from the session that asked. `--read-only` registers the 67 read tools and nothing else, so a write tool is absent from `tools/list` rather than refused when called.
+
+### Setting Radarr up
+
+An indexer, a download client, an import list, a notification and a metadata consumer are each one of the kinds Radarr knows - Newznab, qBittorrent, a Trakt list, Discord, Kodi - and are handled one way. `provider_kinds` lists the kinds and, for one kind, every setting it takes: its name, what it holds, what a select accepts, and whether it is a credential. The `_add` and `_edit` tools take those settings by name under `settings`, the thing's own switches (`enableRss`, `priority`, `onGrab`...) under `options`, and tags by label. A name that does not exist is refused with the ones that do, so a typo cannot silently save nothing.
+
+- **A credential is taken and never shown again.** An API key, a password or a token is listed by name under `credentials` when it is set, and an edit that does not name it leaves it as it is. Radarr itself quotes an address back with a stored key on the end when an indexer or a download client answers an error, so wherever a tool shows what Radarr said went wrong, and wherever a setting is an address, the address is shown without who it signs in as, the values after its `?` and what follows its `#`.
+- **A new one starts as it does in Radarr's own form**: an indexer and a download client switched on, a notification sent for everything its kind can tell of except health. Radarr's API describes them switched off.
+- **Radarr tests what is switched on before it saves it**, and refuses one whose test fails. `force` saves it untested, on an add as on an edit, for something that cannot be reached yet; `off` adds it switched off. Radarr's own force does less on an add - it lets a warning through and not a failure - so a forced add is made switched off, which Radarr does not test, and then switched on.
+- **A test of everything tests what is switched on.** Naming one tests it whether it is on or not.
+
+The plainer records - a delay profile, a release profile, an auto tagging rule, a remote path mapping, a saved filter, a custom format - take their values by the names Radarr's API gives them under `values`, and a custom format and an auto tagging rule their conditions by kind under `conditions`. Radarr's own settings are read by section with `server_settings` and changed by name with `server_settings_edit`, which reads back what Radarr kept.
+
+With `RADARR_LOG=info`, the line logged for a write shows which settings were set and none of their values.
 
 ### Choosing which tools load
 
-**The default is `core`: six read-only tools, about 950 tokens.** The whole surface is around 12,700 tokens of tool definitions before anyone asks a question, which is a poor way to spend a client's context by default. `--toolsets` / `RADARR_TOOLSETS` loads the groups a session actually needs, and `core` comes along with whatever else is asked for, because nothing else can find a film.
+**The default is `core`: six read-only tools, about 950 tokens.** The whole surface is around 26,500 tokens of tool definitions before anyone asks a question, which is a poor way to spend a client's context by default. `--toolsets` / `RADARR_TOOLSETS` loads the groups a session actually needs, and `core` comes along with whatever else is asked for, because nothing else can find a film.
 
-**Curating a library needs `RADARR_TOOLSETS=curation`** - the audits and everything that fixes what they find. `RADARR_TOOLSETS=all` restores every tool.
+**Curating a library needs `RADARR_TOOLSETS=curation`** - the audits and everything that fixes what they find. **Setting Radarr up needs `RADARR_TOOLSETS=setup`** - its indexers, download clients, lists, notifications, rules and settings: more than a third of all the tools, and worth loading only for that job. `RADARR_TOOLSETS=all` restores every tool.
 
 | toolset | tools | with core | ~tokens |
 |---|---|---|---|
 | `core` *(default)* | 6 | 6 | 950 |
-| `organise` | 7 | 13 | 1,750 |
-| `admin` | 14 | 20 | 2,800 |
-| `acquire` | 11 | 17 | 2,600 |
+| `organise` | 9 | 15 | 2,550 |
+| `acquire` | 13 | 19 | 3,000 |
+| `admin` | 17 | 23 | 3,500 |
 | `curation` | 40 | 46 | 8,450 |
-| `all` | 78 | 78 | 12,700 |
+| `setup` | 52 | 58 | 12,800 |
+| `all` | 137 | 137 | 26,500 |
 
-Tokens are what the model sees: each tool's name, description and input schema, measured over a real `tools/list` at four bytes a token, with `--enable-delete` on (the two delete tools are `admin`'s). Every tool also carries an output schema, another 24,000 tokens across `all`, but clients keep that to themselves to validate results rather than sending it to the model.
+Tokens are what the model sees: each tool's name, description and input schema, measured over a real `tools/list` at four bytes a token, with `--enable-delete` on (the 14 delete tools are among them). Every tool also carries an output schema, another 34,000 tokens across `all`, but clients keep that to themselves to validate results rather than sending it to the model.
 
-`--toolsets` also takes a resource family - `movie`, `moviefile`, `audit`, `import`, `release`, `queue`, `history`, `blocklist`, `calendar`, `collection`, `exclusion`, `tag`, `rootfolder`, `qualityprofile`, `qualitydefinition`, `customformat`, `naming`, `indexer`, `downloadclient`, `server`, `task` - which is every tool with that prefix:
+`--toolsets` also takes a resource family - `movie`, `moviefile`, `audit`, `import`, `release`, `queue`, `history`, `blocklist`, `calendar`, `collection`, `exclusion`, `tag`, `rootfolder`, `qualityprofile`, `qualitydefinition`, `customformat`, `naming`, `indexer`, `downloadclient`, `importlist`, `notification`, `metadata`, `provider`, `delayprofile`, `releaseprofile`, `autotagging`, `remotepathmapping`, `customfilter`, `filesystem`, `server`, `task` - which is every tool with that prefix:
 
 ```sh
 RADARR_TOOLSETS=all                 # every tool
 RADARR_TOOLSETS=curation            # audits plus everything that fixes what they find
 RADARR_TOOLSETS=acquire             # searching, grabbing and following downloads
+RADARR_TOOLSETS=setup               # indexers, download clients, lists, notifications, rules and settings
 RADARR_TOOLSETS=audit               # read-only detection, nothing that writes
 RADARR_TOOLSETS=core,movie,queue    # core plus two whole families
 ```

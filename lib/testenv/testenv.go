@@ -64,6 +64,13 @@ func Token() string  { return environment.Token() }
 // files out wrote into the checkout.
 func DataDir() string { return environment.DataDir("media") }
 
+// ConfigPath is where a path under the container's /config, Radarr's own
+// folder, is on the host: a test that needs Radarr to find a file it only
+// writes when it updates itself lays one out there.
+func ConfigPath(elem ...string) string {
+	return environment.DataDir(append([]string{"config"}, elem...)...)
+}
+
 // HostPath is where a container path under /media is on the host.
 func HostPath(containerPath string) string {
 	return filepath.Join(DataDir(), strings.TrimPrefix(containerPath, mediaMount))

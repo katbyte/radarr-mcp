@@ -35,7 +35,7 @@ func releaseOf(r *radarr.ReleaseResource) releaseRow {
 		GUID:              r.Guid,
 		IndexerID:         r.IndexerId,
 		Indexer:           r.Indexer,
-		Title:             r.Title,
+		Title:             outsideName(r.Title),
 		Quality:           qualityName(r.Quality),
 		Size:              r.Size,
 		AgeDays:           r.Age,

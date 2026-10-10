@@ -139,7 +139,7 @@ func registerTagTools(r *registry) {
 	add(r, writeTool, &mcp.Tool{
 		Name: "tag_delete",
 		Description: "Delete a tag, taking it off the films that carry it first, and answer with how many did. " +
-			"A tag an indexer, download client, import list, notification or profile still uses is refused: deleting it would change which films those serve.",
+			"A tag an indexer, download client, import list, notification or profile still uses is refused: deleting it would change which films those serve, so it is taken off each of them first, with that thing's own edit tool.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in tagDeleteIn) (*mcp.CallToolResult, tagRow, error) {
 		t, err := resolveTag(ctx, client, in.Tag)
 		if err != nil {
@@ -148,7 +148,7 @@ func registerTagTools(r *registry) {
 		// Radarr refuses to delete a tag anything still carries (409); the
 		// films are this tool's to take it off, the settings are not
 		if users := tagUsers(t); len(users) > 0 {
-			return nil, tagRow{}, fmt.Errorf("tag %q still limits %s; take it off those in Radarr first, since deleting it would change which films they serve", t.Label, strings.Join(users, ", "))
+			return nil, tagRow{}, fmt.Errorf("tag %q still limits %s; take it off those first, with each one's edit tool, since deleting it would change which films they serve", t.Label, strings.Join(users, ", "))
 		}
 		if len(t.MovieIds) > 0 {
 			if _, err := client.PutMovieEditor(ctx, radarr.MovieEditorResource{MovieIds: t.MovieIds, Tags: []int{t.Id}, ApplyTags: radarr.ApplyTagsRemove}); err != nil {

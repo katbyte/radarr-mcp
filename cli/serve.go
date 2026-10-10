@@ -38,7 +38,7 @@ lets anyone who can reach the port use every tool, say so with --allow-no-auth
 				Name:    "radarr",
 				Title:   "Radarr Library Curator",
 				Version: version.Version,
-			}, nil)
+			}, &mcp.ServerOptions{Instructions: server.Instructions(tools.Instructions...)})
 
 			registered, err := tools.RegisterAll(srv, client, f.ToolOptions())
 			if err != nil {

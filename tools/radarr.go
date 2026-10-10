@@ -19,6 +19,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/katbyte/go-kt/outside"
 	"github.com/katbyte/pandorest/client"
 	"github.com/katbyte/radarr-mcp/sdk/radarr"
 )
@@ -610,6 +611,25 @@ func waitFor(seconds int) time.Duration {
 		return time.Duration(seconds) * time.Second
 	}
 }
+
+// Text that strangers wrote reaches a model through these tools: a release's
+// name as an indexer gave it, what a download client said of a download, an
+// overview from TMDB, a line of Radarr's log quoting any of them. go-kt's
+// outside.Text takes out what does not show and cuts what is left to a
+// length. What a later call hands back to name something - a path, a guid, a
+// film's title - is left as it came, or it would no longer find it.
+const (
+	// nameLimit is for a name: a release's, a download's.
+	nameLimit = 300
+	// proseLimit is for running text: a message, an overview, a line of a log.
+	proseLimit = 2000
+)
+
+// outsideName is a name that came from outside, made safe to show.
+func outsideName(s string) string { return outside.Text(s, nameLimit) }
+
+// outsideProse is running text that came from outside, made safe to show.
+func outsideProse(s string) string { return outside.Text(s, proseLimit) }
 
 // limitOr is the limit asked for, or the default when none was.
 func limitOr(limit, dflt int) int {

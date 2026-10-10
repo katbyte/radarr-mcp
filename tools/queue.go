@@ -39,12 +39,12 @@ type queueRow struct {
 func queueOf(q *radarr.QueueResource) queueRow {
 	row := queueRow{
 		ID:                  q.Id,
-		Title:               q.Title,
+		Title:               outsideName(q.Title),
 		MovieID:             val(q.MovieId),
 		Status:              string(q.Status),
 		State:               string(q.TrackedDownloadState),
 		Health:              string(q.TrackedDownloadStatus),
-		ErrorMessage:        q.ErrorMessage,
+		ErrorMessage:        radarrSays(q.ErrorMessage),
 		Quality:             qualityName(q.Quality),
 		Size:                int64(q.Size),
 		SizeLeft:            int64(q.Sizeleft),
@@ -66,7 +66,7 @@ func queueOf(q *radarr.QueueResource) queueRow {
 			if sm.Title != "" && sm.Title != q.Title {
 				line = sm.Title + ": " + msg
 			}
-			if !slices.Contains(row.Messages, line) {
+			if line = radarrSays(line); !slices.Contains(row.Messages, line) {
 				row.Messages = append(row.Messages, line)
 			}
 		}

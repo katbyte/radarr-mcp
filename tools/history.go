@@ -56,7 +56,7 @@ func historyOf(h *radarr.HistoryResource) historyRow {
 		Date:        h.Date,
 		Event:       string(h.EventType),
 		MovieID:     h.MovieId,
-		SourceTitle: h.SourceTitle,
+		SourceTitle: outsideName(h.SourceTitle),
 		Quality:     qualityName(h.Quality),
 		DownloadID:  h.DownloadId,
 	}
@@ -68,7 +68,7 @@ func historyOf(h *radarr.HistoryResource) historyRow {
 			if row.Details == nil {
 				row.Details = map[string]string{}
 			}
-			row.Details[k] = v
+			row.Details[k] = radarrSays(v)
 		}
 	}
 
@@ -308,8 +308,8 @@ func findGrab(ctx context.Context, c *radarr.Client, id int, movie string) (*rad
 
 func blocklistOf(b *radarr.BlocklistResource) blocklistRow {
 	row := blocklistRow{
-		ID: b.Id, Date: b.Date, MovieID: b.MovieId, SourceTitle: b.SourceTitle,
-		Quality: qualityName(b.Quality), Indexer: b.Indexer, Protocol: string(b.Protocol), Message: b.Message,
+		ID: b.Id, Date: b.Date, MovieID: b.MovieId, SourceTitle: outsideName(b.SourceTitle),
+		Quality: qualityName(b.Quality), Indexer: b.Indexer, Protocol: string(b.Protocol), Message: radarrSays(b.Message),
 	}
 	if b.Movie != nil {
 		row.Movie = titleYear(b.Movie.Title, b.Movie.Year)

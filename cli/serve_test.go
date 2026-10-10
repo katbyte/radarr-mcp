@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/katbyte/go-kt/mcp/server"
+	"github.com/katbyte/radarr-mcp/tools"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -48,6 +49,22 @@ func TestServeRoutes(t *testing.T) {
 	}
 	if got := rec.Header().Get("WWW-Authenticate"); !strings.Contains(got, "Bearer") || !strings.Contains(got, binary) {
 		t.Errorf("WWW-Authenticate = %q, want a Bearer challenge naming radarr-mcp", got)
+	}
+}
+
+// A client that connects is told what holds for every server in the family,
+// which is go-kt's to say, and then what holds between this one's tools.
+func TestServeInstructions(t *testing.T) {
+	t.Parallel()
+
+	told := server.Instructions(tools.Instructions...)
+	if !strings.HasPrefix(told, server.DefaultInstructions) {
+		t.Errorf("the instructions do not open with go-kt's: %q", told)
+	}
+	for _, own := range tools.Instructions {
+		if !strings.Contains(told, own) {
+			t.Errorf("the instructions leave out %q", own)
+		}
 	}
 }
 

@@ -102,6 +102,7 @@ func (f *fakeRadarr) library(movies ...map[string]any) {
 		http.Error(w, "NotFound", http.StatusNotFound)
 	})
 	f.answer("GET /api/v3/qualityprofile", http.StatusOK, []any{fakeProfile})
+	f.answer("GET /api/v3/extrafile", http.StatusOK, []any{})
 	f.answer("GET /api/v3/tag", http.StatusOK, []any{map[string]any{"id": 1, "label": "4k"}})
 	f.answer("GET /api/v3/rootfolder", http.StatusOK, []any{
 		map[string]any{"id": 1, "path": "/media/movies", "accessible": true, "freeSpace": 1 << 40, "unmappedFolders": []any{

@@ -43,28 +43,37 @@ type movieIn struct {
 type movieDetail struct {
 	movieRow
 
-	ImdbID              string          `json:"imdb_id,omitempty"`
-	OriginalTitle       string          `json:"original_title,omitempty"`
-	OriginalLanguage    string          `json:"original_language,omitempty"`
-	Overview            string          `json:"overview,omitempty"`
-	Runtime             int             `json:"runtime,omitempty"              jsonschema:"minutes, from TMDB"`
-	Genres              []string        `json:"genres,omitempty"`
-	Certification       string          `json:"certification,omitempty"`
-	Studio              string          `json:"studio,omitempty"`
-	Collection          *collectionRef  `json:"collection,omitempty"`
-	MinimumAvailability string          `json:"minimum_availability,omitempty" jsonschema:"when Radarr starts looking: announced, inCinemas or released"`
-	IsAvailable         bool            `json:"is_available"                   jsonschema:"whether the minimum availability has been reached"`
-	InCinemas           string          `json:"in_cinemas,omitempty"`
-	DigitalRelease      string          `json:"digital_release,omitempty"`
-	PhysicalRelease     string          `json:"physical_release,omitempty"`
-	RootFolder          string          `json:"root_folder,omitempty"`
-	Added               string          `json:"added,omitempty"`
-	Ratings             map[string]any  `json:"ratings,omitempty"              jsonschema:"imdb, tmdb, metacritic and rotten tomatoes, as Radarr has them"`
-	AlternateTitles     []string        `json:"alternate_titles,omitempty"     jsonschema:"up to ten"`
-	File                *fileInfo       `json:"file,omitempty"`
-	Queue               []queueRow      `json:"queue,omitempty"                jsonschema:"downloads for this film in the queue"`
-	History             []historyRow    `json:"history,omitempty"              jsonschema:"the last five events: grabs, imports, failures, renames, deletions"`
-	Statistics          *movieStatistic `json:"statistics,omitempty"`
+	ImdbID              string            `json:"imdb_id,omitempty"`
+	OriginalTitle       string            `json:"original_title,omitempty"`
+	OriginalLanguage    string            `json:"original_language,omitempty"`
+	Overview            string            `json:"overview,omitempty"`
+	Runtime             int               `json:"runtime,omitempty"              jsonschema:"minutes, from TMDB"`
+	Genres              []string          `json:"genres,omitempty"`
+	Certification       string            `json:"certification,omitempty"`
+	Studio              string            `json:"studio,omitempty"`
+	Collection          *collectionRef    `json:"collection,omitempty"`
+	MinimumAvailability string            `json:"minimum_availability,omitempty" jsonschema:"when Radarr starts looking: announced, inCinemas or released"`
+	IsAvailable         bool              `json:"is_available"                   jsonschema:"whether the minimum availability has been reached"`
+	InCinemas           string            `json:"in_cinemas,omitempty"`
+	DigitalRelease      string            `json:"digital_release,omitempty"`
+	PhysicalRelease     string            `json:"physical_release,omitempty"`
+	RootFolder          string            `json:"root_folder,omitempty"`
+	Added               string            `json:"added,omitempty"`
+	Ratings             map[string]any    `json:"ratings,omitempty"              jsonschema:"imdb, tmdb, metacritic and rotten tomatoes, as Radarr has them"`
+	AlternateTitles     []string          `json:"alternate_titles,omitempty"     jsonschema:"up to ten"`
+	File                *fileInfo         `json:"file,omitempty"`
+	Queue               []queueRow        `json:"queue,omitempty"                jsonschema:"downloads for this film in the queue"`
+	History             []historyRow      `json:"history,omitempty"              jsonschema:"the last five events: grabs, imports, failures, renames, deletions"`
+	ExtraFiles          []extraFileRow    `json:"extra_files,omitempty"          jsonschema:"the files Radarr keeps track of beside the film's: subtitles, an .nfo, artwork"`
+	Images              map[string]string `json:"images,omitempty"               jsonschema:"where its artwork is on the web, by kind: poster, fanart..."`
+	Statistics          *movieStatistic   `json:"statistics,omitempty"`
+}
+
+// extraFileRow is a file Radarr keeps track of beside a film's own.
+type extraFileRow struct {
+	Type         string   `json:"type"                    jsonschema:"subtitle, metadata or other"`
+	RelativePath string   `json:"relative_path"`
+	LanguageTags []string `json:"language_tags,omitempty" jsonschema:"what a subtitle is marked as: forced, sdh..."`
 }
 
 type collectionRef struct {
@@ -176,6 +185,14 @@ func registerMovieTools(r *registry) {
 				break
 			}
 			out.History = append(out.History, historyOf(&events[i]))
+		}
+
+		extras, err := client.GetExtraFile(ctx, radarr.GetExtraFileOperationOptions{MovieId: new(m.Id)})
+		if err != nil {
+			return nil, out, err
+		}
+		for _, e := range extras.Model {
+			out.ExtraFiles = append(out.ExtraFiles, extraFileRow{Type: string(e.Type), RelativePath: e.RelativePath, LanguageTags: e.LanguageTags})
 		}
 
 		return nil, out, nil
@@ -377,7 +394,7 @@ func detailOf(m *radarr.MovieResource, lk lookups) movieDetail {
 		movieRow:            rowOf(m, lk),
 		ImdbID:              m.ImdbId,
 		OriginalTitle:       m.OriginalTitle,
-		Overview:            m.Overview,
+		Overview:            outsideProse(m.Overview),
 		Runtime:             m.Runtime,
 		Genres:              m.Genres,
 		Certification:       m.Certification,
@@ -404,6 +421,15 @@ func detailOf(m *radarr.MovieResource, lk lookups) movieDetail {
 				out.Ratings[name] = child.Value
 			}
 		}
+	}
+	for _, img := range m.Images {
+		if img.RemoteUrl == "" {
+			continue
+		}
+		if out.Images == nil {
+			out.Images = map[string]string{}
+		}
+		out.Images[string(img.CoverType)] = img.RemoteUrl
 	}
 	for _, t := range m.AlternateTitles {
 		if len(out.AlternateTitles) == 10 {
@@ -461,7 +487,7 @@ func lookupOf(m *radarr.MovieResource, have map[int]int) lookupRow {
 		ImdbID:    m.ImdbId,
 		Runtime:   m.Runtime,
 		Status:    string(m.Status),
-		Overview:  truncate(m.Overview, 300),
+		Overview:  truncate(outsideProse(m.Overview), 300),
 		LibraryID: have[m.TmdbId],
 	}
 	row.InLibrary = row.LibraryID != 0

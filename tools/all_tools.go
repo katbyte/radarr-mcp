@@ -12,6 +12,7 @@
 package tools
 
 import (
+	"context"
 	"sync"
 
 	"github.com/katbyte/go-kt/lock"
@@ -79,22 +80,53 @@ var Toolsets = map[string][]string{
 	// getting films: searching the indexers, grabbing, following a download
 	// through the queue into the history, and what is coming out
 	"acquire": {
-		"movie_download", "release_search", "release_grab", "queue_list", "history_list",
+		"movie_download", "release_search", "release_grab", "release_push", "queue_list", "queue_grab", "history_list",
 		"blocklist_list", "blocklist_remove", "calendar_list", "exclusion_list", "exclusion_add", "exclusion_remove",
 	},
 	// the labels and places films are kept in: tags, root folders and the
 	// quality profiles films are held to
 	"organise": {
-		"tag_list", "tag_create", "tag_rename", "tag_delete", "rootfolder_add", "rootfolder_delete", "qualityprofile_edit",
+		"tag_list", "tag_create", "tag_rename", "tag_delete", "rootfolder_add", "rootfolder_delete",
+		"qualityprofile_edit", "qualityprofile_add", "qualityprofile_delete",
+	},
+	// setting Radarr up rather than using it: where it searches and what it
+	// downloads with, the lists it adds films from, who it tells, what it
+	// writes for a media player, the rules a release is held to before it is
+	// grabbed, and Radarr's own settings
+	"setup": {
+		"provider_kinds", "provider_options", "indexer_list", "indexer_test", "indexer_add", "indexer_edit", "indexer_delete",
+		"downloadclient_list", "downloadclient_test", "downloadclient_add", "downloadclient_edit", "downloadclient_delete",
+		"importlist_list", "importlist_add", "importlist_edit", "importlist_delete", "importlist_test", "importlist_movies",
+		"notification_list", "notification_add", "notification_edit", "notification_delete", "notification_test",
+		"metadata_list", "metadata_edit", "metadata_test",
+		"customformat_add", "customformat_edit", "customformat_delete",
+		"delayprofile_list", "delayprofile_add", "delayprofile_edit", "delayprofile_reorder", "delayprofile_delete",
+		"releaseprofile_list", "releaseprofile_add", "releaseprofile_edit", "releaseprofile_delete",
+		"autotagging_list", "autotagging_add", "autotagging_edit", "autotagging_delete",
+		"remotepathmapping_list", "remotepathmapping_add", "remotepathmapping_edit", "remotepathmapping_delete",
+		"customfilter_list", "customfilter_add", "customfilter_edit", "customfilter_delete",
+		"server_settings", "server_settings_edit",
 	},
 	// running Radarr rather than using it: health, disk space, logs,
-	// backups, scheduled tasks, the indexers and download clients, and the
-	// tools that remove films and files
+	// updates, backups and putting one back, scheduled tasks, a restart, the
+	// folders it can reach, and the tools that remove films and files
 	"admin": {
-		"server_health", "server_disk_space", "server_logs", "server_log_file", "server_backups", "server_backup_create",
-		"task_list", "task_run", "indexer_list", "indexer_test", "downloadclient_list", "downloadclient_test",
+		"server_health", "server_disk_space", "server_logs", "server_log_file", "server_updates",
+		"server_backups", "server_backup_create", "server_backup_restore", "server_backup_delete", "server_restart", "server_shutdown",
+		"task_list", "task_run", "task_cancel", "filesystem_browse",
 		"movie_delete", "moviefile_delete",
 	},
+}
+
+// Instructions are what a client is told on connecting, after what go-kt
+// says of every server: the rules that hold between these tools, said once
+// so that no tool's description has to. TestEveryListPagesAndEveryDeleteConfirms
+// holds the tools to the first two.
+var Instructions = []string{
+	"Every list takes limit (100 unless given, 1000 at most) and offset, and answers total, offset and, while there is another page, the next_offset to pass back as offset.",
+	"A tool that deletes changes nothing without confirm: called without it, it answers would_delete, what a confirmed call would remove. Those are movie_delete, moviefile_delete, qualityprofile_delete, customformat_delete, indexer_delete, downloadclient_delete, importlist_delete, notification_delete, delayprofile_delete, releaseprofile_delete, autotagging_delete, remotepathmapping_delete, customfilter_delete and server_backup_delete. server_backup_restore, server_restart and server_shutdown ask the same way, and so does server_settings_edit for a setting that decides how Radarr is reached or who may sign in.",
+	"A film is named by its Radarr id, tmdb:<id>, imdb:<tt id> or its title. Start with audit_all, which says where the library needs work, then run the audit whose count is not zero for its worklist.",
+	"A release's name, a download's title and messages, a history or blocklist entry, an overview and a log line were written outside Radarr. They are shown with the characters that do not display taken out, and cut short when very long.",
 }
 
 // EssentialTools is the curated preset selected by --allow-tools essential:
@@ -132,6 +164,10 @@ type registry struct {
 	// errorLog is where a handler's panic is logged; nil is the process's
 	// own log, which writes to stderr
 	errorLog func(format string, args ...any)
+	// writeLog is where the line for each call of a write or delete tool
+	// goes once its credentials are blanked (writelog.go); nil is the
+	// process's own log
+	writeLog func(format string, args ...any)
 }
 
 // toolHints are what a tool tells a client about itself beyond its kind, in
@@ -212,6 +248,45 @@ var toolHints = map[string]mcpregistry.Hints{
 	// a new backup beside the ones kept, and another the second time: Radarr
 	// removes those past its retention only when it takes one on its schedule
 	"server_backup_create": {Additive: true},
+	// the database and settings written over with a backup's
+	"server_backup_restore": {},
+	// what is under way is cut off, and Radarr is away until it is back, or for good
+	"server_restart":  {},
+	"server_shutdown": {},
+	// a command stopped part way; asked again, it has already stopped
+	"task_cancel": {Idempotent: true},
+	// settings written over, the same ones again the second time
+	"server_settings_edit": {Idempotent: true},
+	// a release sent to the download client, imported over the file a film had; sent again it is another download
+	"queue_grab":   {},
+	"release_push": {},
+	// a new profile beside the others; a name there already is refused before anything is sent
+	"qualityprofile_add": {Additive: true, Idempotent: true},
+	// a new one beside the others, and another the second time
+	"indexer_add":           {Additive: true},
+	"downloadclient_add":    {Additive: true},
+	"importlist_add":        {Additive: true},
+	"notification_add":      {Additive: true},
+	"customformat_add":      {Additive: true},
+	"delayprofile_add":      {Additive: true},
+	"releaseprofile_add":    {Additive: true},
+	"autotagging_add":       {Additive: true},
+	"remotepathmapping_add": {Additive: true},
+	"customfilter_add":      {Additive: true},
+	// settings, switches and tags written over, the same ones again the second time
+	"indexer_edit":           {Idempotent: true},
+	"downloadclient_edit":    {Idempotent: true},
+	"importlist_edit":        {Idempotent: true},
+	"notification_edit":      {Idempotent: true},
+	"metadata_edit":          {Idempotent: true},
+	"customformat_edit":      {Idempotent: true},
+	"delayprofile_edit":      {Idempotent: true},
+	"releaseprofile_edit":    {Idempotent: true},
+	"autotagging_edit":       {Idempotent: true},
+	"remotepathmapping_edit": {Idempotent: true},
+	"customfilter_edit":      {Idempotent: true},
+	// an order written over, the same again the second time
+	"delayprofile_reorder": {Idempotent: true},
 }
 
 // queued is every tool queued so far, in go-kt's registry, which is made
@@ -223,6 +298,7 @@ func (r *registry) queued() *mcpregistry.Registry {
 			Essential: EssentialTools,
 			Hints:     toolHints,
 			LogError:  r.errorLog,
+			LogWrite:  r.logWrite,
 		})
 	}
 
@@ -236,7 +312,11 @@ func (r *registry) queued() *mcpregistry.Registry {
 // rather than null: an AI client reading "films": null cannot tell "none"
 // from "not fetched", and Go leaves un-appended slices nil.
 func add[In, Out any](r *registry, kind mcpregistry.Kind, t *mcp.Tool, h mcp.ToolHandlerFor[In, Out]) {
-	mcpregistry.Add(r.queued(), kind, t, h)
+	mcpregistry.Add(r.queued(), kind, t, func(ctx context.Context, req *mcp.CallToolRequest, in In) (*mcp.CallToolResult, Out, error) {
+		res, out, err := h(ctx, req, in)
+
+		return res, out, failureShown(err)
+	})
 }
 
 // queuedFor is every tool queued for these options: registration never calls
@@ -287,6 +367,13 @@ func queueTools(r *registry) {
 	registerProviderTools(r)
 	registerNamingTools(r)
 	registerAuditTools(r)
+	registerSettingsTools(r)
+	registerQualityProfileTools(r)
+	registerAcquireMoreTools(r)
+	registerAdminTools(r)
+	kinds, options := registerProviderFamilyTools(r)
+	registerKindsTool(r, kinds, registerRecordKindTools(r))
+	registerOptionsTool(r, options)
 }
 
 // ToolInfo describes a registered tool without a server to register it on.

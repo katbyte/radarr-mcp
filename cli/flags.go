@@ -33,7 +33,7 @@ func configureFlags(root *cobra.Command) error {
 	pflags.StringP("token", "t", "", "the Radarr API key (consider exporting to RADARR_TOKEN instead)")
 	pflags.Bool("read-only", false, "register only tools that never change server state")
 	pflags.Bool("enable-delete", false, "register the tools that delete films and their files")
-	pflags.StringSlice("toolsets", nil, "groups of tools to register: all, core (default), curation, acquire, organise, admin, or a resource family like movie (core is always included)")
+	pflags.StringSlice("toolsets", nil, "groups of tools to register: all, core (default), curation, acquire, organise, setup, admin, or a resource family like movie (core is always included)")
 	pflags.StringSlice("allow-tools", nil, "register these tools as well as the toolsets asked for, or only these when no toolset is: names, prefix globs like movie_*, or the essential preset")
 	pflags.StringSlice("deny-tools", nil, "never register these tools, whatever asked for them: names or prefix globs like *_delete")
 	pflags.String("listen", "", "serve MCP over HTTP on this address (e.g. :8080) instead of stdio")

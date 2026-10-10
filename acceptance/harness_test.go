@@ -8,12 +8,15 @@ package acceptance
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
+	"sync"
 	"testing"
 
 	acc "github.com/katbyte/go-kt/mcp/acctest"
@@ -165,6 +168,13 @@ func testMain(m *testing.M) {
 		}
 	}
 
+	// a key in an answer is said whichever tests ran: it takes no test to
+	// think of the tool that shows one
+	if shown := leaks(); len(shown) > 0 {
+		fmt.Fprintf(os.Stderr, "\n%d answer(s) carried a key the suite gave Radarr, or Radarr's own; no tool may show one:\n  %s\n", len(shown), strings.Join(shown, "\n  "))
+		code = 1
+	}
+
 	// a replay miss means a test ran against a 502 rather than a recording,
 	// a drift (collected under RADARR_TEST_VERIFY) that the service still
 	// answers, but no longer in the shape Radarr decodes, and a question of
@@ -202,6 +212,9 @@ func start() error {
 	if _, err := tools.RegisterAll(srv, sdk, tools.Options{EnableDelete: true}); err != nil {
 		return err
 	}
+	// added last, so it is outermost, and reads what a caller is sent
+	watched = []string{indexerKey, testenv.Token()}
+	srv.AddReceivingMiddleware(watchAnswers)
 	connected, err := acc.Connect(ctx, srv)
 	if err != nil {
 		return err
@@ -212,8 +225,8 @@ func start() error {
 	return seed()
 }
 
-// seed builds the fixtures: the root folders and every film through the
-// tools, then the indexer and download client through the SDK. It is
+// seed builds the fixtures through the tools: the root folders, every film,
+// and then the indexer and the download client. It is
 // idempotent - a film already in the library is left alone - so the suite
 // can be run again against a container that is still up.
 func seed() error {
@@ -264,8 +277,9 @@ func seed() error {
 var background = newznab.Release{Category: newznab.CategoryMoviesHD, Title: "Radarr.MCP.Test.Pattern.2020.1080p.WEB-DL.x264-NOBODY", Size: 4 << 30}
 
 // addDownloading gives Radarr the fake indexer and a Usenet Blackhole to
-// grab into, which no tool adds: they are the plumbing the release, queue
-// and history tools are tested through.
+// grab into, with the tools that set Radarr up: every search, grab, download
+// and import the suite makes then runs through an indexer and a download
+// client the tools added, each left switched on as a new one starts.
 func addDownloading() error {
 	// Radarr tests an indexer before saving it, and a Newznab one fails the
 	// test when its feed is empty; a real one never is, so this one always
@@ -273,44 +287,84 @@ func addDownloading() error {
 	if err := indexer.Offer(background); err != nil {
 		return err
 	}
-	indexers, err := sdk.GetIndexer(ctx)
+	have, err := suite.Invoke("indexer_list", nil)
 	if err != nil {
 		return err
 	}
-	if len(indexers.Model) == 0 {
-		_, err := sdk.PostIndexer(ctx, radarr.IndexerResource{
-			Name: "Fake Indexer", Implementation: "Newznab", ConfigContract: "NewznabSettings", Protocol: radarr.DownloadProtocolUsenet,
-			EnableRss: new(true), EnableAutomaticSearch: new(true), EnableInteractiveSearch: new(true), Priority: 25,
-			Fields: []radarr.Field{
-				{Name: "baseUrl", Value: indexer.URL()},
-				{Name: "apiPath", Value: "/api"},
-				{Name: "apiKey", Value: indexerKey},
-				{Name: "categories", Value: []int{2000, 2030, 2040, 2045}},
-			},
-		}, radarr.PostIndexerOperationOptions{})
-		if err != nil {
+	if len(acc.RowsOf(have["indexers"])) == 0 {
+		settings := map[string]any{"baseUrl": indexer.URL(), "apiPath": "/api", "apiKey": indexerKey, "categories": []any{2000, 2030, 2040, 2045}}
+		if _, err := suite.Invoke("indexer_add", map[string]any{"kind": "Newznab", "name": "Fake Indexer", "settings": settings}); err != nil {
 			return fmt.Errorf("adding the fake indexer at %s: %w", indexer.URL(), err)
 		}
 	}
-	clients, err := sdk.GetDownloadClient(ctx)
+	clients, err := suite.Invoke("downloadclient_list", nil)
 	if err != nil {
 		return err
 	}
-	if len(clients.Model) == 0 {
-		_, err := sdk.PostDownloadClient(ctx, radarr.DownloadClientResource{
-			Name: "Blackhole", Implementation: "UsenetBlackhole", ConfigContract: "UsenetBlackholeSettings", Protocol: radarr.DownloadProtocolUsenet,
-			Enable: new(true), Priority: 1, RemoveCompletedDownloads: new(true), RemoveFailedDownloads: new(true),
-			Fields: []radarr.Field{
-				{Name: "nzbFolder", Value: nzbFolder},
-				{Name: "watchFolder", Value: watchFolder},
-			},
-		}, radarr.PostDownloadClientOperationOptions{})
-		if err != nil {
+	if len(acc.RowsOf(clients["download_clients"])) == 0 {
+		settings := map[string]any{"nzbFolder": nzbFolder, "watchFolder": watchFolder}
+		if _, err := suite.Invoke("downloadclient_add", map[string]any{"kind": "UsenetBlackhole", "name": "Blackhole", "settings": settings, "options": map[string]any{"priority": 1, "removeCompletedDownloads": true, "removeFailedDownloads": true}}); err != nil {
 			return fmt.Errorf("adding the blackhole download client: %w", err)
 		}
 	}
 
 	return nil
+}
+
+// Every key the suite gives Radarr - an indexer's, a notification's
+// password, a token in an address - and Radarr's own API key are looked for
+// in everything a tool answers or refuses with, all run long. Radarr hands
+// such a key back in places nobody thinks to test: in the words of a test
+// that failed, in a field it does not mark as one.
+var (
+	watching sync.Mutex
+	watched  []string
+	leaked   []string
+)
+
+// secretFor has every answer of the run looked through for a key a test is
+// about to give Radarr, and returns the key.
+func secretFor(key string) string {
+	watching.Lock()
+	defer watching.Unlock()
+	watched = append(watched, key)
+
+	return key
+}
+
+// leaks are the answers that carried a key, each with the tool that gave it.
+func leaks() []string {
+	watching.Lock()
+	defer watching.Unlock()
+
+	return slices.Clone(leaked)
+}
+
+// watchAnswers reads what every call of a tool answers, or refuses with, for
+// the keys the suite gave Radarr.
+func watchAnswers(next mcp.MethodHandler) mcp.MethodHandler {
+	return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
+		res, err := next(ctx, method, req)
+		call, ok := req.(*mcp.CallToolRequest)
+		if method != "tools/call" || !ok || call.Params == nil {
+			return res, err
+		}
+		said, _ := json.Marshal(res)
+		text := string(said)
+		if err != nil {
+			text += " " + err.Error()
+		}
+
+		watching.Lock()
+		defer watching.Unlock()
+		for _, key := range watched {
+			if at := strings.Index(text, key); at >= 0 {
+				leaked = append(leaked, call.Params.Name+": ..."+text[max(0, at-200):min(len(text), at+len(key)+40)]+"...")
+			}
+		}
+
+		return res, err
+	}
 }
 
 // skipUnlessReady skips a test when the container is not configured, for

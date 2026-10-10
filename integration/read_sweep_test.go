@@ -19,12 +19,13 @@ package integration
 
 import (
 	"context"
-	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/katbyte/go-kt/test/services/arrserver"
 	"github.com/katbyte/pandorest/client"
 	"github.com/katbyte/pandorest/sweep"
 	"github.com/katbyte/radarr-mcp/lib/testenv"
@@ -43,6 +44,14 @@ func TestReadSweep(t *testing.T) {
 	l := fixtures(t)
 	d := downloads(t)
 	a := film(ctx, t, alien)
+
+	// a subtitle beside Alien's file, which the rescan further down finds and Radarr then keeps track of as an extra file. It is laid out first: the container sees a new file on this machine's disk a moment after it is written
+	subtitle := testenv.HostPath(alien.Path + "/" + strings.TrimSuffix(alien.File, ".mkv") + ".en.srt")
+	if err := os.WriteFile(subtitle, []byte("1\n00:00:01,000 --> 00:00:03,000\nIn space no one can hear you scream.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Remove(subtitle) })
+
 	withFile := a.MovieFile
 	if withFile == nil {
 		t.Fatal("Alien has no file")
@@ -91,9 +100,28 @@ func TestReadSweep(t *testing.T) {
 	t.Cleanup(func() { _, _ = sdk.DeleteExclusionsById(context.WithoutCancel(ctx), exclusion.Id) })
 	notification := must(sdk.PostNotification(ctx, webhook(t, "SDK Sweep"), radarr.PostNotificationOperationOptions{})).Model
 	t.Cleanup(func() { _, _ = sdk.DeleteNotificationById(context.WithoutCancel(ctx), notification.Id) })
-	list := must(sdk.PostImportList(ctx, selfList("SDK Sweep"), radarr.PostImportListOperationOptions{})).Model
+	// the list is switched on and read once, so that there are films a list offers to read: this Radarr's own, every one of them in the library already
+	offering := selfList("SDK Sweep")
+	offering.Enabled = new(true)
+	list := must(sdk.PostImportList(ctx, offering, radarr.PostImportListOperationOptions{})).Model
 	t.Cleanup(func() { _, _ = sdk.DeleteImportListById(context.WithoutCancel(ctx), list.Id) })
+	command(ctx, t, `{"name":"ImportListSync"}`)
+
 	cmd := command(ctx, t, `{"name":"RescanMovie","movieId":`+strconv.Itoa(a.Id)+`}`)
+
+	// a newer build on offer, for the list of updates to have one in
+	testenv.Services.Offer(arrserver.Update{Version: "99.1.0.1", New: []string{"A setting the suite made up"}, Fixed: []string{"A fault the suite made up"}})
+	t.Cleanup(func() { testenv.Services.Offer() })
+
+	// the log Radarr's updater leaves, which a container never runs: laid out where it would write one
+	const updateLog = "radarr.update.txt"
+	if err := os.MkdirAll(testenv.ConfigPath("UpdateLogs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(testenv.ConfigPath("UpdateLogs", updateLog), []byte("2026-01-01 00:00:00.0|Info|UpdateApp|Starting Radarr Update Client\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(testenv.ConfigPath("UpdateLogs")) })
 	// a film with a history: the manual import, which runs first, leaves the only history a seeded Radarr has
 	recent := must(sdk.GetHistory(ctx, radarr.GetHistoryOperationOptions{PageSize: new(1)})).Model.Records
 	if len(recent) == 0 {
@@ -133,6 +161,7 @@ func TestReadSweep(t *testing.T) {
 			"detail/id":            id(tag.Id),
 			"task/id":              id(tasks[0].Id),
 			"file/filename":        logs[0].Filename,
+			"update/filename":      updateLog,
 			"mediacover/movieId":   id(a.Id),
 			"filename":             "poster.jpg",
 			// a file at the top of /Content: the SDK escapes a path
@@ -160,24 +189,18 @@ func TestReadSweep(t *testing.T) {
 	cases := map[string]sweep.Case{
 		// both answer for a film or a folder, and need one or the other: Radarr
 		// answers 400 or 500 with neither, which one parameter cannot declare
-		"GetMovieFile":    {Options: map[string]any{"MovieId": a.Id}},
+		"GetMovieFile": {Options: map[string]any{"MovieId": a.Id}},
+		// extra files are a film's, and the document does not say the film has to be named: asked for none, Radarr answers none
+		"GetExtraFile":    {Options: map[string]any{"MovieId": a.Id}},
 		"GetManualImport": {Options: map[string]any{"Folder": loose}},
 		// the calendar is the days around today unless told, and no fixture film comes out now: Alien opened in 1979 and Aliens in 1986
-		"GetCalendar":     {Options: map[string]any{"Start": "1979-01-01T00:00:00Z", "End": "1986-12-31T00:00:00Z", "Unmonitored": true}},
-		"GetHistoryMovie": {Options: map[string]any{"MovieId": recent[0].MovieId}},
-		"GetLogFileUpdateByFilename": {
-			Status: http.StatusNotFound,
-			Why:    "a container is updated by replacing its image, so Radarr never runs its updater and has no update log to read",
-		},
-		"GetLogFileUpdate":   {Empty: "a container is updated by replacing its image, so Radarr never runs its updater and has no update log to list"},
-		"GetUpdate":          {Empty: "the stand-in for Radarr's update server offers no build newer than the one running, so there is no update to list"},
-		"GetSystemBackup":    {Empty: "there is no backup until one is made; TestBackups makes one and reads the list with it in"},
-		"GetQueueDetails":    {Empty: "nothing is downloading when the sweep runs; TestReleases reads it with two downloads in the queue"},
-		"GetQueueStatus":     {Empty: "nothing is downloading when the sweep runs, so every count is zero; TestReleases reads it with two downloads in the queue"},
-		"GetBlocklistMovie":  {Empty: "nothing is blocklisted when the sweep runs; TestReleases marks a grab failed and reads the film's blocklist with it in"},
-		"GetRename":          {Empty: "Radarr's rename preview is empty while renaming is off, which is how it is seeded; TestSettings turns it on and reads Dune's"},
-		"GetExtraFile":       {Empty: "no fixture film has a subtitle or a metadata file beside it for Radarr to keep track of"},
-		"GetImportListMovie": {Empty: "the one import list the sweep has is Radarr itself, switched off, so no list offers a film"},
+		"GetCalendar":       {Options: map[string]any{"Start": "1979-01-01T00:00:00Z", "End": "1986-12-31T00:00:00Z", "Unmonitored": true}},
+		"GetHistoryMovie":   {Options: map[string]any{"MovieId": recent[0].MovieId}},
+		"GetSystemBackup":   {Empty: "there is no backup until one is made; TestBackups makes one and reads the list with it in"},
+		"GetQueueDetails":   {Empty: "nothing is downloading when the sweep runs; TestReleases reads it with two downloads in the queue"},
+		"GetQueueStatus":    {Empty: "nothing is downloading when the sweep runs, so every count is zero; TestReleases reads it with two downloads in the queue"},
+		"GetBlocklistMovie": {Empty: "nothing is blocklisted when the sweep runs; TestReleases marks a grab failed and reads the film's blocklist with it in"},
+		"GetRename":         {Empty: "Radarr's rename preview is empty while renaming is off, which is how it is seeded; TestSettings turns it on and reads Dune's"},
 	}
 
 	svc, err := apiDefinitions()

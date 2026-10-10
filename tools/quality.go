@@ -13,15 +13,16 @@ import (
 )
 
 type profileRow struct {
-	ID                int            `json:"id"`
-	Name              string         `json:"name"`
-	Cutoff            string         `json:"cutoff"                        jsonschema:"the quality Radarr stops upgrading at"`
-	UpgradeAllowed    bool           `json:"upgrade_allowed"`
-	Allowed           []string       `json:"allowed"                       jsonschema:"the qualities it accepts, best first"`
-	MinFormatScore    int            `json:"min_format_score,omitempty"    jsonschema:"custom format score a release needs to be grabbed"`
-	CutoffFormatScore int            `json:"cutoff_format_score,omitempty" jsonschema:"custom format score it stops upgrading at"`
-	FormatScores      map[string]int `json:"format_scores,omitempty"       jsonschema:"the custom formats it scores, and their scores"`
-	Movies            int            `json:"movies"                        jsonschema:"films on this profile"`
+	ID                    int            `json:"id"`
+	Name                  string         `json:"name"`
+	Cutoff                string         `json:"cutoff"                             jsonschema:"the quality Radarr stops upgrading at"`
+	UpgradeAllowed        bool           `json:"upgrade_allowed"`
+	Allowed               []string       `json:"allowed"                            jsonschema:"the qualities it accepts, best first"`
+	MinFormatScore        int            `json:"min_format_score,omitempty"         jsonschema:"custom format score a release needs to be grabbed"`
+	MinUpgradeFormatScore int            `json:"min_upgrade_format_score,omitempty" jsonschema:"how much higher a release's custom format score must be to replace a file"`
+	CutoffFormatScore     int            `json:"cutoff_format_score,omitempty"      jsonschema:"custom format score it stops upgrading at"`
+	FormatScores          map[string]int `json:"format_scores,omitempty"            jsonschema:"the custom formats it scores, and their scores"`
+	Movies                int            `json:"movies"                             jsonschema:"films on this profile"`
 }
 
 // profileQualities flattens a profile's items into the qualities it allows,
@@ -58,7 +59,7 @@ func profileOf(p *radarr.QualityProfileResource, movies int) profileRow {
 	allowed, cutoff := profileQualities(p)
 	row := profileRow{
 		ID: p.Id, Name: p.Name, Cutoff: cutoff, UpgradeAllowed: isTrue(p.UpgradeAllowed), Allowed: allowed,
-		MinFormatScore: p.MinFormatScore, CutoffFormatScore: p.CutoffFormatScore, Movies: movies,
+		MinFormatScore: p.MinFormatScore, MinUpgradeFormatScore: p.MinUpgradeFormatScore, CutoffFormatScore: p.CutoffFormatScore, Movies: movies,
 	}
 	for _, f := range p.FormatItems {
 		if f.Score != 0 {
@@ -133,23 +134,20 @@ func registerQualityTools(r *registry) {
 	})
 
 	type profileEditIn struct {
-		Profile           string `json:"profile"                       jsonschema:"the quality profile: its name or id"`
-		UpgradeAllowed    *bool  `json:"upgrade_allowed,omitempty"`
-		Cutoff            string `json:"cutoff,omitempty"              jsonschema:"the quality (or quality group) to stop upgrading at; it must be one the profile allows"`
-		MinFormatScore    *int   `json:"min_format_score,omitempty"`
-		CutoffFormatScore *int   `json:"cutoff_format_score,omitempty"`
+		Profile string `json:"profile"            jsonschema:"the quality profile: its name or id"`
+		NewName string `json:"new_name,omitempty" jsonschema:"rename it"`
+		profileChanges
 	}
 	add(r, writeTool, &mcp.Tool{
-		Name: "qualityprofile_edit",
-		Description: "Change a quality profile: whether it upgrades, the quality it stops upgrading at, and the custom format scores a release needs to be grabbed and to stop upgrading. " +
-			"Every film on the profile is held to the change.",
+		Name:        "qualityprofile_edit",
+		Description: "Change a quality profile: its name, whether it upgrades, the qualities it accepts, the quality it stops upgrading at, the score it gives each custom format, and the custom format scores a release needs to be grabbed, to replace a file and to stop upgrading. Every film on the profile is held to the change.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in profileEditIn) (*mcp.CallToolResult, profileRow, error) {
 		p, err := resolveProfile(ctx, client, in.Profile)
 		if err != nil {
 			return nil, profileRow{}, err
 		}
-		if in.UpgradeAllowed == nil && in.Cutoff == "" && in.MinFormatScore == nil && in.CutoffFormatScore == nil {
-			return nil, profileRow{}, errors.New("nothing to change: give upgrade_allowed, cutoff, min_format_score or cutoff_format_score")
+		if in.NewName == "" && in.none() {
+			return nil, profileRow{}, errors.New("nothing to change: give new_name, upgrade_allowed, allow, disallow, cutoff, format_scores, min_format_score, min_upgrade_format_score or cutoff_format_score")
 		}
 
 		// the profile is sent back whole, so it is read again once it is held: another edit of it in this turn may have changed it since it was found
@@ -162,19 +160,11 @@ func registerQualityTools(r *registry) {
 		p = held.Model
 
 		edit := *p
-		if in.UpgradeAllowed != nil {
-			edit.UpgradeAllowed = in.UpgradeAllowed
+		if name := strings.TrimSpace(in.NewName); name != "" {
+			edit.Name = name
 		}
-		if in.Cutoff != "" {
-			if edit.Cutoff, err = cutoffID(p, in.Cutoff); err != nil {
-				return nil, profileRow{}, err
-			}
-		}
-		if in.MinFormatScore != nil {
-			edit.MinFormatScore = *in.MinFormatScore
-		}
-		if in.CutoffFormatScore != nil {
-			edit.CutoffFormatScore = *in.CutoffFormatScore
+		if err := in.apply(&edit); err != nil {
+			return nil, profileRow{}, err
 		}
 		res, err := client.PutQualityProfileById(ctx, p.Id, edit)
 		if err != nil {
