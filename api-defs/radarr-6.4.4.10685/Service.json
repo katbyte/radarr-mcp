@@ -1,0 +1,22 @@
+{
+  "Name": "radarr",
+  "Package": "radarr",
+  "Title": "Radarr",
+  "ApiVersion": "3.0.0",
+  "Source": "api-defs/radarr-openapi-6.4.4.10685.json",
+  "Auth": "APIKey",
+  "Workarounds": [
+    "radarr-undeclared-responses",
+    "radarr-auth-redirects",
+    "radarr-root-path-parameter",
+    "radarr-command-body",
+    "radarr-statuses",
+    "radarr-undeclared-fields",
+    "radarr-command-resource-body",
+    "radarr-required-parameters",
+    "radarr-write-responses",
+    "radarr-bulk-responses",
+    "radarr-host-required",
+    "radarr-put-ids"
+  ]
+}

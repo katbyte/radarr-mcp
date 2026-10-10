@@ -37,7 +37,6 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -46,10 +45,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/katbyte/radarr-mcp/internal/fakeindexer"
-	"github.com/katbyte/radarr-mcp/lib/client"
-	"github.com/katbyte/radarr-mcp/lib/providerproxy"
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/go-kt/test/services/newznab"
+	"github.com/katbyte/pandorest/client"
+	"github.com/katbyte/pandorest/config"
+	"github.com/katbyte/pandorest/definitions"
+	"github.com/katbyte/radarr-mcp/lib/testenv"
+	"github.com/katbyte/radarr-mcp/sdk/pandorest/workarounds"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 )
 
 // The root folders, as the container sees them, and the Usenet Blackhole's
@@ -90,104 +92,50 @@ var (
 var films = []filmFixture{alien, aliens, bladeRunner, dune1984, alien3}
 
 var (
-	sdk        *radarr.Client
-	proxy      *providerproxy.Proxy
-	indexer    *fakeindexer.Indexer
-	hooks      *webhooks
-	requests   = &recorder{seen: map[string]bool{}}
-	proxyMiss  []string
-	proxyDrift []providerproxy.Drift
+	sdk      *radarr.Client
+	proxy    *testenv.Proxy
+	indexers *newznab.Server
+	indexer  *newznab.Indexer
+	hooks    *webhooks
+	requests = &recorder{seen: map[string]bool{}}
 )
-
-// recording reports whether this run should call the real metadata service
-// and refresh the cassettes, rather than replay them.
-func recording() bool { return os.Getenv("RADARR_TEST_RECORD") != "" }
-
-// verifying reports whether to check the cassettes against the live service
-// without rewriting them.
-func verifying() bool { return os.Getenv("RADARR_TEST_VERIFY") != "" }
-
-// configured reports whether the container environment is present.
-func configured() bool { return os.Getenv("RADARR_SERVER") != "" && os.Getenv("RADARR_TOKEN") != "" }
-
-// dataDir is the host path the container's /media is bind-mounted from.
-func dataDir() string { return filepath.Join(os.Getenv("RADARR_TEST_DATA"), "media") }
-
-// hostPath is where a container path under /media is on the host.
-func hostPath(containerPath string) string {
-	return filepath.Join(dataDir(), strings.TrimPrefix(containerPath, "/media/"))
-}
-
-// port reads a port from the environment, with a default.
-func port(env string, dflt int) (int, error) {
-	v := os.Getenv(env)
-	if v == "" {
-		return dflt, nil
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil {
-		return 0, fmt.Errorf("%s=%q: %w", env, v, err)
-	}
-
-	return n, nil
-}
-
-// containerHost is how the container reaches this process: the proxy, the
-// fake indexer and the webhook receiver.
-func containerHost() string {
-	if h := os.Getenv("RADARR_TEST_HOST"); h != "" {
-		return h
-	}
-
-	return "host.docker.internal"
-}
 
 // runSuite connects, starts the proxy, the fake indexer and the webhook
 // receiver, runs the tests, removes the fixtures, and returns the exit code.
 func runSuite(m *testing.M) int {
-	if !configured() {
+	if !testenv.Configured() {
 		return m.Run() // every test skips
 	}
 	var err error
-	if sdk, err = radarr.New(os.Getenv("RADARR_SERVER"), os.Getenv("RADARR_TOKEN")); err != nil {
+	// every request the suite makes goes through the recorder, which is how
+	// the write coverage is checked: underneath the client's own retries and
+	// its refusal of a redirect, so the suite meets what a caller would
+	if sdk, err = radarr.New(testenv.Server(), testenv.Token(), client.WithTransport(requests)); err != nil {
 		fmt.Fprintln(os.Stderr, "sdk client:", err)
 		return 1
 	}
-	// every request the suite makes goes through the recorder, which is how
-	// the write coverage is checked
-	sdk.Client.HTTPClient = &http.Client{Timeout: 2 * time.Minute, Transport: requests}
-	if err := startProxy(); err != nil {
+	if proxy, err = testenv.StartProxy(context.Background(), testenv.CassetteDir()); err != nil {
 		fmt.Fprintln(os.Stderr, "provider proxy:", err)
 		return 1
 	}
 	if err := startListeners(); err != nil {
-		stopProxy()
+		_ = proxy.Stop()
 		fmt.Fprintln(os.Stderr, "listeners:", err)
 		return 1
 	}
 
 	code := m.Run()
 	removeFixtures()
-	stopProxy()
-	_ = indexer.Close()
+	if err := proxy.Stop(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
+	_ = indexers.Close()
 	hooks.close()
 
-	if len(proxyMiss) > 0 {
-		fmt.Fprintf(os.Stderr, "\nprovider proxy: %d request(s) had no recording:\n", len(proxyMiss))
-		for _, m := range proxyMiss {
-			fmt.Fprintln(os.Stderr, "  "+m)
-		}
-		fmt.Fprintln(os.Stderr, "run `make record` to capture them")
-		if code == 0 {
-			code = 1
-		}
-	}
-	if len(proxyDrift) > 0 {
-		fmt.Fprintf(os.Stderr, "\nprovider proxy: %d response(s) changed shape since recording:\n", len(proxyDrift))
-		for _, d := range proxyDrift {
-			fmt.Fprintln(os.Stderr, "  "+d.String())
-		}
-		fmt.Fprintln(os.Stderr, "\nreview the changes, then run `make record` to accept them")
+	// a replay miss, or an answer that changed shape, is said loudly even
+	// when the assertions happened to survive it
+	if report := proxy.Report() + testenv.Services.Report(); report != "" {
+		fmt.Fprint(os.Stderr, report)
 		if code == 0 {
 			code = 1
 		}
@@ -215,66 +163,20 @@ func runSuite(m *testing.M) int {
 	return code
 }
 
-// startProxy brings up the record/replay proxy the container's HTTPS_PROXY
-// already points at, signing with the CA scripts/testenv.sh minted and
-// mounted into the container.
-func startProxy() error {
-	p, err := port("RADARR_TEST_PROXY_PORT", 17980)
-	if err != nil {
-		return err
-	}
-	mode := providerproxy.Replay
-	switch {
-	case recording():
-		mode = providerproxy.Record
-	case verifying():
-		mode = providerproxy.Verify
-	}
-	opts := providerproxy.Options{
-		Mode:        mode,
-		CassetteDir: filepath.Join("testdata", "cassettes"),
-		Addr:        ":" + strconv.Itoa(p),
-		// Radarr itself, and radarr.servarr.com: Radarr asks it the time and
-		// its news with its version and architecture in the query, so a
-		// recording would match one machine and one release, and a recorded
-		// time is a day wrong a day later
-		IgnoreHosts: append(containerAddresses(), "radarr.servarr.com"),
-	}
-	if ca := os.Getenv("RADARR_TEST_PROXY_CA"); ca != "" {
-		opts.CACert, opts.CAKey = filepath.Join(ca, "ca.pem"), filepath.Join(ca, "ca.key")
-	}
-	if proxy, err = providerproxy.New(opts); err != nil {
-		return err
-	}
-
-	return checkReachable(p)
-}
-
-func stopProxy() {
-	if proxy == nil {
-		return
-	}
-	proxyMiss = proxy.Misses()
-	proxyDrift = proxy.Drifts()
-	if err := proxy.Close(); err != nil {
-		fmt.Fprintln(os.Stderr, "provider proxy close:", err)
-	}
-	proxy = nil
-}
-
 // startListeners starts the fake indexer and, on the port above it, the
 // webhook receiver the notification tests point Radarr at (which also
 // passes /indexer through to the fake indexer, holding it when told).
 func startListeners() error {
-	p, err := port("RADARR_TEST_INDEXER_PORT", 17981)
+	p, err := testenv.IndexerPort()
 	if err != nil {
 		return err
 	}
-	if indexer, err = fakeindexer.Start(":"+strconv.Itoa(p), containerHost()); err != nil {
+	if indexers, err = newznab.New(newznab.Options{Addr: ":" + strconv.Itoa(p), PublicHost: testenv.Host(), Sites: []newznab.Site{{Name: indexerName, APIKey: indexerKey}}}); err != nil {
 		return fmt.Errorf("the fake indexer: %w", err)
 	}
+	indexer = indexers.Indexer(indexerName)
 	if hooks, err = startWebhooks(p+1, p); err != nil {
-		_ = indexer.Close()
+		_ = indexers.Close()
 		return fmt.Errorf("the webhook receiver: %w", err)
 	}
 
@@ -381,10 +283,10 @@ func startWebhooks(p, indexerPort int) (*webhooks, error) {
 		w.wait()
 		rw.WriteHeader(http.StatusOK)
 	})
-	mux.Handle("/indexer/", http.StripPrefix("/indexer", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/"+indexerName+"/", func(rw http.ResponseWriter, r *http.Request) {
 		w.wait()
 		fake.ServeHTTP(rw, r)
-	})))
+	})
 	w.srv = &http.Server{ReadHeaderTimeout: 10 * time.Second, Handler: mux}
 	go func() { _ = w.srv.Serve(ln) }()
 
@@ -442,7 +344,7 @@ func (w *webhooks) held() int {
 
 // url is where Radarr is told to send webhooks.
 func (*webhooks) url(p int) string {
-	return "http://" + net.JoinHostPort(containerHost(), strconv.Itoa(p)) + "/hook"
+	return "http://" + net.JoinHostPort(testenv.Host(), strconv.Itoa(p)) + "/hook"
 }
 
 // heldIndexer is the fake indexer as Radarr is given it through the
@@ -450,13 +352,13 @@ func (*webhooks) url(p int) string {
 func heldIndexer(t *testing.T, name string) radarr.IndexerResource {
 	t.Helper()
 
-	p, err := port("RADARR_TEST_INDEXER_PORT", 17981)
+	p, err := testenv.IndexerPort()
 	if err != nil {
 		t.Fatal(err)
 	}
 	ix := fakeIndexer()
 	ix.Name = name
-	ix.Fields[0].Value = "http://" + net.JoinHostPort(containerHost(), strconv.Itoa(p+1)) + "/indexer"
+	ix.Fields[0].Value = "http://" + net.JoinHostPort(testenv.Host(), strconv.Itoa(p+1)) + "/indexer"
 
 	return ix
 }
@@ -482,7 +384,7 @@ func (w *webhooks) close() {
 func webhookURL(t *testing.T) string {
 	t.Helper()
 
-	p, err := port("RADARR_TEST_INDEXER_PORT", 17981)
+	p, err := testenv.IndexerPort()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -509,7 +411,7 @@ func skipUnlessUp(t *testing.T) context.Context {
 	t.Helper()
 
 	if sdk == nil {
-		t.Skip("RADARR_SERVER and RADARR_TOKEN are not set; run: eval \"$(scripts/testenv.sh up)\"")
+		t.Skip("RADARR_SERVER, RADARR_TOKEN and RADARR_TEST_DATA are not set; run: eval \"$(scripts/testenv.sh up)\"")
 	}
 
 	return t.Context()
@@ -535,7 +437,7 @@ func fixtures(t *testing.T) library {
 func createFixtures(ctx context.Context) (library, error) {
 	l := library{roots: map[string]int{}, films: map[int]radarr.MovieResource{}}
 
-	roots, err := sdk.GetRootfolder(ctx)
+	roots, err := sdk.GetRootFolder(ctx)
 	if err != nil {
 		return l, err
 	}
@@ -546,7 +448,7 @@ func createFixtures(ctx context.Context) (library, error) {
 		if l.roots[path] != 0 {
 			continue
 		}
-		res, postErr := sdk.PostRootfolder(ctx, radarr.RootFolderResource{Path: path})
+		res, postErr := sdk.PostRootFolder(ctx, radarr.RootFolderResource{Path: path})
 		if postErr != nil {
 			return l, fmt.Errorf("adding root folder %s: %w", path, postErr)
 		}
@@ -625,7 +527,7 @@ func removeFixtures() {
 			}
 		}
 		for path, id := range lib.roots {
-			if _, err := sdk.DeleteRootfolderById(ctx, id); err != nil && !client.IsNotFound(err) {
+			if _, err := sdk.DeleteRootFolderById(ctx, id); err != nil && !client.IsNotFound(err) {
 				fmt.Fprintf(os.Stderr, "removing root folder %s: %v\n", path, err)
 			}
 		}
@@ -634,7 +536,7 @@ func removeFixtures() {
 		_, _ = sdk.DeleteIndexerById(ctx, dl.indexer)
 	}
 	if dl.client != 0 {
-		_, _ = sdk.DeleteDownloadclientById(ctx, dl.client)
+		_, _ = sdk.DeleteDownloadClientById(ctx, dl.client)
 	}
 }
 
@@ -653,7 +555,7 @@ var (
 // background is the release the fake indexer always has in its feed:
 // Radarr tests an indexer before saving it, and a Newznab one fails the
 // test when its feed is empty.
-var background = fakeindexer.Release{Title: "Radarr.MCP.Test.Pattern.2020.1080p.WEB-DL.x264-NOBODY", Size: 4 << 30}
+var background = newznab.Release{Category: newznab.CategoryMoviesHD, Title: "Radarr.MCP.Test.Pattern.2020.1080p.WEB-DL.x264-NOBODY", Size: 4 << 30}
 
 // fakeIndexer is the fake indexer as Radarr is given it.
 func fakeIndexer() radarr.IndexerResource {
@@ -661,9 +563,9 @@ func fakeIndexer() radarr.IndexerResource {
 		Name: "SDK Indexer", Implementation: "Newznab", ConfigContract: "NewznabSettings", Protocol: radarr.DownloadProtocolUsenet,
 		EnableRss: new(true), EnableAutomaticSearch: new(true), EnableInteractiveSearch: new(true), Priority: 25,
 		Fields: []radarr.Field{
-			{Name: "baseUrl", Value: indexer.BaseURL()},
+			{Name: "baseUrl", Value: indexer.URL()},
 			{Name: "apiPath", Value: "/api"},
-			{Name: "apiKey", Value: indexer.APIKey},
+			{Name: "apiKey", Value: indexerKey},
 			{Name: "categories", Value: []int{2000, 2030, 2040, 2045}},
 		},
 	}
@@ -685,16 +587,18 @@ func downloads(t *testing.T) downloading {
 	ctx := context.WithoutCancel(skipUnlessUp(t))
 	fixtures(t)
 	dlOnce.Do(func() {
-		indexer.Offer(background)
+		if errDownloads = indexer.Offer(background); errDownloads != nil {
+			return
+		}
 		ix, err := sdk.PostIndexer(ctx, fakeIndexer(), radarr.PostIndexerOperationOptions{})
 		if err != nil {
-			errDownloads = fmt.Errorf("adding the fake indexer at %s: %w", indexer.BaseURL(), err)
+			errDownloads = fmt.Errorf("adding the fake indexer at %s: %w", indexer.URL(), err)
 			return
 		}
 		dl.indexer = ix.Model.Id
-		mediaMkdir(hostPath(nzbFolder))
-		mediaMkdir(hostPath(watchFolder))
-		c, err := sdk.PostDownloadclient(ctx, blackhole("SDK Blackhole"), radarr.PostDownloadclientOperationOptions{})
+		mediaMkdir(testenv.HostPath(nzbFolder))
+		mediaMkdir(testenv.HostPath(watchFolder))
+		c, err := sdk.PostDownloadClient(ctx, blackhole("SDK Blackhole"), radarr.PostDownloadClientOperationOptions{})
 		if err != nil {
 			errDownloads = fmt.Errorf("adding the blackhole: %w", err)
 			return
@@ -765,7 +669,7 @@ func mediaMkdir(dir string) {
 	if err := os.MkdirAll(dir, 0o777); err != nil { //nolint:gosec // the container writes it as another user
 		panic(err)
 	}
-	root := dataDir()
+	root := testenv.DataDir()
 	for p := dir; strings.HasPrefix(p, root) && p != root; p = filepath.Dir(p) {
 		_ = os.Chmod(p, 0o777) //nolint:gosec // same
 	}
@@ -777,60 +681,43 @@ func mediaMkdir(dir string) {
 func copyFile(t *testing.T, from, to string) {
 	t.Helper()
 
-	data, err := os.ReadFile(hostPath(from))
+	data, err := os.ReadFile(testenv.HostPath(from))
 	if err != nil {
 		t.Fatal(err)
 	}
-	mediaMkdir(filepath.Dir(hostPath(to)))
-	if err := os.WriteFile(hostPath(to), data, 0o666); err != nil { //nolint:gosec // the container reads it as another user
+	mediaMkdir(filepath.Dir(testenv.HostPath(to)))
+	if err := os.WriteFile(testenv.HostPath(to), data, 0o666); err != nil { //nolint:gosec // the container reads it as another user
 		t.Fatal(err)
 	}
-	_ = os.Chmod(hostPath(to), 0o666) //nolint:gosec // same
+	_ = os.Chmod(testenv.HostPath(to), 0o666) //nolint:gosec // same
 	old := time.Now().Add(-10 * time.Minute)
-	if err := os.Chtimes(hostPath(to), old, old); err != nil {
+	if err := os.Chtimes(testenv.HostPath(to), old, old); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chtimes(filepath.Dir(hostPath(to)), old, old); err != nil {
+	if err := os.Chtimes(filepath.Dir(testenv.HostPath(to)), old, old); err != nil {
 		t.Fatal(err)
 	}
 }
 
-// containerAddresses are the addresses Radarr reaches itself on, which go
-// through the proxy because NO_PROXY is set before docker hands the
-// container an address. The proxy answers those without a cassette.
-func containerAddresses() []string {
-	name := os.Getenv("RADARR_TEST_CONTAINER")
-	if name == "" {
-		return nil
-	}
-	out, err := exec.Command("docker", "inspect", "-f", //nolint:gosec,noctx // a one-off probe of the suite's own container before it runs
-		"{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}{{.Config.Hostname}}", name).Output()
+// apiDefinitions are the definitions the SDK was generated from: the highest
+// version under api-defs, which is where the generator reads them too.
+func apiDefinitions() (*definitions.Service, error) {
+	svc, _ := config.Find(workarounds.Services, workarounds.Service)
+	svc, err := svc.In("..").Resolve()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
-	return strings.Fields(string(out))
+	return definitions.Load(svc.Path(svc.Definitions))
 }
 
-// checkReachable proves, from inside the container, that Radarr can reach
-// the provider proxy: a Radarr that cannot fails every lookup with a timeout
-// of its own, which reads as dozens of unrelated failures rather than the
-// one plumbing problem it is.
-func checkReachable(p int) error {
-	name := os.Getenv("RADARR_TEST_CONTAINER")
-	if name == "" {
-		return nil
-	}
-	script := fmt.Sprintf("command -v nc >/dev/null || exit 3; nc -z -w 5 %s %d", containerHost(), p)
-	out, err := exec.Command("docker", "exec", name, "sh", "-c", script).CombinedOutput() //nolint:gosec,noctx // the test's own container
-	switch {
-	case err == nil, strings.Contains(fmt.Sprint(err), "exit status 3"):
-		return nil
-	default:
-		return fmt.Errorf("%s cannot reach the provider proxy on %s:%d, so every metadata lookup will time out: %w: %s", name, containerHost(), p, err, out)
-	}
-}
+// indexerName is the fake indexer Radarr is given, which is its path on the
+// indexers' server, and indexerKey the API key it asks of Radarr.
+const (
+	indexerName = "indexer"
+	indexerKey  = "radarr-mcp-test-indexer"
+)
 
 // sdkKey is the API key the suite runs with, which the self-pointing import
 // list is given too.
-func sdkKey() string { return os.Getenv("RADARR_TOKEN") }
+func sdkKey() string { return testenv.Token() }

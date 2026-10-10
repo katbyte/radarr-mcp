@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	acc "github.com/katbyte/go-kt/mcp/acctest"
 )
 
 // server_info summarises the library the harness built: its counts are the
@@ -15,11 +17,11 @@ import (
 // which build of radarr-mcp answered, since a session keeps the binary it
 // started with.
 func TestServerInfo(t *testing.T) {
-	out := call(t, "server_info", nil)
-	if str(out["app"]) != "Radarr" || str(out["version"]) == "" || str(out["instance_name"]) != "radarr-mcp-test" || out["docker"] != true {
+	out := suite.Call(t, "server_info", nil)
+	if acc.Str(out["app"]) != "Radarr" || acc.Str(out["version"]) == "" || acc.Str(out["instance_name"]) != "radarr-mcp-test" || out["docker"] != true {
 		t.Errorf("server_info = %v", out)
 	}
-	if str(out["radarr_mcp_version"]) == "" {
+	if acc.Str(out["radarr_mcp_version"]) == "" {
 		t.Errorf("server_info does not say which radarr-mcp build answered: %v", out)
 	}
 
@@ -36,19 +38,19 @@ func TestServerInfo(t *testing.T) {
 		}
 	}
 	for field, want := range map[string]int{"movies": len(fixtures()), "with_files": withFiles, "missing_monitored": missing, "unmonitored": unmonitored} {
-		if got := num(t, out[field], field); got != want {
+		if got := acc.Num(t, out[field], field); got != want {
 			t.Errorf("%s = %d, want %d", field, got, want)
 		}
 	}
-	if num0(out["size_on_disk"]) <= 0 {
+	if acc.NumOr0(out["size_on_disk"]) <= 0 {
 		t.Errorf("size_on_disk = %v, want the fixture files' total", out["size_on_disk"])
 	}
 
-	roots := rows(t, out["root_folders"], "root_folders")
+	roots := acc.Rows(t, out["root_folders"], "root_folders")
 	var paths []string
 	for _, r := range roots {
-		paths = append(paths, str(r["path"]))
-		if r["accessible"] != true || num0(r["free_space"]) <= 0 {
+		paths = append(paths, acc.Str(r["path"]))
+		if r["accessible"] != true || acc.NumOr0(r["free_space"]) <= 0 {
 			t.Errorf("root folder %v", r)
 		}
 	}
@@ -58,17 +60,17 @@ func TestServerInfo(t *testing.T) {
 	}
 
 	// the health line is server_health's count, and names its errors
-	health := rows(t, call(t, "server_health", nil)["checks"], "checks")
-	if got := num(t, out["health_problems"], "health_problems"); got != len(health) {
+	health := acc.Rows(t, suite.Call(t, "server_health", nil)["checks"], "checks")
+	if got := acc.Num(t, out["health_problems"], "health_problems"); got != len(health) {
 		t.Errorf("health_problems = %d, server_health lists %d", got, len(health))
 	}
 	var errs []string
 	for _, h := range health {
-		if str(h["type"]) == "error" {
-			errs = append(errs, str(h["source"])+": "+str(h["message"]))
+		if acc.Str(h["type"]) == "error" {
+			errs = append(errs, acc.Str(h["source"])+": "+acc.Str(h["message"]))
 		}
 	}
-	if got := strs(t, out["health_errors"], "health_errors"); !slices.Equal(got, errs) {
+	if got := acc.Strs(t, acc.OrEmptyList(out["health_errors"]), "health_errors"); !slices.Equal(got, errs) {
 		t.Errorf("health_errors = %v, server_health's errors are %v", got, errs)
 	}
 }
@@ -78,23 +80,23 @@ func TestServerInfo(t *testing.T) {
 // cannot grab anything is failing - which is also the proof that the
 // suite's download plumbing is wired up.
 func TestServerHealth(t *testing.T) {
-	checks := rows(t, call(t, "server_health", nil)["checks"], "checks")
+	checks := acc.Rows(t, suite.Call(t, "server_health", nil)["checks"], "checks")
 	rank := map[string]int{"error": 3, "warning": 2, "notice": 1}
 	last := 4
 	for _, c := range checks {
-		level := str(c["type"])
-		if rank[level] == 0 || str(c["source"]) == "" || str(c["message"]) == "" {
+		level := acc.Str(c["type"])
+		if rank[level] == 0 || acc.Str(c["source"]) == "" || acc.Str(c["message"]) == "" {
 			t.Errorf("check = %v", c)
 		}
 		if rank[level] > last {
 			t.Errorf("checks are not errors first: %v", checks)
 		}
 		last = rank[level]
-		switch str(c["source"]) {
+		switch acc.Str(c["source"]) {
 		case "IndexerRssCheck", "IndexerSearchCheck", "DownloadClientCheck", "RootFolderCheck", "IndexerStatusCheck":
 			t.Errorf("the harness's plumbing is failing a health check: %v", c)
 		}
-		if str(c["wiki_url"]) != "" && !strings.HasPrefix(str(c["wiki_url"]), "https://") {
+		if acc.Str(c["wiki_url"]) != "" && !strings.HasPrefix(acc.Str(c["wiki_url"]), "https://") {
 			t.Errorf("wiki_url = %v", c["wiki_url"])
 		}
 	}
@@ -103,18 +105,18 @@ func TestServerHealth(t *testing.T) {
 // server_disk_space reports the disks Radarr sees, with a percentage that is
 // what the free and total spaces say.
 func TestServerDiskSpace(t *testing.T) {
-	disks := rows(t, call(t, "server_disk_space", nil)["disks"], "disks")
+	disks := acc.Rows(t, suite.Call(t, "server_disk_space", nil)["disks"], "disks")
 	if len(disks) == 0 {
 		t.Fatal("no disks")
 	}
 	for _, d := range disks {
-		free, total := num0(d["free_space"]), num0(d["total_space"])
-		if str(d["path"]) == "" || total <= 0 || free < 0 || free > total {
+		free, total := acc.NumOr0(d["free_space"]), acc.NumOr0(d["total_space"])
+		if acc.Str(d["path"]) == "" || total <= 0 || free < 0 || free > total {
 			t.Errorf("disk = %v", d)
 			continue
 		}
 		want := float64(int64(free)*1000/int64(total)) / 10
-		if got := num0(d["percent_free"]); got != want {
+		if got := acc.DecimalOr0(d["percent_free"]); got != want {
 			t.Errorf("%v percent_free = %v, want %v", d["path"], got, want)
 		}
 	}
@@ -126,24 +128,24 @@ func TestServerLogs(t *testing.T) {
 	totals := map[string]int{}
 	severity := map[string]int{"trace": 0, "debug": 1, "info": 2, "warn": 3, "error": 4, "fatal": 5}
 	for _, level := range []string{"info", "warn", "error"} {
-		out := call(t, "server_logs", map[string]any{"level": level, "limit": 20})
-		totals[level] = num(t, out["total"], "total")
-		entries := rows(t, out["entries"], "entries")
+		out := suite.Call(t, "server_logs", map[string]any{"level": level, "limit": 20})
+		totals[level] = acc.Num(t, out["total"], "total")
+		entries := acc.Rows(t, out["entries"], "entries")
 		if len(entries) > 20 || len(entries) > totals[level] {
 			t.Errorf("%s: %d entries of %d, limit 20", level, len(entries), totals[level])
 		}
 		for i, e := range entries {
-			got := strings.ToLower(str(e["level"]))
+			got := strings.ToLower(acc.Str(e["level"]))
 			if sev, ok := severity[got]; !ok || sev < severity[level] {
 				t.Errorf("%s asked for, an entry at %q: %v", level, e["level"], e)
 			}
-			if str(e["time"]) == "" || str(e["logger"]) == "" || str(e["message"]) == "" {
+			if acc.Str(e["time"]) == "" || acc.Str(e["logger"]) == "" || acc.Str(e["message"]) == "" {
 				t.Errorf("entry lacks a field: %v", e)
 			}
-			if i > 0 && str(e["time"]) > str(entries[i-1]["time"]) {
+			if i > 0 && acc.Str(e["time"]) > acc.Str(entries[i-1]["time"]) {
 				t.Errorf("%s entries are not newest first", level)
 			}
-			if lines := strings.Count(str(e["exception"]), "\n"); lines > 5 {
+			if lines := strings.Count(acc.Str(e["exception"]), "\n"); lines > 5 {
 				t.Errorf("an exception of %d lines was not cut to its first five", lines+1)
 			}
 		}
@@ -154,13 +156,13 @@ func TestServerLogs(t *testing.T) {
 		t.Errorf("totals by level = %v", totals)
 	}
 
-	first := rows(t, call(t, "server_logs", map[string]any{"limit": 2})["entries"], "entries")
-	second := rows(t, call(t, "server_logs", map[string]any{"limit": 2, "page": 2})["entries"], "entries")
-	if len(first) != 2 || len(second) != 2 || str(second[0]["time"]) > str(first[1]["time"]) {
-		t.Errorf("page 2 is not the two entries after page 1: %v then %v", first, second)
+	first := acc.Rows(t, suite.Call(t, "server_logs", map[string]any{"limit": 2})["entries"], "entries")
+	second := acc.Rows(t, suite.Call(t, "server_logs", map[string]any{"limit": 2, "offset": 2})["entries"], "entries")
+	if len(first) != 2 || len(second) != 2 || acc.Str(second[0]["time"]) > acc.Str(first[1]["time"]) {
+		t.Errorf("the second two are not the two entries after the first two: %v then %v", first, second)
 	}
 
-	if msg := callErr(t, "server_logs", map[string]any{"level": "verbose"}); !strings.Contains(msg, "want one of trace, debug, info, warn, error, fatal") {
+	if msg := suite.CallErr(t, "server_logs", map[string]any{"level": "verbose"}); !strings.Contains(msg, "want one of trace, debug, info, warn, error, fatal") {
 		t.Errorf("an unknown level = %s", msg)
 	}
 }
@@ -168,11 +170,11 @@ func TestServerLogs(t *testing.T) {
 // server_log_file lists Radarr's log files and reads the end of one; a name
 // it does not have is an error listing the ones it does.
 func TestServerLogFile(t *testing.T) {
-	files := rows(t, call(t, "server_log_file", nil)["files"], "files")
+	files := acc.Rows(t, suite.Call(t, "server_log_file", nil)["files"], "files")
 	var names []string
 	for _, f := range files {
-		names = append(names, str(f["name"]))
-		if str(f["last_write_time"]) == "" {
+		names = append(names, acc.Str(f["name"]))
+		if acc.Str(f["last_write_time"]) == "" {
 			t.Errorf("log file %v has no last write time", f)
 		}
 	}
@@ -180,9 +182,9 @@ func TestServerLogFile(t *testing.T) {
 		t.Fatalf("log files = %v, want radarr.txt among them", names)
 	}
 
-	out := call(t, "server_log_file", map[string]any{"name": "radarr.txt", "tail": 5})
-	lines := strs(t, out["lines"], "lines")
-	if str(out["name"]) != "radarr.txt" || len(lines) == 0 || len(lines) > 5 {
+	out := suite.Call(t, "server_log_file", map[string]any{"name": "radarr.txt", "tail": 5})
+	lines := acc.Strs(t, acc.OrEmptyList(out["lines"]), "lines")
+	if acc.Str(out["name"]) != "radarr.txt" || len(lines) == 0 || len(lines) > 5 {
 		t.Fatalf("the tail of radarr.txt = %v", out)
 	}
 	// Radarr's own line format: date time|Level|Logger|Message
@@ -191,11 +193,11 @@ func TestServerLogFile(t *testing.T) {
 		t.Errorf("no log line in the tail: %q", lines)
 	}
 	// a longer tail is a longer read of the same file, ending in the same place
-	if more := strs(t, call(t, "server_log_file", map[string]any{"name": "radarr.txt", "tail": 200})["lines"], "lines"); len(more) <= len(lines) {
+	if more := acc.Strs(t, acc.OrEmptyList(suite.Call(t, "server_log_file", map[string]any{"name": "radarr.txt", "tail": 200})["lines"]), "lines"); len(more) <= len(lines) {
 		t.Errorf("tail 200 read %d lines, tail 5 read %d", len(more), len(lines))
 	}
 
-	msg := callErr(t, "server_log_file", map[string]any{"name": "nope.txt"})
+	msg := suite.CallErr(t, "server_log_file", map[string]any{"name": "nope.txt"})
 	if !strings.Contains(msg, `no log file "nope.txt"`) || !strings.Contains(msg, "radarr.txt") {
 		t.Errorf("an unknown log file = %s", msg)
 	}
@@ -205,30 +207,30 @@ func TestServerLogFile(t *testing.T) {
 // then lists it first. The backup is deleted afterwards, so the container is
 // left as it was.
 func TestServerBackups(t *testing.T) {
-	before := rows(t, call(t, "server_backups", nil)["backups"], "backups")
+	before := acc.Rows(t, suite.Call(t, "server_backups", nil)["backups"], "backups")
 
-	out := call(t, "server_backup_create", nil)
-	cmd := object(t, out["command"], "command")
-	backup := object(t, out["backup"], "backup")
-	id := num(t, backup["id"], "id")
+	out := suite.Call(t, "server_backup_create", nil)
+	cmd := acc.Object(t, out["command"], "command")
+	backup := acc.Object(t, out["backup"], "backup")
+	id := acc.Num(t, backup["id"], "id")
 	t.Cleanup(func() {
 		if _, err := sdk.DeleteSystemBackupById(ctx, id); err != nil {
 			t.Errorf("deleting backup %d: %v", id, err)
 		}
 	})
-	if str(cmd["name"]) != "Backup" || str(cmd["status"]) != "completed" {
+	if acc.Str(cmd["name"]) != "Backup" || acc.Str(cmd["status"]) != "completed" {
 		t.Errorf("command = %v", cmd)
 	}
-	if str(backup["type"]) != "manual" || !strings.HasSuffix(str(backup["name"]), ".zip") || num0(backup["size"]) <= 0 || str(backup["time"]) == "" {
+	if acc.Str(backup["type"]) != "manual" || !strings.HasSuffix(acc.Str(backup["name"]), ".zip") || acc.NumOr0(backup["size"]) <= 0 || acc.Str(backup["time"]) == "" {
 		t.Errorf("backup = %v", backup)
 	}
 
-	after := rows(t, call(t, "server_backups", nil)["backups"], "backups")
-	if len(after) != len(before)+1 || num(t, after[0]["id"], "id") != id {
+	after := acc.Rows(t, suite.Call(t, "server_backups", nil)["backups"], "backups")
+	if len(after) != len(before)+1 || acc.Num(t, after[0]["id"], "id") != id {
 		t.Fatalf("backups after = %v, want the new one first of %d", after, len(before)+1)
 	}
 	for i := 1; i < len(after); i++ {
-		if str(after[i]["time"]) > str(after[i-1]["time"]) {
+		if acc.Str(after[i]["time"]) > acc.Str(after[i-1]["time"]) {
 			t.Errorf("backups are not newest first: %v", after)
 		}
 	}
@@ -237,14 +239,14 @@ func TestServerBackups(t *testing.T) {
 // task_list shows Radarr's scheduled tasks by name, with the name task_run
 // takes, and the recent commands newest first.
 func TestTaskList(t *testing.T) {
-	out := call(t, "task_list", nil)
-	tasks := rows(t, out["tasks"], "tasks")
+	out := suite.Call(t, "task_list", nil)
+	tasks := acc.Rows(t, out["tasks"], "tasks")
 	byName := map[string]map[string]any{}
 	var names []string
 	for _, task := range tasks {
-		byName[str(task["task_name"])] = task
-		names = append(names, str(task["name"]))
-		if num0(task["interval_minutes"]) <= 0 {
+		byName[acc.Str(task["task_name"])] = task
+		names = append(names, acc.Str(task["name"]))
+		if acc.NumOr0(task["interval_minutes"]) <= 0 {
 			t.Errorf("task %v has no interval", task)
 		}
 	}
@@ -257,19 +259,19 @@ func TestTaskList(t *testing.T) {
 			t.Errorf("no scheduled task %s among %v", want, names)
 		}
 	}
-	if str(byName["CheckHealth"]["name"]) != "Check Health" {
+	if acc.Str(byName["CheckHealth"]["name"]) != "Check Health" {
 		t.Errorf("CheckHealth is named %v", byName["CheckHealth"]["name"])
 	}
 
-	commands := rows(t, out["commands"], "commands")
+	commands := acc.Rows(t, out["commands"], "commands")
 	if len(commands) == 0 || len(commands) > 20 {
 		t.Errorf("%d commands, want the seeding's, at most 20", len(commands))
 	}
 	for i, c := range commands {
-		if str(c["name"]) == "" || str(c["status"]) == "" {
+		if acc.Str(c["name"]) == "" || acc.Str(c["status"]) == "" {
 			t.Errorf("command = %v", c)
 		}
-		if i > 0 && num0(c["id"]) > num0(commands[i-1]["id"]) {
+		if i > 0 && acc.NumOr0(c["id"]) > acc.NumOr0(commands[i-1]["id"]) {
 			t.Errorf("commands are not newest first: %v", commands)
 		}
 	}
@@ -280,29 +282,36 @@ func TestTaskList(t *testing.T) {
 // like are not on offer.
 func TestTaskRun(t *testing.T) {
 	started := time.Now().UTC().Add(-time.Second)
-	out := call(t, "task_run", map[string]any{"task": "Check Health"})
-	cmd := object(t, out["command"], "command")
-	if str(out["task"]) != "CheckHealth" || str(out["does"]) == "" || str(cmd["name"]) != "CheckHealth" || str(cmd["status"]) != "completed" {
+	out := suite.Call(t, "task_run", map[string]any{"task": "Check Health"})
+	cmd := acc.Object(t, out["command"], "command")
+	if acc.Str(out["task"]) != "CheckHealth" || acc.Str(out["does"]) == "" || acc.Str(cmd["name"]) != "CheckHealth" || acc.Str(cmd["status"]) != "completed" {
 		t.Fatalf("task_run Check Health = %v", out)
 	}
-	id := num(t, cmd["id"], "id")
+	id := acc.Num(t, cmd["id"], "id")
 
 	// the command is task_list's newest, and the scheduled task says it ran
-	list := call(t, "task_list", nil)
+	list := suite.Call(t, "task_list", nil)
 	var seen bool
-	for _, c := range rows(t, list["commands"], "commands") {
-		if num(t, c["id"], "id") == id && str(c["status"]) == "completed" {
+	for _, c := range acc.Rows(t, list["commands"], "commands") {
+		if acc.Num(t, c["id"], "id") == id && acc.Str(c["status"]) == "completed" {
 			seen = true
 		}
 	}
 	if !seen {
 		t.Errorf("task_list does not show command %d completed: %v", id, list["commands"])
 	}
-	for _, task := range rows(t, list["tasks"], "tasks") {
-		if str(task["task_name"]) != "CheckHealth" {
+	// and it is followed by its id, alone, however many Radarr has started for itself since
+	if one := acc.Rows(t, suite.Call(t, "task_list", map[string]any{"command_id": id})["commands"], "commands"); len(one) != 1 || acc.Num(t, one[0]["id"], "id") != id || acc.Str(one[0]["name"]) != "CheckHealth" || acc.Str(one[0]["status"]) != "completed" {
+		t.Errorf("task_list for command %d = %v, want that command alone", id, one)
+	}
+	if msg := suite.CallErr(t, "task_list", map[string]any{"command_id": 987654}); !strings.Contains(msg, "command 987654") {
+		t.Errorf("a command that does not exist = %q", msg)
+	}
+	for _, task := range acc.Rows(t, list["tasks"], "tasks") {
+		if acc.Str(task["task_name"]) != "CheckHealth" {
 			continue
 		}
-		ran, err := time.Parse(time.RFC3339, str(task["last_execution"]))
+		ran, err := time.Parse(time.RFC3339, acc.Str(task["last_execution"]))
 		if err != nil || ran.Before(started) {
 			t.Errorf("Check Health last ran %v, want after %v", task["last_execution"], started)
 		}
@@ -310,16 +319,16 @@ func TestTaskRun(t *testing.T) {
 
 	// wait -1 returns before the task can have finished waiting; the task
 	// still runs to the end
-	out = call(t, "task_run", map[string]any{"task": "refreshmonitoreddownloads", "wait": -1})
-	cmd = object(t, out["command"], "command")
-	if str(out["task"]) != "RefreshMonitoredDownloads" || str(cmd["status"]) == "" {
+	out = suite.Call(t, "task_run", map[string]any{"task": "refreshmonitoreddownloads", "wait": -1})
+	cmd = acc.Object(t, out["command"], "command")
+	if acc.Str(out["task"]) != "RefreshMonitoredDownloads" || acc.Str(cmd["status"]) == "" {
 		t.Fatalf("task_run without waiting = %v", out)
 	}
-	id = num(t, cmd["id"], "id")
-	if !eventually(func() bool {
-		for _, c := range rows(t, call(t, "task_list", nil)["commands"], "commands") {
-			if num(t, c["id"], "id") == id {
-				return str(c["status"]) == "completed"
+	id = acc.Num(t, cmd["id"], "id")
+	if !acc.EventuallyWithin(time.Minute, func() bool {
+		for _, c := range acc.Rows(t, suite.Call(t, "task_list", nil)["commands"], "commands") {
+			if acc.Num(t, c["id"], "id") == id {
+				return acc.Str(c["status"]) == "completed"
 			}
 		}
 		return false
@@ -327,7 +336,7 @@ func TestTaskRun(t *testing.T) {
 		t.Errorf("command %d never completed", id)
 	}
 
-	msg := callErr(t, "task_run", map[string]any{"task": "Restart"})
+	msg := suite.CallErr(t, "task_run", map[string]any{"task": "Restart"})
 	if !strings.Contains(msg, `task "Restart" is not one task_run starts`) || !strings.Contains(msg, "RssSync") {
 		t.Errorf("task_run Restart = %s", msg)
 	}

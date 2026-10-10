@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -99,7 +99,7 @@ func registerImportTools(r *registry) {
 		Description: "Scan a folder, a download in the queue, or a film's own folder for video files Radarr could import: each with the film and quality Radarr makes of it, and why it would refuse it (an unknown film, not an upgrade, a sample). " +
 			"import_apply imports the ones chosen. A film's folder lists only the files Radarr does not already track there.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in importScanIn) (*mcp.CallToolResult, importScanOut, error) {
-		opts := radarr.GetManualimportOperationOptions{Folder: in.Folder, DownloadId: in.DownloadID, FilterExistingFiles: new(true)}
+		opts := radarr.GetManualImportOperationOptions{Folder: in.Folder, DownloadId: in.DownloadID, FilterExistingFiles: new(true)}
 		switch {
 		case in.Movie != "":
 			m, err := resolveMovie(ctx, client, in.Movie)
@@ -270,7 +270,7 @@ func scanFolders(ctx context.Context, c *radarr.Client, in []importFile) (map[st
 			continue
 		}
 		done[dir] = true
-		files, err := scanImport(ctx, c, radarr.GetManualimportOperationOptions{Folder: dir, FilterExistingFiles: new(false)})
+		files, err := scanImport(ctx, c, radarr.GetManualImportOperationOptions{Folder: dir, FilterExistingFiles: new(false)})
 		if err != nil {
 			return nil, err
 		}
@@ -284,8 +284,8 @@ func scanFolders(ctx context.Context, c *radarr.Client, in []importFile) (map[st
 
 // scanImport asks Radarr what it would make of the files in a folder or a
 // download.
-func scanImport(ctx context.Context, c *radarr.Client, opts radarr.GetManualimportOperationOptions) ([]radarr.ManualImportResource, error) {
-	res, err := c.GetManualimport(ctx, opts)
+func scanImport(ctx context.Context, c *radarr.Client, opts radarr.GetManualImportOperationOptions) ([]radarr.ManualImportResource, error) {
+	res, err := c.GetManualImport(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -303,7 +303,7 @@ func unmappedPaths(ctx context.Context, c *radarr.Client, rootFolder string) ([]
 		}
 		want = f.Path
 	}
-	res, err := c.GetRootfolder(ctx)
+	res, err := c.GetRootFolder(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +327,7 @@ func unmappedPaths(ctx context.Context, c *radarr.Client, rootFolder string) ([]
 func identifyFolder(ctx context.Context, c *radarr.Client, folder string, have map[int]int, candidates int) (identifyRow, error) {
 	folder = strings.TrimRight(strings.TrimSpace(folder), "/")
 	row := identifyRow{Folder: folder, Name: baseName(folder)}
-	files, err := scanImport(ctx, c, radarr.GetManualimportOperationOptions{Folder: folder, FilterExistingFiles: new(false)})
+	files, err := scanImport(ctx, c, radarr.GetManualImportOperationOptions{Folder: folder, FilterExistingFiles: new(false)})
 	if err != nil {
 		return row, fmt.Errorf("scanning %s: %w", folder, err)
 	}

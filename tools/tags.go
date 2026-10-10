@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -59,20 +59,24 @@ func registerTagTools(r *registry) {
 
 	type tagListOut struct {
 		Tags []tagRow `json:"tags"`
+		pageOut
 	}
 	add(r, readTool, &mcp.Tool{
 		Name:        "tag_list",
 		Description: "List Radarr's tags and what carries each: how many films, and which indexers, download clients, import lists, notifications and profiles are limited to films with it.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ noArgs) (*mcp.CallToolResult, tagListOut, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in pageIn) (*mcp.CallToolResult, tagListOut, error) {
 		res, err := client.GetTagDetail(ctx)
 		if err != nil {
 			return nil, tagListOut{}, err
 		}
-		out := tagListOut{}
+		rows := make([]tagRow, 0, len(res.Model))
 		for i := range res.Model {
-			out.Tags = append(out.Tags, tagOf(&res.Model[i]))
+			rows = append(rows, tagOf(&res.Model[i]))
 		}
-		slices.SortFunc(out.Tags, func(a, b tagRow) int { return strings.Compare(a.Label, b.Label) })
+		slices.SortFunc(rows, func(a, b tagRow) int { return strings.Compare(a.Label, b.Label) })
+
+		out := tagListOut{}
+		out.Tags, out.pageOut = pageRows(rows, in)
 
 		return nil, out, nil
 	})

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	acc "github.com/katbyte/go-kt/mcp/acctest"
 )
 
 // libraryCollection is one collection_list row by title.
@@ -15,8 +17,8 @@ func libraryCollection(t *testing.T, args map[string]any) map[string]map[string]
 	t.Helper()
 
 	out := map[string]map[string]any{}
-	for _, c := range rows(t, call(t, "collection_list", args)["collections"], "collections") {
-		out[str(c["title"])] = c
+	for _, c := range acc.Rows(t, suite.Call(t, "collection_list", args)["collections"], "collections") {
+		out[acc.Str(c["title"])] = c
 	}
 
 	return out
@@ -27,8 +29,8 @@ func libraryMissing(t *testing.T, c map[string]any) []string {
 	t.Helper()
 
 	var out []string
-	for _, m := range rows(t, c["missing"], "missing") {
-		out = append(out, titleYear(str(m["title"]), int(num0(m["year"]))))
+	for _, m := range acc.Rows(t, c["missing"], "missing") {
+		out = append(out, titleYear(acc.Str(m["title"]), acc.NumOr0(m["year"])))
 	}
 
 	return out
@@ -60,19 +62,19 @@ func TestCollections(t *testing.T) {
 		"The Matrix Collection":   {[]string{"The Matrix (1999)"}, []string{"The Matrix Reloaded (2003)", "The Matrix Revolutions (2003)", "The Matrix Resurrections (2021)"}, messyRoot},
 	} {
 		c := cols[title]
-		if got := strs(t, c["held"], "held"); !slices.Equal(got, want.held) {
+		if got := acc.Strs(t, acc.OrEmptyList(c["held"]), "held"); !slices.Equal(got, want.held) {
 			t.Errorf("%s holds %v, want %v", title, got, want.held)
 		}
 		if got := libraryMissing(t, c); !slices.Equal(got, want.missing) {
 			t.Errorf("%s is missing %v, want %v", title, got, want.missing)
 		}
 		// a collection takes its settings from the first film added to it
-		if c["monitored"] != false || c["search_on_add"] != false || str(c["quality_profile"]) != profileHD || str(c["root_folder"]) != want.root || num0(c["tmdb_id"]) == 0 {
+		if c["monitored"] != false || c["search_on_add"] != false || acc.Str(c["quality_profile"]) != profileHD || acc.Str(c["root_folder"]) != want.root || acc.NumOr0(c["tmdb_id"]) == 0 {
 			t.Errorf("%s = %v", title, c)
 		}
 	}
-	for _, m := range rows(t, cols["The Matrix Collection"]["missing"], "missing") {
-		if str(m["status"]) != "released" || num0(m["tmdb_id"]) == 0 || m["excluded"] != nil {
+	for _, m := range acc.Rows(t, cols["The Matrix Collection"]["missing"], "missing") {
+		if acc.Str(m["status"]) != "released" || acc.NumOr0(m["tmdb_id"]) == 0 || m["excluded"] != nil {
 			t.Errorf("a missing Matrix film = %v", m)
 		}
 	}
@@ -85,7 +87,7 @@ func TestCollections(t *testing.T) {
 	if got := libraryMissing(t, all["Heat Collection"]); !slices.Equal(got, []string{"Heat 2"}) {
 		t.Errorf("Heat's unreleased = %v", got)
 	}
-	if m := rows(t, all["Heat Collection"]["missing"], "missing"); str(m[0]["status"]) != "announced" {
+	if m := acc.Rows(t, all["Heat Collection"]["missing"], "missing"); acc.Str(m[0]["status"]) != "announced" {
 		t.Errorf("Heat 2 = %v, want announced", m[0])
 	}
 
@@ -110,44 +112,44 @@ func TestCollections(t *testing.T) {
 // films, which is Radarr's job to test, not a fixture to disturb.
 func TestCollectionEdit(t *testing.T) {
 	matrix := libraryCollection(t, nil)["The Matrix Collection"]
-	id := num(t, matrix["id"], "id")
+	id := acc.Num(t, matrix["id"], "id")
 	path := "/api/v3/collection/" + strconv.Itoa(id)
 	before := settingsRaw(t, path)
-	films := num(t, call(t, "movie_list", map[string]any{"limit": 1})["total"], "total")
+	films := acc.Num(t, suite.Call(t, "movie_list", map[string]any{"limit": 1})["total"], "total")
 	t.Cleanup(func() {
-		call(t, "collection_edit", map[string]any{"collection": "tmdb:2344", "quality_profile": profileHD, "root_folder": messyRoot, "minimum_availability": "released"})
+		suite.Call(t, "collection_edit", map[string]any{"collection": "tmdb:2344", "quality_profile": profileHD, "root_folder": messyRoot, "minimum_availability": "released"})
 		settingsUnchanged(t, path, before)
 	})
 
-	out := call(t, "collection_edit", map[string]any{
+	out := suite.Call(t, "collection_edit", map[string]any{
 		"collection": "The Matrix", "quality_profile": profileUHD, "root_folder": moviesRoot, "minimum_availability": "announced", "search_on_add": false, "monitored": false,
 	})
-	if str(out["title"]) != "The Matrix Collection" || str(out["quality_profile"]) != profileUHD || str(out["root_folder"]) != moviesRoot ||
-		out["monitored"] != false || out["search_on_add"] != false || len(strs(t, out["held"], "held")) != 1 {
+	if acc.Str(out["title"]) != "The Matrix Collection" || acc.Str(out["quality_profile"]) != profileUHD || acc.Str(out["root_folder"]) != moviesRoot ||
+		out["monitored"] != false || out["search_on_add"] != false || len(acc.Strs(t, acc.OrEmptyList(out["held"]), "held")) != 1 {
 		t.Errorf("collection_edit = %v", out)
 	}
-	raw := object(t, settingsRaw(t, path), "collection")
-	if num0(raw["qualityProfileId"]) != 5 || str(raw["minimumAvailability"]) != "announced" || str(raw["rootFolderPath"]) != moviesRoot {
+	raw := acc.Object(t, settingsRaw(t, path), "collection")
+	if acc.NumOr0(raw["qualityProfileId"]) != 5 || acc.Str(raw["minimumAvailability"]) != "announced" || acc.Str(raw["rootFolderPath"]) != moviesRoot {
 		t.Errorf("Radarr holds %v", raw)
 	}
-	if got := num(t, call(t, "movie_list", map[string]any{"limit": 1})["total"], "total"); got != films {
+	if got := acc.Num(t, suite.Call(t, "movie_list", map[string]any{"limit": 1})["total"], "total"); got != films {
 		t.Errorf("the library went from %d films to %d on a collection edit", films, got)
 	}
 
 	// every way of naming it reaches the same collection
 	for _, ref := range []string{strconv.Itoa(id), "tmdb:2344", "the matrix collection"} {
-		if got := call(t, "collection_edit", map[string]any{"collection": ref, "search_on_add": false}); num(t, got["id"], "id") != id {
+		if got := suite.Call(t, "collection_edit", map[string]any{"collection": ref, "search_on_add": false}); acc.Num(t, got["id"], "id") != id {
 			t.Errorf("%q named collection %v", ref, got["id"])
 		}
 	}
 
-	if msg := callErr(t, "collection_edit", map[string]any{"collection": "nope", "monitored": false}); !strings.Contains(msg, `no collection "nope"; the collections are Alien Collection, Blade Runner Collection`) {
+	if msg := suite.CallErr(t, "collection_edit", map[string]any{"collection": "nope", "monitored": false}); !strings.Contains(msg, `no collection "nope"; the collections are Alien Collection, Blade Runner Collection`) {
 		t.Errorf("an unknown collection = %s", msg)
 	}
-	if msg := callErr(t, "collection_edit", map[string]any{"collection": "The Matrix", "minimum_availability": "soon"}); !strings.Contains(msg, `minimum availability "soon": want announced, inCinemas or released`) {
+	if msg := suite.CallErr(t, "collection_edit", map[string]any{"collection": "The Matrix", "minimum_availability": "soon"}); !strings.Contains(msg, `minimum availability "soon": want announced, inCinemas or released`) {
 		t.Errorf("an unknown availability = %s", msg)
 	}
-	if msg := callErr(t, "collection_edit", map[string]any{"collection": "The Matrix", "root_folder": "/media/nope"}); !strings.Contains(msg, `no root folder "/media/nope"`) {
+	if msg := suite.CallErr(t, "collection_edit", map[string]any{"collection": "The Matrix", "root_folder": "/media/nope"}); !strings.Contains(msg, `no root folder "/media/nope"`) {
 		t.Errorf("an unknown root folder = %s", msg)
 	}
 }
@@ -158,8 +160,8 @@ func TestCollectionEdit(t *testing.T) {
 func TestExclusions(t *testing.T) {
 	exclusions := func() map[int]map[string]any {
 		out := map[int]map[string]any{}
-		for _, e := range rows(t, call(t, "exclusion_list", nil)["exclusions"], "exclusions") {
-			out[num(t, e["tmdb_id"], "tmdb_id")] = e
+		for _, e := range acc.Rows(t, suite.Call(t, "exclusion_list", nil)["exclusions"], "exclusions") {
+			out[acc.Num(t, e["tmdb_id"], "tmdb_id")] = e
 		}
 		return out
 	}
@@ -172,29 +174,29 @@ func TestExclusions(t *testing.T) {
 	t.Cleanup(func() {
 		for _, tmdb := range ours {
 			if e := exclusions()[tmdb]; e != nil {
-				_, _ = sdk.DeleteExclusionsById(ctx, num(t, e["id"], "id"))
+				_, _ = sdk.DeleteExclusionsById(ctx, acc.Num(t, e["id"], "id"))
 			}
 		}
 	})
 
-	moon := call(t, "exclusion_add", map[string]any{"movie": "tmdb:17431"})
-	if num(t, moon["tmdb_id"], "tmdb_id") != 17431 || str(moon["title"]) != "Moon" || num(t, moon["year"], "year") != 2009 || num0(moon["id"]) == 0 {
+	moon := suite.Call(t, "exclusion_add", map[string]any{"movie": "tmdb:17431"})
+	if acc.Num(t, moon["tmdb_id"], "tmdb_id") != 17431 || acc.Str(moon["title"]) != "Moon" || acc.Num(t, moon["year"], "year") != 2009 || acc.NumOr0(moon["id"]) == 0 {
 		t.Errorf("exclusion_add Moon = %v", moon)
 	}
-	msg := callErr(t, "exclusion_add", map[string]any{"movie": "tmdb:17431"})
-	if !strings.Contains(msg, "Moon (2009) is already excluded (id "+strconv.Itoa(num(t, moon["id"], "id"))+")") {
+	msg := suite.CallErr(t, "exclusion_add", map[string]any{"movie": "tmdb:17431"})
+	if !strings.Contains(msg, "Moon (2009) is already excluded (id "+strconv.Itoa(acc.Num(t, moon["id"], "id"))+")") {
 		t.Errorf("excluding Moon twice = %s", msg)
 	}
-	reloaded := call(t, "exclusion_add", map[string]any{"movie": "tmdb:604"})
-	gattaca := call(t, "exclusion_add", map[string]any{"movie": messyGattaca})
-	if str(reloaded["title"]) != "The Matrix Reloaded" || num(t, gattaca["tmdb_id"], "tmdb_id") != 782 {
+	reloaded := suite.Call(t, "exclusion_add", map[string]any{"movie": "tmdb:604"})
+	gattaca := suite.Call(t, "exclusion_add", map[string]any{"movie": messyGattaca})
+	if acc.Str(reloaded["title"]) != "The Matrix Reloaded" || acc.Num(t, gattaca["tmdb_id"], "tmdb_id") != 782 {
 		t.Errorf("exclusion_add = %v and %v", reloaded, gattaca)
 	}
 
-	list := rows(t, call(t, "exclusion_list", nil)["exclusions"], "exclusions")
+	list := acc.Rows(t, suite.Call(t, "exclusion_list", nil)["exclusions"], "exclusions")
 	var titles []string
 	for _, e := range list {
-		titles = append(titles, str(e["title"]))
+		titles = append(titles, acc.Str(e["title"]))
 	}
 	if !slices.IsSorted(titles) || !slices.Contains(titles, "Moon") || !slices.Contains(titles, "The Matrix Reloaded") || !slices.Contains(titles, "Gattaca") {
 		t.Errorf("exclusion_list = %v, want the three, sorted", titles)
@@ -202,17 +204,17 @@ func TestExclusions(t *testing.T) {
 
 	// a collection's missing film on the exclusions is marked so, and still
 	// listed
-	for _, m := range rows(t, libraryCollection(t, nil)["The Matrix Collection"]["missing"], "missing") {
-		if (str(m["title"]) == "The Matrix Reloaded") != (m["excluded"] == true) {
+	for _, m := range acc.Rows(t, libraryCollection(t, nil)["The Matrix Collection"]["missing"], "missing") {
+		if (acc.Str(m["title"]) == "The Matrix Reloaded") != (m["excluded"] == true) {
 			t.Errorf("a missing Matrix film = %v", m)
 		}
 	}
 
 	ids := []any{moon["id"], reloaded["id"], gattaca["id"]}
-	removed := rows(t, call(t, "exclusion_remove", map[string]any{"ids": ids})["removed"], "removed")
+	removed := acc.Rows(t, suite.Call(t, "exclusion_remove", map[string]any{"ids": ids})["removed"], "removed")
 	var gone []string
 	for _, e := range removed {
-		gone = append(gone, str(e["title"]))
+		gone = append(gone, acc.Str(e["title"]))
 	}
 	if !slices.Equal(gone, []string{"Moon", "The Matrix Reloaded", "Gattaca"}) {
 		t.Errorf("exclusion_remove removed %v", gone)
@@ -224,12 +226,12 @@ func TestExclusions(t *testing.T) {
 		}
 	}
 
-	if msg := callErr(t, "exclusion_remove", map[string]any{"ids": []any{}}); !strings.Contains(msg, "no exclusion ids") {
+	if msg := suite.CallErr(t, "exclusion_remove", map[string]any{"ids": []any{}}); !strings.Contains(msg, "no exclusion ids") {
 		t.Errorf("removing nothing = %s", msg)
 	}
 	// Radarr answers a delete of an exclusion that is not there with a 200,
 	// so the tool checks, rather than reporting it removed
-	if msg := callErr(t, "exclusion_remove", map[string]any{"ids": []any{999999}}); !strings.Contains(msg, "no exclusion 999999; exclusion_list lists them") {
+	if msg := suite.CallErr(t, "exclusion_remove", map[string]any{"ids": []any{999999}}); !strings.Contains(msg, "no exclusion 999999; exclusion_list lists them") {
 		t.Errorf("removing an exclusion that is not there = %s", msg)
 	}
 }
@@ -249,13 +251,13 @@ func libraryDaysSince(date string) int {
 func libraryCalendar(t *testing.T, args map[string]any) ([]string, map[string][]string, map[string]any) {
 	t.Helper()
 
-	out := call(t, "calendar_list", args)
+	out := suite.Call(t, "calendar_list", args)
 	var order []string
 	releases := map[string][]string{}
-	for _, m := range rows(t, out["movies"], "movies") {
-		title := titleYear(str(m["title"]), int(num0(m["year"])))
+	for _, m := range acc.Rows(t, out["movies"], "movies") {
+		title := titleYear(acc.Str(m["title"]), acc.NumOr0(m["year"]))
 		order = append(order, title)
-		releases[title] = strs(t, m["releases"], "releases")
+		releases[title] = acc.Strs(t, acc.OrEmptyList(m["releases"]), "releases")
 	}
 
 	return order, releases, out
@@ -270,12 +272,12 @@ func TestCalendar(t *testing.T) {
 	if len(now) != 0 {
 		t.Errorf("the week around today holds %v; the fixture films are years old", now)
 	}
-	if str(out["start"]) != time.Now().UTC().AddDate(0, 0, -7).Format(time.DateOnly) || str(out["end"]) == "" {
+	if acc.Str(out["start"]) != time.Now().UTC().AddDate(0, 0, -7).Format(time.DateOnly) || acc.Str(out["end"]) == "" {
 		t.Errorf("the default window = %v to %v", out["start"], out["end"])
 	}
 
 	order, releases, out := libraryCalendar(t, map[string]any{"days_back": libraryDaysSince("2024-01-01")})
-	if str(out["start"]) != "2024-01-01" || !slices.Equal(order, []string{"Dune: Part Two (2024)"}) {
+	if acc.Str(out["start"]) != "2024-01-01" || !slices.Equal(order, []string{"Dune: Part Two (2024)"}) {
 		t.Fatalf("since 2024 = %v from %v", order, out["start"])
 	}
 	if got := releases["Dune: Part Two (2024)"]; !slices.Equal(got, []string{"in cinemas 2024-02-27", "digital 2024-02-06", "physical 2024-05-14"}) {

@@ -158,7 +158,7 @@ Needs no server: it reports what would be registered, not what a server accepts.
 			if err != nil {
 				return err
 			}
-			folders, err := client.GetRootfolder(cmd.Context())
+			folders, err := client.GetRootFolder(cmd.Context())
 			if err != nil {
 				return err
 			}

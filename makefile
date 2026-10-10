@@ -97,23 +97,24 @@ docker: ## Build the radarr-mcp container image with version info from git
 
 tools: $(ACTIONLINT) $(GOFUMPT) $(GOLANGCI_LINT) $(GOLANGCI_LINT_MODULES) $(SHELLCHECK) $(YAMLLINT) $(ZIZMOR) ## Install all pinned dev tools into .tools/bin
 
-##@ SDK generation (internal/pandorest)
-generate: pandorest-import pandorest-generate ## Import the spec into api-definitions/, then generate lib/radarr from it
+##@ SDK generation (sdk/pandorest)
+generate: pandorest-import pandorest-generate ## Import the highest-versioned spec into api-defs/radarr-<release>/, then generate sdk/radarr
 
-pandorest-import: ## Import docs/radarr-openapi.json into api-definitions/, applying the workarounds
-	@echo "==> importing the OpenAPI spec into api-definitions/..."
-	go run ./internal/pandorest import
+pandorest-import: ## Import api-defs/radarr-openapi-<release>.json (the highest release) into api-defs/radarr-<release>/, applying the workarounds
+	@echo "==> importing the OpenAPI spec into api-defs/radarr-<release>/..."
+	go run ./sdk/pandorest import
 
-pandorest-generate: ## Generate lib/radarr from api-definitions/
-	@echo "==> generating lib/radarr from api-definitions/..."
-	go run ./internal/pandorest generate
+pandorest-generate: ## Generate sdk/radarr from api-defs/radarr-<release>/
+	@echo "==> generating sdk/radarr from api-defs/radarr-<release>/..."
+	go run ./sdk/pandorest generate
 
-pandorest-diff: ## Report what the spec in docs/ changes against the checked-in api-definitions/
-	@go run ./internal/pandorest diff -quiet
+pandorest-diff: ## Report what the vendored spec changes against its checked-in definitions
+	@go run ./sdk/pandorest diff -quiet
 
-spec-update: ## Fetch Radarr's current OpenAPI spec into docs/ (then make pandorest-diff shows what changed)
-	@echo "==> fetching src/Radarr.Api.V3/openapi.json from Radarr's develop branch..."
-	curl -fsSL https://raw.githubusercontent.com/Radarr/Radarr/develop/src/Radarr.Api.V3/openapi.json -o docs/radarr-openapi.json
+spec-update: ## Vendor a Radarr release's OpenAPI spec beside the current one (make spec-update RELEASE=6.4.4.10685), ready for make generate
+	@[ -n "$(RELEASE)" ] || (echo 'name the release the spec is taken from: make spec-update RELEASE=6.4.4.10685'; exit 1)
+	@echo "==> fetching src/Radarr.Api.V3/openapi.json as Radarr v$(RELEASE) has it..."
+	curl -fsSL https://raw.githubusercontent.com/Radarr/Radarr/v$(RELEASE)/src/Radarr.Api.V3/openapi.json -o api-defs/radarr-openapi-$(RELEASE).json
 
 ##@ Formatting
 fmt: $(GOFUMPT) $(GOLANGCI_LINT) ## Fix Go formatting (gofmt, gofumpt, goimports)
@@ -154,13 +155,13 @@ zizmor: $(ZIZMOR) ## Audit GitHub workflows for security issues with zizmor
 	@$(ZIZMOR) .
 
 gencheck: generate ## Check that the definitions and the generated SDK match the spec (regenerate, then diff)
-	@test -z "$$(git status --porcelain -- api-definitions lib/radarr)" || \
-		(git status --short -- api-definitions lib/radarr; echo; \
-		echo "api-definitions/ or lib/radarr is stale. Run 'make generate' and commit."; exit 1)
+	@test -z "$$(git status --porcelain -- api-defs sdk/radarr)" || \
+		(git status --short -- api-defs sdk/radarr; echo; \
+		echo "api-defs/ or sdk/radarr is stale. Run 'make generate' and commit."; exit 1)
 
-apicheck: ## Check that the definitions match the spec and every operation has a method in lib/radarr
-	@echo "==> Checking API coverage of lib/radarr..."
-	@go run ./internal/pandorest check -quiet
+apicheck: ## Check that the definitions match the spec and every operation has a method in sdk/radarr
+	@echo "==> Checking API coverage of sdk/radarr..."
+	@go run ./sdk/pandorest check -quiet
 
 depscheck: ## Check that go.mod/go.sum and vendor/ are in sync
 	@echo "==> Checking source code with go mod tidy..."
@@ -189,14 +190,14 @@ depscheck: ## Check that go.mod/go.sum and vendor/ are in sync
 test: build ## Run tests
 	go test ./... -timeout ${TEST_TIMEOUT}
 
-test-integration: ## Run the SDK tests (lib/radarr) against an already-running Radarr
-	@[ -n "${RADARR_SERVER}" ] && [ -n "${RADARR_TOKEN}" ] || \
-		(echo 'RADARR_SERVER and RADARR_TOKEN must be set; or use "make testacc"'; exit 1)
+test-integration: ## Run the SDK tests (sdk/radarr) against a Radarr scripts/testenv.sh started
+	@[ -n "${RADARR_SERVER}" ] && [ -n "${RADARR_TOKEN}" ] && [ -n "${RADARR_TEST_DATA}" ] || \
+		(echo 'RADARR_SERVER, RADARR_TOKEN and RADARR_TEST_DATA must be set (eval "$$(make testenv-up)"); or use "make testacc"'; exit 1)
 	go test -tags integration -count=1 ./integration/... -timeout ${TEST_TIMEOUT} -v
 
-test-acceptance: ## Run the tool tests (behaviour, audits, journeys) against an already-running Radarr
-	@[ -n "${RADARR_SERVER}" ] && [ -n "${RADARR_TOKEN}" ] || \
-		(echo 'RADARR_SERVER and RADARR_TOKEN must be set; or use "make testacc"'; exit 1)
+test-acceptance: ## Run the tool tests (behaviour, audits, journeys) against a Radarr scripts/testenv.sh started
+	@[ -n "${RADARR_SERVER}" ] && [ -n "${RADARR_TOKEN}" ] && [ -n "${RADARR_TEST_DATA}" ] || \
+		(echo 'RADARR_SERVER, RADARR_TOKEN and RADARR_TEST_DATA must be set (eval "$$(make testenv-up)"); or use "make testacc"'; exit 1)
 	go test -tags integration -count=1 ./acceptance/... -timeout ${TEST_TIMEOUT} -v
 
 # each suite gets its own container: the SDK tests create and delete root
@@ -233,20 +234,20 @@ testacc: testacc-integration testacc-acceptance ## Run both live suites, each in
 # directory and covdata merges them, which is stdlib tooling rather than a
 # third-party merger.
 COVERDIR?=.coverage
-COVERPKG=./tools/...,./lib/...,./cli/...,./internal/...
-SDKS=/lib/radarr/
+COVERPKG=./tools/...,./sdk/...,./lib/...,./cli/...
+SDKS=/sdk/radarr/
 COVERDIRS=$(COVERDIR)/unit,$(COVERDIR)/integration,$(COVERDIR)/acceptance
 
 cover: ## Run every suite with coverage and report the total
 	@rm -rf $(COVERDIR)
 	@mkdir -p $(COVERDIR)/unit $(COVERDIR)/integration $(COVERDIR)/acceptance
 	@echo "==> unit..."
-	@go test -count=1 -coverpkg=$(COVERPKG) ./tools/ ./cli/ ./lib/... ./internal/... \
+	@go test -count=1 -coverpkg=$(COVERPKG) ./tools/ ./cli/ ./sdk/... ./lib/... \
 		-args -test.gocoverdir=$(CURDIR)/$(COVERDIR)/unit >/dev/null
 	@$(MAKE) --no-print-directory cover-integration
 	@$(MAKE) --no-print-directory cover-acceptance
 	@go tool covdata textfmt -i=$(COVERDIRS) -o=$(COVERDIR)/coverage.all
-	@# lib/radarr is generated, one mechanical method per operation; the suites
+	@# sdk/radarr is generated, one mechanical method per operation; the suites
 	@# exercise the ones the tools rely on and the read sweep every GET, so the
 	@# total is for the hand-written code and the SDK gets a line of its own
 	@# (the per-package figures below include it)
@@ -267,10 +268,12 @@ cover-acceptance:
 cover-html: cover ## Run every suite with coverage and open the HTML report
 	@go tool cover -html=$(COVERDIR)/coverage.out
 
-record: ## Re-record the metadata cassettes against Radarr's real metadata service (this hits the network)
-	@echo "==> recording against Radarr's metadata service (this hits the network)..."
-	$(call live,acceptance,RADARR_TEST_RECORD=1)
-	$(call live,integration,RADARR_TEST_RECORD=1)
+# RADARR_TEST_RECORD=all refreshes every recording a run touches;
+# RADARR_TEST_RECORD=1 records only the requests no cassette holds
+record: ## Re-record every metadata cassette against Radarr's real metadata service (this hits the network; RADARR_TEST_RECORD=1 on a testacc target records only what they lack)
+	@echo "==> re-recording against Radarr's metadata service (this hits the network)..."
+	$(call live,acceptance,RADARR_TEST_RECORD=all)
+	$(call live,integration,RADARR_TEST_RECORD=all)
 
 record-check: ## Check the cassettes still match the real metadata service, without rewriting them
 	@echo "==> verifying cassettes against Radarr's metadata service (this hits the network)..."

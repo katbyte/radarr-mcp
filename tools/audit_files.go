@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

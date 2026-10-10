@@ -14,8 +14,9 @@ import (
 	"testing"
 	"time"
 
+	mcpregistry "github.com/katbyte/go-kt/mcp/registry"
 	"github.com/katbyte/go-kt/version"
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -172,6 +173,27 @@ func session(t *testing.T, f *fakeRadarr, opts Options) *mcp.ClientSession {
 	if _, err := RegisterAll(srv, client, opts); err != nil {
 		t.Fatal(err)
 	}
+
+	return connect(t, srv)
+}
+
+// hostRegistry registers the tools queued on a registry the test built by
+// hand, for what RegisterAll does not reach: a tool of the test's own.
+func hostRegistry(t *testing.T, r *registry) *mcp.ClientSession {
+	t.Helper()
+
+	srv := mcp.NewServer(&mcp.Implementation{Name: "t", Version: "0"}, nil)
+	if _, err := r.queued().Register(srv, mcpregistry.Selection{EnableDelete: true}); err != nil {
+		t.Fatal(err)
+	}
+
+	return connect(t, srv)
+}
+
+// connect opens an in-memory MCP client on a server.
+func connect(t *testing.T, srv *mcp.Server) *mcp.ClientSession {
+	t.Helper()
+
 	st, ct := mcp.NewInMemoryTransports()
 	ctx := context.Background()
 	if _, err := srv.Connect(ctx, st, nil); err != nil {

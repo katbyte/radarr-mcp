@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -36,7 +36,7 @@ func namingOf(ctx context.Context, c *radarr.Client, n *radarr.NamingConfigResou
 		ColonReplacementFormat:   n.ColonReplacementFormat,
 		StandardMovieFormat:      n.StandardMovieFormat,
 		MovieFolderFormat:        n.MovieFolderFormat,
-		Id:                       n.Id,
+		Id:                       new(n.Id),
 	})
 	if err != nil {
 		return out, err
@@ -85,6 +85,9 @@ func registerNamingTools(r *registry) {
 		if in.RenameMovies == nil && in.ReplaceIllegalCharacters == nil && in.ColonReplacement == "" && in.StandardMovieFormat == "" && in.MovieFolderFormat == "" {
 			return nil, namingOut{}, errors.New("nothing to change: give rename_movies, replace_illegal_characters, colon_replacement, standard_movie_format or movie_folder_format")
 		}
+		// the settings are sent back whole, so they are read once they are held
+		unlock := r.locking().ByString(namingLock)
+		defer unlock()
 		res, err := client.GetConfigNaming(ctx)
 		if err != nil {
 			return nil, namingOut{}, err

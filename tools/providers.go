@@ -8,8 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/katbyte/radarr-mcp/lib/client"
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -43,23 +42,6 @@ type testResult struct {
 	Name     string   `json:"name"`
 	Valid    bool     `json:"valid"`
 	Failures []string `json:"failures,omitempty" jsonschema:"what failed, as Radarr says it; a warning says so"`
-}
-
-// testResults reads a test of every provider: a result each, and 400 Bad
-// Request, with the same list, when any fails.
-func testResults(model []radarr.ProviderTestAllResult, resp *http.Response, err error) ([]radarr.ProviderTestAllResult, error) {
-	if err == nil {
-		return model, nil
-	}
-	if client.StatusCode(err) != http.StatusBadRequest {
-		return nil, err
-	}
-	var out []radarr.ProviderTestAllResult
-	if decodeBody(resp, &out) != nil {
-		return nil, err
-	}
-
-	return out, nil
 }
 
 // failuresOf reads the validation failures a test of one provider answers
@@ -101,11 +83,12 @@ func registerProviderTools(r *registry) {
 
 	type indexerListOut struct {
 		Indexers []indexerRow `json:"indexers"`
+		pageOut
 	}
 	add(r, readTool, &mcp.Tool{
 		Name:        "indexer_list",
 		Description: "List the indexers Radarr searches for releases: what kind each is, whether it is used for the RSS sync, automatic and interactive searches, its priority, and the tags that limit it to some films.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ noArgs) (*mcp.CallToolResult, indexerListOut, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in pageIn) (*mcp.CallToolResult, indexerListOut, error) {
 		res, err := c.GetIndexer(ctx)
 		if err != nil {
 			return nil, indexerListOut{}, err
@@ -114,15 +97,18 @@ func registerProviderTools(r *registry) {
 		if err != nil {
 			return nil, indexerListOut{}, err
 		}
-		out := indexerListOut{}
+		rows := make([]indexerRow, 0, len(res.Model))
 		for _, i := range res.Model {
-			out.Indexers = append(out.Indexers, indexerRow{
+			rows = append(rows, indexerRow{
 				ID: i.Id, Name: i.Name, Implementation: i.ImplementationName, Protocol: string(i.Protocol),
 				EnableRSS: isTrue(i.EnableRss), EnableAutomaticSearch: isTrue(i.EnableAutomaticSearch), EnableInteractiveSearch: isTrue(i.EnableInteractiveSearch),
 				Priority: i.Priority, Tags: lk.tagLabels(i.Tags),
 			})
 		}
-		slices.SortFunc(out.Indexers, func(a, b indexerRow) int { return a.Priority - b.Priority })
+		slices.SortFunc(rows, func(a, b indexerRow) int { return a.Priority - b.Priority })
+
+		out := indexerListOut{}
+		out.Indexers, out.pageOut = pageRows(rows, in)
 
 		return nil, out, nil
 	})
@@ -160,10 +146,12 @@ func registerProviderTools(r *registry) {
 				results[0].ValidationFailures = failuresOf(one.HttpResponse, err)
 			}
 		default:
-			all, err := c.PostIndexerTestall(ctx)
-			if results, err = testResults(all.Model, all.HttpResponse, err); err != nil {
+			// a result each, answered 400 with the same list when any of them fails: both are the answer
+			all, err := c.PostIndexerTestAll(ctx)
+			if err != nil {
 				return nil, testOut{}, err
 			}
+			results = all.Model
 		}
 
 		return nil, testOut{Results: toResults(results, names)}, nil
@@ -171,12 +159,13 @@ func registerProviderTools(r *registry) {
 
 	type downloadClientListOut struct {
 		DownloadClients []downloadClientRow `json:"download_clients"`
+		pageOut
 	}
 	add(r, readTool, &mcp.Tool{
 		Name:        "downloadclient_list",
 		Description: "List the download clients Radarr sends grabs to: what kind each is, whether it is enabled, its priority, whether Radarr removes finished and failed downloads from it, and the tags that limit it to some films.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ noArgs) (*mcp.CallToolResult, downloadClientListOut, error) {
-		res, err := c.GetDownloadclient(ctx)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in pageIn) (*mcp.CallToolResult, downloadClientListOut, error) {
+		res, err := c.GetDownloadClient(ctx)
 		if err != nil {
 			return nil, downloadClientListOut{}, err
 		}
@@ -184,15 +173,18 @@ func registerProviderTools(r *registry) {
 		if err != nil {
 			return nil, downloadClientListOut{}, err
 		}
-		out := downloadClientListOut{}
+		rows := make([]downloadClientRow, 0, len(res.Model))
 		for _, d := range res.Model {
-			out.DownloadClients = append(out.DownloadClients, downloadClientRow{
+			rows = append(rows, downloadClientRow{
 				ID: d.Id, Name: d.Name, Implementation: d.ImplementationName, Protocol: string(d.Protocol), Enabled: isTrue(d.Enable),
 				Priority: d.Priority, RemoveCompletedDownloads: isTrue(d.RemoveCompletedDownloads), RemoveFailedDownloads: isTrue(d.RemoveFailedDownloads),
 				Tags: lk.tagLabels(d.Tags),
 			})
 		}
-		slices.SortFunc(out.DownloadClients, func(a, b downloadClientRow) int { return a.Priority - b.Priority })
+		slices.SortFunc(rows, func(a, b downloadClientRow) int { return a.Priority - b.Priority })
+
+		out := downloadClientListOut{}
+		out.DownloadClients, out.pageOut = pageRows(rows, in)
 
 		return nil, out, nil
 	})
@@ -201,7 +193,7 @@ func registerProviderTools(r *registry) {
 		Name:        "downloadclient_test",
 		Description: "Test the download clients - can Radarr reach each, log in, and see its folders - and say what failed for each one that did.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in testIn) (*mcp.CallToolResult, testOut, error) {
-		res, err := c.GetDownloadclient(ctx)
+		res, err := c.GetDownloadClient(ctx)
 		if err != nil {
 			return nil, testOut{}, err
 		}
@@ -218,16 +210,18 @@ func registerProviderTools(r *registry) {
 		case in.Name != "" && pick == nil:
 			return nil, testOut{}, fmt.Errorf("no download client %q; downloadclient_list names them", in.Name)
 		case pick != nil:
-			one, err := c.PostDownloadclientTest(ctx, *pick, radarr.PostDownloadclientTestOperationOptions{ForceTest: new(true)})
+			one, err := c.PostDownloadClientTest(ctx, *pick, radarr.PostDownloadClientTestOperationOptions{ForceTest: new(true)})
 			results = []radarr.ProviderTestAllResult{{Id: pick.Id, IsValid: new(err == nil)}}
 			if err != nil {
 				results[0].ValidationFailures = failuresOf(one.HttpResponse, err)
 			}
 		default:
-			all, err := c.PostDownloadclientTestall(ctx)
-			if results, err = testResults(all.Model, all.HttpResponse, err); err != nil {
+			// a result each, answered 400 with the same list when any of them fails: both are the answer
+			all, err := c.PostDownloadClientTestAll(ctx)
+			if err != nil {
 				return nil, testOut{}, err
 			}
+			results = all.Model
 		}
 
 		return nil, testOut{Results: toResults(results, names)}, nil

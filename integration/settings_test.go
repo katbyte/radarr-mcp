@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/katbyte/radarr-mcp/lib/client"
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/pandorest/client"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 )
 
 // TestSettings changes one thing in each group of settings, checks the
@@ -69,18 +69,29 @@ func TestSettings(t *testing.T) {
 			},
 			func() bool { return isTrue(must(sdk.GetConfigNaming(ctx)).Model.ReplaceIllegalCharacters) })
 		must(sdk.PutConfigNamingById(context.WithoutCancel(ctx), before.Id, *before))
+
+		// with renaming on, the preview has the file that is not named for its film: Dune (1984) still carries the name of the film its folder was taken for
+		d := film(ctx, t, dune1984)
+		renaming := *before
+		renaming.RenameMovies = new(true)
+		must(sdk.PutConfigNamingById(ctx, before.Id, renaming))
+		defer func() { must(sdk.PutConfigNamingById(context.WithoutCancel(ctx), before.Id, *before)) }()
+		preview := must(sdk.GetRename(ctx, radarr.GetRenameOperationOptions{MovieId: []int{d.Id}})).Model
+		if len(preview) != 1 || preview[0].MovieId != d.Id || !strings.Contains(preview[0].ExistingPath, "Dune (2021)") || preview[0].NewPath == "" || preview[0].NewPath == preview[0].ExistingPath {
+			t.Errorf("the rename preview of %s with renaming on = %+v, want its one file under a new name", dune1984.Title, preview)
+		}
 	})
 
 	t.Run("media management", func(t *testing.T) {
-		before := must(sdk.GetConfigMediamanagement(ctx)).Model
+		before := must(sdk.GetConfigMediaManagement(ctx)).Model
 		edit := *before
 		edit.RecycleBinCleanupDays = before.RecycleBinCleanupDays + 1
 		checkSetting(t, "recycle bin cleanup days", edit.RecycleBinCleanupDays,
 			func() int {
-				return must(sdk.PutConfigMediamanagementById(ctx, before.Id, edit)).Model.RecycleBinCleanupDays
+				return must(sdk.PutConfigMediaManagementById(ctx, before.Id, edit)).Model.RecycleBinCleanupDays
 			},
-			func() int { return must(sdk.GetConfigMediamanagement(ctx)).Model.RecycleBinCleanupDays })
-		must(sdk.PutConfigMediamanagementById(context.WithoutCancel(ctx), before.Id, *before))
+			func() int { return must(sdk.GetConfigMediaManagement(ctx)).Model.RecycleBinCleanupDays })
+		must(sdk.PutConfigMediaManagementById(context.WithoutCancel(ctx), before.Id, *before))
 	})
 
 	t.Run("indexers", func(t *testing.T) {
@@ -96,21 +107,21 @@ func TestSettings(t *testing.T) {
 	})
 
 	t.Run("download clients", func(t *testing.T) {
-		before := must(sdk.GetConfigDownloadclient(ctx)).Model
+		before := must(sdk.GetConfigDownloadClient(ctx)).Model
 		edit := *before
 		edit.AutoRedownloadFailedFromInteractiveSearch = new(!isTrue(before.AutoRedownloadFailedFromInteractiveSearch))
 		checkSetting(t, "redownload failed interactive grabs", isTrue(edit.AutoRedownloadFailedFromInteractiveSearch),
 			func() bool {
-				return isTrue(must(sdk.PutConfigDownloadclientById(ctx, before.Id, edit)).Model.AutoRedownloadFailedFromInteractiveSearch)
+				return isTrue(must(sdk.PutConfigDownloadClientById(ctx, before.Id, edit)).Model.AutoRedownloadFailedFromInteractiveSearch)
 			},
 			func() bool {
-				return isTrue(must(sdk.GetConfigDownloadclient(ctx)).Model.AutoRedownloadFailedFromInteractiveSearch)
+				return isTrue(must(sdk.GetConfigDownloadClient(ctx)).Model.AutoRedownloadFailedFromInteractiveSearch)
 			})
-		must(sdk.PutConfigDownloadclientById(context.WithoutCancel(ctx), before.Id, *before))
+		must(sdk.PutConfigDownloadClientById(context.WithoutCancel(ctx), before.Id, *before))
 	})
 
 	t.Run("import lists", func(t *testing.T) {
-		before := must(sdk.GetConfigImportlist(ctx)).Model
+		before := must(sdk.GetConfigImportList(ctx)).Model
 		edit := *before
 		edit.ListSyncLevel = "logOnly"
 		if before.ListSyncLevel == edit.ListSyncLevel {
@@ -118,10 +129,10 @@ func TestSettings(t *testing.T) {
 		}
 		checkSetting(t, "list sync level", edit.ListSyncLevel,
 			func() string {
-				return must(sdk.PutConfigImportlistById(ctx, before.Id, edit)).Model.ListSyncLevel
+				return must(sdk.PutConfigImportListById(ctx, before.Id, edit)).Model.ListSyncLevel
 			},
-			func() string { return must(sdk.GetConfigImportlist(ctx)).Model.ListSyncLevel })
-		must(sdk.PutConfigImportlistById(context.WithoutCancel(ctx), before.Id, *before))
+			func() string { return must(sdk.GetConfigImportList(ctx)).Model.ListSyncLevel })
+		must(sdk.PutConfigImportListById(context.WithoutCancel(ctx), before.Id, *before))
 	})
 
 	t.Run("metadata", func(t *testing.T) {

@@ -7,6 +7,10 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	acc "github.com/katbyte/go-kt/mcp/acctest"
+	"github.com/katbyte/go-kt/test/env"
+	"github.com/katbyte/radarr-mcp/lib/testenv"
 )
 
 // importDrop is a folder outside every root folder a file can be dropped in
@@ -17,33 +21,33 @@ const importDrop = "/media/downloads/manual"
 // would refuse each: the 1080p copy of Contact beside the 2160p one Radarr
 // took is not an upgrade.
 func TestImportScan(t *testing.T) {
-	out := call(t, "import_scan", map[string]any{"folder": messyRoot + "/Contact (1997)"})
-	files := rows(t, out["files"], "files")
+	out := suite.Call(t, "import_scan", map[string]any{"folder": messyRoot + "/Contact (1997)"})
+	files := acc.Rows(t, out["files"], "files")
 	if len(files) != 1 {
 		t.Fatalf("Contact's folder = %v", files)
 	}
 	f := files[0]
-	if str(f["relative_path"]) != "Contact (1997) Bluray-1080p.mkv" || str(f["movie"]) != "Contact (1997)" || str(f["quality"]) != "Bluray-1080p" ||
-		f["importable"] != false || !strings.Contains(strings.Join(strs(t, f["rejections"], "rejections"), " "), "Not an upgrade") {
+	if acc.Str(f["relative_path"]) != "Contact (1997) Bluray-1080p.mkv" || acc.Str(f["movie"]) != "Contact (1997)" || acc.Str(f["quality"]) != "Bluray-1080p" ||
+		f["importable"] != false || !strings.Contains(strings.Join(acc.Strs(t, acc.OrEmptyList(f["rejections"]), "rejections"), " "), "Not an upgrade") {
 		t.Errorf("the untracked copy = %v", f)
 	}
 
 	// scanning a film's own folder finds the same file, and none it tracks
-	byMovie := rows(t, call(t, "import_scan", map[string]any{"movie": "Contact"})["files"], "files")
-	if len(byMovie) != 1 || str(byMovie[0]["path"]) != str(f["path"]) {
+	byMovie := acc.Rows(t, suite.Call(t, "import_scan", map[string]any{"movie": "Contact"})["files"], "files")
+	if len(byMovie) != 1 || acc.Str(byMovie[0]["path"]) != acc.Str(f["path"]) {
 		t.Errorf("Contact by film = %v", byMovie)
 	}
 	// a folder whose one file the library tracks, though its name reads as
 	// a film of 2049, has nothing to import
-	if got := rows(t, call(t, "import_scan", map[string]any{"movie": "Blade Runner 2049"})["files"], "files"); len(got) != 0 {
+	if got := acc.Rows(t, suite.Call(t, "import_scan", map[string]any{"movie": "Blade Runner 2049"})["files"], "files"); len(got) != 0 {
 		t.Errorf("Blade Runner 2049's folder = %v", got)
 	}
 	// Ronin, on disk and not in the library, is an unknown film
-	ronin := rows(t, call(t, "import_scan", map[string]any{"folder": unmappedRonin})["files"], "files")
-	if len(ronin) != 1 || str(ronin[0]["movie"]) != "" || !slices.Contains(strs(t, ronin[0]["rejections"], "rejections"), "Unknown Movie") || ronin[0]["importable"] != true {
+	ronin := acc.Rows(t, suite.Call(t, "import_scan", map[string]any{"folder": unmappedRonin})["files"], "files")
+	if len(ronin) != 1 || acc.Str(ronin[0]["movie"]) != "" || !slices.Contains(acc.Strs(t, acc.OrEmptyList(ronin[0]["rejections"]), "rejections"), "Unknown Movie") || ronin[0]["importable"] != true {
 		t.Errorf("Ronin = %v", ronin)
 	}
-	if msg := callErr(t, "import_scan", nil); !strings.Contains(msg, "name a folder, a download_id or a movie") {
+	if msg := suite.CallErr(t, "import_scan", nil); !strings.Contains(msg, "name a folder, a download_id or a movie") {
 		t.Errorf("a scan of nothing = %q", msg)
 	}
 }
@@ -52,26 +56,26 @@ func TestImportScan(t *testing.T) {
 // in it, and what TMDB offers for its name - the step before movie_add takes
 // the folder into the library.
 func TestImportIdentify(t *testing.T) {
-	out := call(t, "import_identify", nil)
-	if num(t, out["total"], "total") != 2 {
+	out := suite.Call(t, "import_identify", nil)
+	if acc.Num(t, out["total"], "total") != 2 {
 		t.Fatalf("import_identify = %v", out)
 	}
 	byFolder := map[string]map[string]any{}
-	for _, f := range rows(t, out["folders"], "folders") {
-		byFolder[str(f["folder"])] = f
+	for _, f := range acc.Rows(t, out["folders"], "folders") {
+		byFolder[acc.Str(f["folder"])] = f
 	}
 
 	// a film on disk Radarr has never heard of: its file, and the film it is
 	ronin := byFolder[unmappedRonin]
-	if ronin == nil || str(ronin["name"]) != "Ronin (1998)" {
+	if ronin == nil || acc.Str(ronin["name"]) != "Ronin (1998)" {
 		t.Fatalf("Ronin's folder = %v", byFolder)
 	}
-	if files := rows(t, ronin["files"], "files"); len(files) != 1 || str(files[0]["quality"]) != "Bluray-1080p" {
+	if files := acc.Rows(t, ronin["files"], "files"); len(files) != 1 || acc.Str(files[0]["quality"]) != "Bluray-1080p" {
 		t.Errorf("what is in Ronin's folder = %v", ronin["files"])
 	}
-	best := rows(t, ronin["candidates"], "candidates")
-	if len(best) == 0 || str(best[0]["title"]) != "Ronin" || num(t, best[0]["year"], "year") != 1998 ||
-		num(t, best[0]["tmdb_id"], "tmdb_id") != 8195 || best[0]["in_library"] != false {
+	best := acc.Rows(t, ronin["candidates"], "candidates")
+	if len(best) == 0 || acc.Str(best[0]["title"]) != "Ronin" || acc.Num(t, best[0]["year"], "year") != 1998 ||
+		acc.Num(t, best[0]["tmdb_id"], "tmdb_id") != 8195 || best[0]["in_library"] != false {
 		t.Errorf("Ronin's candidates = %v", ronin["candidates"])
 	}
 
@@ -80,21 +84,21 @@ func TestImportIdentify(t *testing.T) {
 	if cut == nil {
 		t.Fatalf("the director's cut folder = %v", byFolder)
 	}
-	if c := rows(t, cut["candidates"], "candidates"); len(c) == 0 || c[0]["in_library"] != true ||
-		num(t, c[0]["library_id"], "library_id") != movieID(t, "Alien", 1979) {
+	if c := acc.Rows(t, cut["candidates"], "candidates"); len(c) == 0 || c[0]["in_library"] != true ||
+		acc.Num(t, c[0]["library_id"], "library_id") != movieID(t, "Alien", 1979) {
 		t.Errorf("the director's cut candidates = %v", cut["candidates"])
 	}
 
 	// one folder by name, and a folder with nothing in it Radarr can use
-	one := call(t, "import_identify", map[string]any{"folders": []any{unmappedRonin}, "candidates": 1})
-	if got := rows(t, one["folders"], "folders"); len(got) != 1 || len(rows(t, got[0]["candidates"], "candidates")) != 1 {
+	one := suite.Call(t, "import_identify", map[string]any{"folders": []any{unmappedRonin}, "candidates": 1})
+	if got := acc.Rows(t, one["folders"], "folders"); len(got) != 1 || len(acc.Rows(t, got[0]["candidates"], "candidates")) != 1 {
 		t.Errorf("one folder = %v", one)
 	}
 	empty := moviesRoot + "/Some Folder Of Nothing"
-	mediaMkdir(t, hostPath(empty))
-	t.Cleanup(func() { _ = os.RemoveAll(hostPath(empty)) })
-	got := rows(t, call(t, "import_identify", map[string]any{"folders": []any{empty}})["folders"], "folders")
-	if len(got) != 1 || len(rowsOf(got[0]["files"])) != 0 || !strings.Contains(str(got[0]["note"]), "no video file") {
+	env.Mkdir(t, testenv.DataDir(), testenv.HostPath(empty))
+	t.Cleanup(func() { _ = os.RemoveAll(testenv.HostPath(empty)) })
+	got := acc.Rows(t, suite.Call(t, "import_identify", map[string]any{"folders": []any{empty}})["folders"], "folders")
+	if len(got) != 1 || len(acc.RowsOf(got[0]["files"])) != 0 || !strings.Contains(acc.Str(got[0]["note"]), "no video file") {
 		t.Errorf("an empty folder = %v", got)
 	}
 }
@@ -106,36 +110,36 @@ func TestImportApply(t *testing.T) {
 	addScratch(t)
 	dropped := importDrop + "/Moon.2009.720p.WEB-DL.x264-GRP.mkv"
 	makeVideo(t, dropped, 97, "1280x720")
-	t.Cleanup(func() { _ = os.RemoveAll(hostPath(importDrop)) })
+	t.Cleanup(func() { _ = os.RemoveAll(testenv.HostPath(importDrop)) })
 
-	scan := rows(t, call(t, "import_scan", map[string]any{"folder": importDrop})["files"], "files")
-	if len(scan) != 1 || str(scan[0]["movie"]) != "Moon (2009)" || str(scan[0]["quality"]) != "WEBDL-720p" {
+	scan := acc.Rows(t, suite.Call(t, "import_scan", map[string]any{"folder": importDrop})["files"], "files")
+	if len(scan) != 1 || acc.Str(scan[0]["movie"]) != "Moon (2009)" || acc.Str(scan[0]["quality"]) != "WEBDL-720p" {
 		t.Fatalf("the dropped file = %v", scan)
 	}
 
 	// copied, graded by hand: the dropped file stays, the film has a copy
-	out := call(t, "import_apply", map[string]any{
+	out := suite.Call(t, "import_apply", map[string]any{
 		"files": []any{map[string]any{"path": dropped, "movie": "Moon", "quality": "WEBRip-720p"}}, "mode": "copy",
 	})
-	if cmd := object(t, out["command"], "command"); str(cmd["status"]) != "completed" {
+	if cmd := acc.Object(t, out["command"], "command"); acc.Str(cmd["status"]) != "completed" {
 		t.Fatalf("the import = %v", out)
 	}
-	moon := call(t, "movie_get", map[string]any{"movie": "Moon"})
-	file := object(t, moon["file"], "file")
-	if str(file["quality"]) != "WEBRip-720p" || !strings.HasPrefix(str(file["path"]), scratchFolder+"/") {
+	moon := suite.Call(t, "movie_get", map[string]any{"movie": "Moon"})
+	file := acc.Object(t, moon["file"], "file")
+	if acc.Str(file["quality"]) != "WEBRip-720p" || !strings.HasPrefix(acc.Str(file["path"]), scratchFolder+"/") {
 		t.Errorf("after a copy, the film's file = %v", file)
 	}
-	if _, err := os.Stat(hostPath(dropped)); err != nil {
+	if _, err := os.Stat(testenv.HostPath(dropped)); err != nil {
 		t.Errorf("a copy took the dropped file away: %v", err)
 	}
 
 	// moved: the dropped file is gone, and the film has it
-	call(t, "import_apply", map[string]any{"files": []any{map[string]any{"path": dropped, "movie": "tmdb:17431"}}, "mode": "move"})
-	file = object(t, call(t, "movie_get", map[string]any{"movie": "Moon"})["file"], "file")
-	if str(file["quality"]) != "WEBDL-720p" {
+	suite.Call(t, "import_apply", map[string]any{"files": []any{map[string]any{"path": dropped, "movie": "tmdb:17431"}}, "mode": "move"})
+	file = acc.Object(t, suite.Call(t, "movie_get", map[string]any{"movie": "Moon"})["file"], "file")
+	if acc.Str(file["quality"]) != "WEBDL-720p" {
 		t.Errorf("after a move, the film's file = %v", file)
 	}
-	if _, err := os.Stat(hostPath(dropped)); !os.IsNotExist(err) {
+	if _, err := os.Stat(testenv.HostPath(dropped)); !os.IsNotExist(err) {
 		t.Errorf("a move left the dropped file: %v", err)
 	}
 
@@ -145,7 +149,7 @@ func TestImportApply(t *testing.T) {
 		"is not a video file Radarr can see": {"files": []any{map[string]any{"path": importDrop + "/nothing.mkv", "movie": "Moon"}}},
 		`no film in the library is titled "Primer"`: {"files": []any{map[string]any{"path": dropped, "movie": "Primer"}}},
 	} {
-		if msg := callErr(t, "import_apply", want); !strings.Contains(msg, args) {
+		if msg := suite.CallErr(t, "import_apply", want); !strings.Contains(msg, args) {
 			t.Errorf("import_apply %v = %q, want %q", want, msg, args)
 		}
 	}

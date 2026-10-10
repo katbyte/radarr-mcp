@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/katbyte/go-kt/version"
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -60,8 +60,7 @@ type diskRow struct {
 
 type logsIn struct {
 	Level string `json:"level,omitempty" jsonschema:"only entries at this level or worse: trace, debug, info, warn, error or fatal; default info"`
-	Limit int    `json:"limit,omitempty" jsonschema:"entries to return, newest first, default 50"`
-	Page  int    `json:"page,omitempty"  jsonschema:"page of limit entries, from 1"`
+	pageIn
 }
 
 type logRow struct {
@@ -139,7 +138,7 @@ func registerServerTools(r *registry) {
 			}
 		}
 
-		folders, err := client.GetRootfolder(ctx)
+		folders, err := client.GetRootFolder(ctx)
 		if err != nil {
 			return nil, out, err
 		}
@@ -191,7 +190,7 @@ func registerServerTools(r *registry) {
 		Name:        "server_disk_space",
 		Description: "List the disks Radarr can see with their free and total space, as Radarr measures it from inside its own container or host.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ noArgs) (*mcp.CallToolResult, diskOut, error) {
-		res, err := client.GetDiskspace(ctx)
+		res, err := client.GetDiskSpace(ctx)
 		if err != nil {
 			return nil, diskOut{}, err
 		}
@@ -208,8 +207,8 @@ func registerServerTools(r *registry) {
 	})
 
 	type logsOut struct {
-		Total   int      `json:"total"   jsonschema:"entries at the level asked for"`
-		Entries []logRow `json:"entries" jsonschema:"newest first"`
+		Entries []logRow `json:"entries" jsonschema:"newest first, at the level asked for or worse"`
+		pageOut
 	}
 	add(r, readTool, &mcp.Tool{
 		Name:        "server_logs",
@@ -222,18 +221,19 @@ func registerServerTools(r *registry) {
 		if !slices.Contains(logLevels, level) {
 			return nil, logsOut{}, fmt.Errorf("level %q: want one of %s", in.Level, strings.Join(logLevels, ", "))
 		}
-		res, err := client.GetLog(ctx, radarr.GetLogOperationOptions{
-			Page:          max(in.Page, 1),
-			PageSize:      limitOr(in.Limit, 50),
-			SortKey:       "time",
-			SortDirection: radarr.SortDirectionDescending,
-			Level:         level,
+		records, paged, err := window(in.pageIn, func(page, size int) ([]radarr.LogResource, int, error) {
+			res, err := client.GetLog(ctx, radarr.GetLogOperationOptions{Page: new(page), PageSize: new(size), SortKey: "time", SortDirection: radarr.SortDirectionDescending, Level: level})
+			if err != nil {
+				return nil, 0, err
+			}
+
+			return res.Model.Records, res.Model.TotalRecords, nil
 		})
 		if err != nil {
 			return nil, logsOut{}, err
 		}
-		out := logsOut{Total: res.Model.TotalRecords}
-		for _, l := range res.Model.Records {
+		out := logsOut{Entries: make([]logRow, 0, len(records)), pageOut: paged}
+		for _, l := range records {
 			out.Entries = append(out.Entries, logRow{Time: l.Time, Level: l.Level, Logger: l.Logger, Message: l.Message, Exception: firstLines(l.Exception, 5)})
 		}
 

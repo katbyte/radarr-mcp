@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -83,7 +83,7 @@ type definitionRow struct {
 
 // definitions reads the quality definitions, worst first.
 func definitions(ctx context.Context, c *radarr.Client) ([]definitionRow, error) {
-	res, err := c.GetQualitydefinition(ctx)
+	res, err := c.GetQualityDefinition(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -104,12 +104,13 @@ func registerQualityTools(r *registry) {
 
 	type profileListOut struct {
 		Profiles []profileRow `json:"profiles"`
+		pageOut
 	}
 	add(r, readTool, &mcp.Tool{
 		Name:        "qualityprofile_list",
 		Description: "List the quality profiles films are held to: the qualities each allows (best first), the cutoff it stops upgrading at, whether it upgrades at all, the custom formats it scores, and how many films are on it.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ noArgs) (*mcp.CallToolResult, profileListOut, error) {
-		res, err := client.GetQualityprofile(ctx)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in pageIn) (*mcp.CallToolResult, profileListOut, error) {
+		res, err := client.GetQualityProfile(ctx)
 		if err != nil {
 			return nil, profileListOut{}, err
 		}
@@ -122,9 +123,10 @@ func registerQualityTools(r *registry) {
 			m := &movies[i]
 			counts[m.QualityProfileId]++
 		}
-		out := profileListOut{}
-		for i := range res.Model {
-			out.Profiles = append(out.Profiles, profileOf(&res.Model[i], counts[res.Model[i].Id]))
+		page, paged := pageRows(res.Model, in)
+		out := profileListOut{Profiles: make([]profileRow, 0, len(page)), pageOut: paged}
+		for i := range page {
+			out.Profiles = append(out.Profiles, profileOf(&page[i], counts[page[i].Id]))
 		}
 
 		return nil, out, nil
@@ -149,6 +151,16 @@ func registerQualityTools(r *registry) {
 		if in.UpgradeAllowed == nil && in.Cutoff == "" && in.MinFormatScore == nil && in.CutoffFormatScore == nil {
 			return nil, profileRow{}, errors.New("nothing to change: give upgrade_allowed, cutoff, min_format_score or cutoff_format_score")
 		}
+
+		// the profile is sent back whole, so it is read again once it is held: another edit of it in this turn may have changed it since it was found
+		unlock := r.locking().By(profileLock(p.Id))
+		defer unlock()
+		held, err := client.GetQualityProfileById(ctx, p.Id)
+		if err != nil {
+			return nil, profileRow{}, err
+		}
+		p = held.Model
+
 		edit := *p
 		if in.UpgradeAllowed != nil {
 			edit.UpgradeAllowed = in.UpgradeAllowed
@@ -164,7 +176,7 @@ func registerQualityTools(r *registry) {
 		if in.CutoffFormatScore != nil {
 			edit.CutoffFormatScore = *in.CutoffFormatScore
 		}
-		res, err := client.PutQualityprofileById(ctx, p.Id, edit)
+		res, err := client.PutQualityProfileById(ctx, p.Id, edit)
 		if err != nil {
 			return nil, profileRow{}, err
 		}
@@ -185,14 +197,21 @@ func registerQualityTools(r *registry) {
 
 	type definitionListOut struct {
 		Definitions []definitionRow `json:"definitions" jsonschema:"worst quality first"`
+		pageOut
 	}
 	add(r, readTool, &mcp.Tool{
 		Name:        "qualitydefinition_list",
 		Description: "List the qualities Radarr knows, worst first, with the size limits each allows in MB per minute of runtime: a release outside them is not grabbed, and audit_size finds files outside them.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ noArgs) (*mcp.CallToolResult, definitionListOut, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in pageIn) (*mcp.CallToolResult, definitionListOut, error) {
 		rows, err := definitions(ctx, client)
+		if err != nil {
+			return nil, definitionListOut{}, err
+		}
 
-		return nil, definitionListOut{Definitions: rows}, err
+		out := definitionListOut{}
+		out.Definitions, out.pageOut = pageRows(rows, in)
+
+		return nil, out, nil
 	})
 
 	type definitionEditIn struct {
@@ -221,7 +240,11 @@ func registerQualityTools(r *registry) {
 			return nil, definitionRow{}, fmt.Errorf("no quality %q; the qualities are %s", in.Quality, strings.Join(names, ", "))
 		}
 		d := rows[i]
-		current, err := client.GetQualitydefinitionById(ctx, d.ID)
+
+		// the limits are sent back whole, so they are read once the quality is held
+		unlock := r.locking().By(definitionLock(d.ID))
+		defer unlock()
+		current, err := client.GetQualityDefinitionById(ctx, d.ID)
 		if err != nil {
 			return nil, definitionRow{}, err
 		}
@@ -240,7 +263,7 @@ func registerQualityTools(r *registry) {
 				edit.MaxSize = nil
 			}
 		}
-		if _, err := client.PutQualitydefinitionById(ctx, d.ID, edit); err != nil {
+		if _, err := client.PutQualityDefinitionById(ctx, d.ID, edit); err != nil {
 			return nil, definitionRow{}, err
 		}
 		after, err := definitions(ctx, client)
@@ -259,21 +282,23 @@ func registerQualityTools(r *registry) {
 	}
 	type formatListOut struct {
 		Formats []formatRow `json:"formats"`
+		pageOut
 	}
 	add(r, readTool, &mcp.Tool{
 		Name:        "customformat_list",
 		Description: "List the custom formats Radarr scores releases and files by (HDR, a release group, a codec, an edition), what each matches, and the score each quality profile gives it.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ noArgs) (*mcp.CallToolResult, formatListOut, error) {
-		formats, err := client.GetCustomformat(ctx)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in pageIn) (*mcp.CallToolResult, formatListOut, error) {
+		formats, err := client.GetCustomFormat(ctx)
 		if err != nil {
 			return nil, formatListOut{}, err
 		}
-		profiles, err := client.GetQualityprofile(ctx)
+		profiles, err := client.GetQualityProfile(ctx)
 		if err != nil {
 			return nil, formatListOut{}, err
 		}
-		out := formatListOut{}
-		for _, f := range formats.Model {
+		page, paged := pageRows(formats.Model, in)
+		out := formatListOut{Formats: make([]formatRow, 0, len(page)), pageOut: paged}
+		for _, f := range page {
 			row := formatRow{ID: f.Id, Name: f.Name}
 			for _, s := range f.Specifications {
 				line := s.Implementation + " " + strconv.Quote(s.Name)

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -39,20 +39,24 @@ func registerExclusionTools(r *registry) {
 
 	type exclusionListOut struct {
 		Exclusions []exclusionRow `json:"exclusions"`
+		pageOut
 	}
 	add(r, readTool, &mcp.Tool{
 		Name:        "exclusion_list",
 		Description: "List the films on Radarr's import list exclusions: ones an import list or a monitored collection will never add, because someone removed them and said so.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ noArgs) (*mcp.CallToolResult, exclusionListOut, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in pageIn) (*mcp.CallToolResult, exclusionListOut, error) {
 		all, err := exclusions(ctx, client)
 		if err != nil {
 			return nil, exclusionListOut{}, err
 		}
-		out := exclusionListOut{}
+		rows := make([]exclusionRow, 0, len(all))
 		for i := range all {
-			out.Exclusions = append(out.Exclusions, exclusionOf(&all[i]))
+			rows = append(rows, exclusionOf(&all[i]))
 		}
-		slices.SortFunc(out.Exclusions, func(a, b exclusionRow) int { return strings.Compare(a.Title, b.Title) })
+		slices.SortFunc(rows, func(a, b exclusionRow) int { return strings.Compare(a.Title, b.Title) })
+
+		out := exclusionListOut{}
+		out.Exclusions, out.pageOut = pageRows(rows, in)
 
 		return nil, out, nil
 	})

@@ -20,13 +20,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"reflect"
 	"regexp"
 	"slices"
 	"strings"
 
-	"github.com/katbyte/radarr-mcp/internal/pandorest/definitions"
+	"github.com/katbyte/pandorest/definitions"
 )
 
 // notExercised are the writes the suite does not call, and why.
@@ -148,7 +147,7 @@ type operation struct {
 type operationList []operation
 
 func operations() (operationList, error) {
-	svc, err := definitions.Load(filepath.Join("..", "api-definitions", "radarr"))
+	svc, err := apiDefinitions()
 	if err != nil {
 		return nil, err
 	}
@@ -199,4 +198,57 @@ func templateRegexp(template string) *regexp.Regexp {
 	b.WriteString("$")
 
 	return regexp.MustCompile(b.String())
+}
+
+var rawMessage = reflect.TypeFor[json.RawMessage]()
+
+// undeclared walks a decoded JSON value beside the Go type it decodes into,
+// and records each object key the type has no field for.
+func undeclared(t reflect.Type, v any, seen map[string]bool) {
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	if t == rawMessage || t.Kind() == reflect.Interface {
+		return
+	}
+	switch t.Kind() {
+	case reflect.Struct:
+		obj, ok := v.(map[string]any)
+		if !ok {
+			return
+		}
+		fields := map[string]reflect.Type{}
+		for f := range t.Fields() {
+			name, _, _ := strings.Cut(f.Tag.Get("json"), ",")
+			if name == "" {
+				name = f.Name
+			}
+			fields[name] = f.Type
+		}
+		for key, child := range obj {
+			ft, ok := fields[key]
+			if !ok {
+				seen[t.Name()+"."+key] = true
+				continue
+			}
+			undeclared(ft, child, seen)
+		}
+	case reflect.Slice:
+		list, ok := v.([]any)
+		if !ok {
+			return
+		}
+		for _, e := range list {
+			undeclared(t.Elem(), e, seen)
+		}
+	case reflect.Map:
+		obj, ok := v.(map[string]any)
+		if !ok {
+			return
+		}
+		for _, e := range obj {
+			undeclared(t.Elem(), e, seen)
+		}
+	default:
+	}
 }

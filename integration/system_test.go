@@ -5,10 +5,12 @@ package integration
 import (
 	"bytes"
 	"mime/multipart"
+	"net/http"
+	"net/url"
 	"slices"
 	"testing"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 )
 
 // TestBackups makes a backup and deletes it. Restoring one is left alone
@@ -40,7 +42,7 @@ func TestBackups(t *testing.T) {
 // TestLogin posts the login form. The container authenticates externally,
 // so it has no users, and a login - like any failed one - is sent back to
 // the login page marked failed. The answer is a redirect, which the client
-// follows to that page.
+// hands back as the answer it is.
 //
 //nolint:paralleltest // the tests share one server
 func TestLogin(t *testing.T) {
@@ -57,9 +59,14 @@ func TestLogin(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res := must(sdk.PostLogin(ctx, &form, w.FormDataContentType(), radarr.PostLoginOperationOptions{ReturnUrl: "/"}))
-	landed := res.HttpResponse.Request.URL
-	if landed.Path != "/login" || landed.Query().Get("loginFailed") != "true" {
-		t.Errorf("the login landed on %s, want /login?loginFailed=true", landed)
+	// the form answers with a redirect, to where it was asked to land or back
+	// to itself, which the client hands back as it came rather than follows
+	res, err := sdk.PostLogin(ctx, &form, w.FormDataContentType(), radarr.PostLoginOperationOptions{ReturnUrl: "/"})
+	if err != nil || res.HttpResponse.StatusCode != http.StatusFound {
+		t.Fatalf("a login that fails = %v, want its redirect as the answer", err)
+	}
+	landed, err := url.Parse(res.HttpResponse.Header.Get("Location"))
+	if err != nil || landed.Path != "/login" || landed.Query().Get("loginFailed") != "true" {
+		t.Errorf("the login was sent to %s, want /login?loginFailed=true", res.HttpResponse.Header.Get("Location"))
 	}
 }

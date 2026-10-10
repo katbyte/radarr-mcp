@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -56,10 +56,10 @@ func registerMovieFileTools(r *registry) {
 				return nil, movieFileOut{}, err
 			}
 		}
-		if _, err := client.PutMoviefileBulk(ctx, []radarr.MovieFileResource{edit}); err != nil {
+		if _, err := client.PutMovieFileBulk(ctx, []radarr.MovieFileResource{edit}); err != nil {
 			return nil, movieFileOut{}, err
 		}
-		file, err := client.GetMoviefileById(ctx, m.MovieFile.Id)
+		file, err := client.GetMovieFileById(ctx, m.MovieFile.Id)
 		if err != nil {
 			return nil, movieFileOut{}, err
 		}
@@ -68,31 +68,59 @@ func registerMovieFileTools(r *registry) {
 	})
 
 	type fileDeleteIn struct {
-		Movie string `json:"movie" jsonschema:"the film whose file to delete: its Radarr id, tmdb:<id>, imdb:<tt id>, or its title"`
+		Movie   string `json:"movie"             jsonschema:"the film whose file to delete: its Radarr id, tmdb:<id>, imdb:<tt id>, or its title"`
+		Confirm bool   `json:"confirm,omitempty" jsonschema:"true to delete; without it nothing changes and the answer says what a confirmed call would delete"`
+	}
+	type fileDeleteOut struct {
+		Movie       string    `json:"movie"`
+		Deleted     *fileInfo `json:"deleted,omitempty"      jsonschema:"the file deleted from disk"`
+		WouldDelete *fileInfo `json:"would_delete,omitempty" jsonschema:"without confirm: the file a confirmed call deletes; nothing has changed"`
+		Warning     string    `json:"warning,omitempty"      jsonschema:"what Radarr does with a monitored film once its file is gone: downloads it again, or stops monitoring it, and how to have the other"`
 	}
 	add(r, deleteTool, &mcp.Tool{
-		Name: "moviefile_delete",
-		Description: "Delete a film's file from disk (to the recycle bin, when Radarr has one set up), leaving the film in the library to be downloaded again: for a fake, a wrong film or a bad encode. " +
-			"A monitored film then counts as missing.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in fileDeleteIn) (*mcp.CallToolResult, movieFileOut, error) {
+		Name:        "moviefile_delete",
+		Description: "Delete a film's file from disk (to the recycle bin, when Radarr has one set up), leaving the film in the library: for a fake, a wrong film or a bad encode. A monitored film then counts as missing and is downloaded again, unless Radarr is set to stop monitoring a film whose file is deleted: the answer warns which it is. Nothing changes without confirm: the answer says which file a confirmed call would delete.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in fileDeleteIn) (*mcp.CallToolResult, fileDeleteOut, error) {
 		m, err := resolveMovie(ctx, client, in.Movie)
 		if err != nil {
-			return nil, movieFileOut{}, err
+			return nil, fileDeleteOut{}, err
 		}
 		if m.MovieFile == nil {
-			return nil, movieFileOut{}, fmt.Errorf("%s has no file", titleYear(m.Title, m.Year))
-		}
-		if _, err := client.DeleteMoviefileById(ctx, m.MovieFile.Id); err != nil {
-			return nil, movieFileOut{}, err
+			return nil, fileDeleteOut{}, fmt.Errorf("%s has no file", titleYear(m.Title, m.Year))
 		}
 
-		return nil, movieFileOut{Movie: titleYear(m.Title, m.Year), File: fileOf(m.MovieFile)}, nil
+		out := fileDeleteOut{Movie: titleYear(m.Title, m.Year)}
+
+		// a film still monitored is one Radarr goes and gets again, unless it is set to stop monitoring a film whose file is deleted: either may not be what was meant, so it is said before and after
+		if isTrue(m.Monitored) {
+			media, err := client.GetConfigMediaManagement(ctx)
+			if err != nil {
+				return nil, fileDeleteOut{}, err
+			}
+			out.Warning = fmt.Sprintf("Radarr still monitors %s, so it downloads the film again once its file is gone. To keep it gone, unmonitor it first with movie_edit.", out.Movie)
+			if isTrue(media.Model.AutoUnmonitorPreviouslyDownloadedMovies) {
+				out.Warning = fmt.Sprintf("Radarr is set to stop monitoring a film whose file is deleted (Unmonitor Deleted Movies), so %s is not downloaded again. To have another copy fetched, monitor it again with movie_edit.", out.Movie)
+			}
+		}
+
+		if !in.Confirm {
+			out.WouldDelete = fileOf(m.MovieFile)
+
+			return nil, out, nil
+		}
+
+		if _, err := client.DeleteMovieFileById(ctx, m.MovieFile.Id); err != nil {
+			return nil, fileDeleteOut{}, err
+		}
+		out.Deleted = fileOf(m.MovieFile)
+
+		return nil, out, nil
 	})
 }
 
 // qualityByName finds a quality by name among the ones Radarr defines.
 func qualityByName(ctx context.Context, c *radarr.Client, name string) (*radarr.Quality, error) {
-	res, err := c.GetQualitydefinition(ctx)
+	res, err := c.GetQualityDefinition(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -2,20 +2,12 @@
 
 Design rules, in priority order:
 
-1. **Wrap judgment, not plumbing.** A tool exists only where an AI has a decision to
-   make. Radarr's UI settings, notifications, authentication and updates stay unwrapped.
-2. **Trim every response.** Tools return the fields a decision needs, never raw resources
-   (`MovieResource` has 50 fields before its file; `movie_list` returns 12).
-3. **Composite over chatty.** If a task always takes N calls (look up → add → wait for the
-   refresh → read it back), it is one tool, not N. Tools that start a Radarr command wait
-   for it to finish and say how it ended.
-4. **Names, not just ids.** Every tool that takes a film, profile, root folder, tag or
-   collection resolves a name, and an unknown one lists what exists.
-5. **Resource-first names** (`movie_*`, `audit_*`, `queue_*`, `tag_*`) so tools group by
-   what they act on.
-6. **Reads are cheap, writes are explicit, destructive is opt-in.** Every tool carries
-   MCP annotations; anything that changes Radarr says so in its description; anything that
-   removes films or their files is disabled unless the operator sets `--enable-delete`.
+1. **Wrap judgment, not plumbing.** A tool exists only where an AI has a decision to make. Radarr's UI settings, notifications, authentication and updates stay unwrapped.
+2. **Trim every response.** Tools return the fields a decision needs, never raw resources (`MovieResource` has 50 fields before its file; `movie_list` returns 12).
+3. **Composite over chatty.** If a task always takes N calls (look up → add → wait for the refresh → read it back), it is one tool, not N. Tools that start a Radarr command wait for it to finish and say how it ended.
+4. **Names, not just ids.** Every tool that takes a film, profile, root folder, tag or collection resolves a name, and an unknown one lists what exists.
+5. **Resource-first names** (`movie_*`, `audit_*`, `queue_*`, `tag_*`) so tools group by what they act on.
+6. **Reads are cheap, writes are explicit, destructive is opt-in.** Every tool carries MCP annotations; anything that changes Radarr says so in its description; anything that removes films or their files is disabled unless the operator sets `--enable-delete`.
 
 ## Done
 
@@ -37,16 +29,9 @@ Design rules, in priority order:
 
 ## Before sonarr-mcp
 
-sonarr-mcp should be a sibling project, as this one is to embyfin-mcp and abs-mcp. What the
-three copy between them - pandorest, the record/replay proxy, the base client, the CLI's
-flag, toolset and HTTP plumbing - belongs in go-kt first, so a fix lands once rather than
-four times.
+sonarr-mcp should be a sibling project, as this one is to embyfin-mcp and abs-mcp. What the three copy between them - pandorest, the record/replay proxy, the base client, the CLI's flag, toolset and HTTP plumbing - belongs in go-kt first, so a fix lands once rather than four times.
 
 ## Guarded / deliberately excluded
 
-- `movie_delete` (removes a film, and with `delete_files` its folder) and `moviefile_delete`:
-  only registered when `--enable-delete` (`RADARR_ENABLE_DELETE`) is set.
-- Not wrapping **as tools**, ever: authentication and the API key, the UI settings,
-  notifications, the updater, the system restart and shutdown, metadata consumers and
-  remote path mappings. `lib/radarr` covers all of it - it is a complete client - but none
-  of it is judgment an AI should be making.
+- `movie_delete` (removes a film, and with `delete_files` its folder) and `moviefile_delete`: only registered when `--enable-delete` (`RADARR_ENABLE_DELETE`) is set, and they change nothing without `confirm`, answering what a confirmed call would remove.
+- Not wrapping **as tools**, ever: authentication and the API key, the UI settings, notifications, the updater, the system restart and shutdown, metadata consumers and remote path mappings. `sdk/radarr` covers all of it - it is a complete client - but none of it is judgment an AI should be making.

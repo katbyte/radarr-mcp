@@ -13,8 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/katbyte/radarr-mcp/lib/client"
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/pandorest/client"
+	"github.com/katbyte/radarr-mcp/lib/testenv"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 )
 
 // TestManualImport imports a file by hand, the way the UI's manual import
@@ -34,9 +35,9 @@ func TestManualImport(t *testing.T) {
 	const folder = "/media/downloads/manual/Alien3.1992.1080p.BluRay.x264-MAN"
 	const path = folder + "/Alien3.1992.1080p.BluRay.x264-MAN.mkv"
 	copyFile(t, alien.Path+"/"+alien.File, path)
-	t.Cleanup(func() { _ = os.RemoveAll(hostPath("/media/downloads/manual")) })
+	t.Cleanup(func() { _ = os.RemoveAll(testenv.HostPath("/media/downloads/manual")) })
 
-	candidates := must(sdk.GetManualimport(ctx, radarr.GetManualimportOperationOptions{Folder: folder})).Model
+	candidates := must(sdk.GetManualImport(ctx, radarr.GetManualImportOperationOptions{Folder: folder})).Model
 	if len(candidates) != 1 || candidates[0].Path != path {
 		t.Fatalf("the folder has %d candidates, want the one file: %+v", len(candidates), candidates)
 	}
@@ -44,7 +45,7 @@ func TestManualImport(t *testing.T) {
 
 	// a candidate reprocessed with a film chosen for it is answered again,
 	// with that film and Radarr's decision on the file for it
-	reprocessed := must(sdk.PostManualimport(ctx, []radarr.ManualImportReprocessResource{{
+	reprocessed := must(sdk.PostManualImport(ctx, []radarr.ManualImportReprocessResource{{
 		Path: path, MovieId: a3.Id, Quality: c.Quality, Languages: c.Languages, ReleaseGroup: "MAN",
 	}})).Model
 	if len(reprocessed) != 1 || reprocessed[0].Movie == nil || reprocessed[0].Movie.Id != a3.Id {
@@ -75,11 +76,11 @@ func TestManualImport(t *testing.T) {
 
 	// Alien³ has the file now, a copy: the one in the folder is still there
 	m := withFile(ctx, t, a3.Id)
-	t.Cleanup(func() { _, _ = sdk.DeleteMoviefileById(context.WithoutCancel(ctx), m.MovieFile.Id) })
+	t.Cleanup(func() { _, _ = sdk.DeleteMovieFileById(context.WithoutCancel(ctx), m.MovieFile.Id) })
 	if !strings.HasPrefix(m.MovieFile.Path, alien3.Path+"/") || m.MovieFile.ReleaseGroup != "MAN" {
 		t.Errorf("imported to %s from release group %q", m.MovieFile.Path, m.MovieFile.ReleaseGroup)
 	}
-	if _, err := os.Stat(hostPath(path)); err != nil {
+	if _, err := os.Stat(testenv.HostPath(path)); err != nil {
 		t.Errorf("a copy import took the original: %v", err)
 	}
 	if !poll(10*time.Second, func() bool { return len(slices.Collect(hookEvents("Download", hooks.received()[before:]))) > 0 }) {

@@ -2,16 +2,36 @@
 
 package integration
 
+// The read sweep: every GET operation in the definitions, called against the
+// running Radarr with arguments resolved from the fixtures, and its answer
+// decoded (or its file read). The bespoke tests prove the shapes the tools
+// rely on field by field; the sweep proves the rest of the read surface
+// answers in its documented status with something in it, that every field
+// the server sends is one its model declares, and that it keeps doing so as
+// the definitions change: a GET the importer adds is swept on the next run
+// with nothing to write, and one that fails must be classified here.
+//
+// The sweep itself is pandorest's (github.com/katbyte/pandorest/sweep); what
+// is here is this suite's fixtures and its cases. Every operation either
+// answers with something, or has a case that says why not. A case whose
+// operation starts answering fails the sweep, so a stale case is noticed and
+// removed, the way a stale importer workaround is.
+
 import (
 	"context"
-	"maps"
+	"net/http"
+	"os"
 	"strconv"
 	"testing"
+	"time"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/pandorest/client"
+	"github.com/katbyte/pandorest/sweep"
+	"github.com/katbyte/radarr-mcp/lib/testenv"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 )
 
-// TestReadSweep calls every GET against the fixtures (see sweep_test.go).
+// TestReadSweep calls every GET against the fixtures.
 // One of every resource a GET can address is created first - a tag, a
 // custom filter, custom format, release profile, remote path mapping, auto
 // tagging rule, exclusion, notification and import list - so each by-id GET
@@ -37,14 +57,14 @@ func TestReadSweep(t *testing.T) {
 	if altTitle == 0 {
 		t.Fatal("no fixture film has an alternate title to read")
 	}
-	credits := must(sdk.GetCredit(ctx, radarr.GetCreditOperationOptions{MovieId: a.Id})).Model
+	credits := must(sdk.GetCredit(ctx, radarr.GetCreditOperationOptions{MovieId: new(a.Id)})).Model
 	collections := must(sdk.GetCollection(ctx, radarr.GetCollectionOperationOptions{})).Model
 	logs := must(sdk.GetLogFile(ctx)).Model
 	tasks := must(sdk.GetSystemTask(ctx)).Model
 	languages := must(sdk.GetLanguage(ctx)).Model
-	definitions := must(sdk.GetQualitydefinition(ctx)).Model
-	profiles := must(sdk.GetQualityprofile(ctx)).Model
-	delays := must(sdk.GetDelayprofile(ctx)).Model
+	definitions := must(sdk.GetQualityDefinition(ctx)).Model
+	profiles := must(sdk.GetQualityProfile(ctx)).Model
+	delays := must(sdk.GetDelayProfile(ctx)).Model
 	metadata := must(sdk.GetMetadata(ctx)).Model
 	if len(credits) == 0 || len(collections) == 0 || len(logs) == 0 || len(tasks) == 0 || len(languages) == 0 ||
 		len(definitions) == 0 || len(profiles) == 0 || len(delays) == 0 || len(metadata) == 0 {
@@ -55,29 +75,38 @@ func TestReadSweep(t *testing.T) {
 	// one of each resource a GET by id reads
 	tag := must(sdk.PostTag(ctx, radarr.TagResource{Label: "sdk-sweep"})).Model
 	t.Cleanup(func() { _, _ = sdk.DeleteTagById(context.WithoutCancel(ctx), tag.Id) })
-	filter := must(sdk.PostCustomfilter(ctx, radarr.CustomFilterResource{
+	filter := must(sdk.PostCustomFilter(ctx, radarr.CustomFilterResource{
 		Type: "movieIndex", Label: "SDK Sweep", Filters: []map[string]any{{"key": "monitored", "value": []any{true}, "type": "equal"}},
 	})).Model
-	t.Cleanup(func() { _, _ = sdk.DeleteCustomfilterById(context.WithoutCancel(ctx), filter.Id) })
-	format := must(sdk.PostCustomformat(ctx, customFormat("SDK Sweep"))).Model
-	t.Cleanup(func() { _, _ = sdk.DeleteCustomformatById(context.WithoutCancel(ctx), format.Id) })
-	release := must(sdk.PostReleaseprofile(ctx, radarr.ReleaseProfileResource{Name: "SDK Sweep", Enabled: new(true), Required: []string{"x264"}})).Model
-	t.Cleanup(func() { _, _ = sdk.DeleteReleaseprofileById(context.WithoutCancel(ctx), release.Id) })
-	mapping := must(sdk.PostRemotepathmapping(ctx, radarr.RemotePathMappingResource{Host: "sweep", RemotePath: "/downloads/", LocalPath: "/media/downloads/"})).Model
-	t.Cleanup(func() { _, _ = sdk.DeleteRemotepathmappingById(context.WithoutCancel(ctx), mapping.Id) })
-	auto := must(sdk.PostAutotagging(ctx, autoTagging("SDK Sweep", tag.Id))).Model
-	t.Cleanup(func() { _, _ = sdk.DeleteAutotaggingById(context.WithoutCancel(ctx), auto.Id) })
+	t.Cleanup(func() { _, _ = sdk.DeleteCustomFilterById(context.WithoutCancel(ctx), filter.Id) })
+	format := must(sdk.PostCustomFormat(ctx, customFormat("SDK Sweep"))).Model
+	t.Cleanup(func() { _, _ = sdk.DeleteCustomFormatById(context.WithoutCancel(ctx), format.Id) })
+	release := must(sdk.PostReleaseProfile(ctx, radarr.ReleaseProfileResource{Name: "SDK Sweep", Enabled: new(true), Required: []string{"x264"}})).Model
+	t.Cleanup(func() { _, _ = sdk.DeleteReleaseProfileById(context.WithoutCancel(ctx), release.Id) })
+	mapping := must(sdk.PostRemotePathMapping(ctx, radarr.RemotePathMappingResource{Host: "sweep", RemotePath: "/downloads/", LocalPath: "/media/downloads/"})).Model
+	t.Cleanup(func() { _, _ = sdk.DeleteRemotePathMappingById(context.WithoutCancel(ctx), mapping.Id) })
+	auto := must(sdk.PostAutoTagging(ctx, autoTagging("SDK Sweep", tag.Id))).Model
+	t.Cleanup(func() { _, _ = sdk.DeleteAutoTaggingById(context.WithoutCancel(ctx), auto.Id) })
 	exclusion := must(sdk.PostExclusions(ctx, radarr.ImportListExclusionResource{TmdbId: 8078, MovieTitle: "Alien Resurrection", MovieYear: 1997})).Model
 	t.Cleanup(func() { _, _ = sdk.DeleteExclusionsById(context.WithoutCancel(ctx), exclusion.Id) })
 	notification := must(sdk.PostNotification(ctx, webhook(t, "SDK Sweep"), radarr.PostNotificationOperationOptions{})).Model
 	t.Cleanup(func() { _, _ = sdk.DeleteNotificationById(context.WithoutCancel(ctx), notification.Id) })
-	list := must(sdk.PostImportlist(ctx, selfList("SDK Sweep"), radarr.PostImportlistOperationOptions{})).Model
-	t.Cleanup(func() { _, _ = sdk.DeleteImportlistById(context.WithoutCancel(ctx), list.Id) })
+	list := must(sdk.PostImportList(ctx, selfList("SDK Sweep"), radarr.PostImportListOperationOptions{})).Model
+	t.Cleanup(func() { _, _ = sdk.DeleteImportListById(context.WithoutCancel(ctx), list.Id) })
 	cmd := command(ctx, t, `{"name":"RescanMovie","movieId":`+strconv.Itoa(a.Id)+`}`)
+	// a film with a history: the manual import, which runs first, leaves the only history a seeded Radarr has
+	recent := must(sdk.GetHistory(ctx, radarr.GetHistoryOperationOptions{PageSize: new(1)})).Model.Records
+	if len(recent) == 0 {
+		t.Fatal("the fixtures are incomplete: Radarr has no history; TestManualImport makes it, so run the whole suite")
+	}
+	// a download no film has yet, for the manual import to find in its folder
+	const loose = "/media/downloads/sweep/Alien.1979.1080p.BluRay.x264-SWEEP"
+	copyFile(t, alien.Path+"/"+alien.File, loose+"/Alien.1979.1080p.BluRay.x264-SWEEP.mkv")
+	t.Cleanup(func() { _ = os.RemoveAll(testenv.HostPath("/media/downloads/sweep")) })
 
 	id := strconv.Itoa
-	resolve := sweepFixtures{
-		path: map[string]string{
+	resolve := sweep.Fixtures{
+		Path: map[string]string{
 			"movie/id":             id(a.Id),
 			"moviefile/id":         id(withFile.Id),
 			"alttitle/id":          id(altTitle),
@@ -112,7 +141,7 @@ func TestReadSweep(t *testing.T) {
 			"content/path": "styles.css",
 			"path":         "movie/" + id(a.TmdbId),
 		},
-		options: map[string]string{
+		Options: map[string]string{
 			"movieId": id(a.Id),
 			"tmdbId":  id(a.TmdbId),
 			"imdbId":  a.ImdbId,
@@ -125,23 +154,38 @@ func TestReadSweep(t *testing.T) {
 	}
 	// each group of settings is one record, 1
 	for _, name := range []string{"host", "ui", "naming", "mediamanagement", "indexer", "downloadclient", "importlist", "metadata"} {
-		resolve.path["config/"+name+"/id"] = "1"
+		resolve.Path["config/"+name+"/id"] = "1"
 	}
 
-	cases := maps.Clone(sweepCases)
-	// both answer for a film or a folder, and need one or the other: Radarr
-	// answers 400 or 500 with neither, which one parameter cannot declare
-	cases["GetMoviefile"] = sweepCase{Options: map[string]any{"MovieId": a.Id}}
-	cases["GetManualimport"] = sweepCase{Options: map[string]any{"Folder": alien.Path}}
+	cases := map[string]sweep.Case{
+		// both answer for a film or a folder, and need one or the other: Radarr
+		// answers 400 or 500 with neither, which one parameter cannot declare
+		"GetMovieFile":    {Options: map[string]any{"MovieId": a.Id}},
+		"GetManualImport": {Options: map[string]any{"Folder": loose}},
+		// the calendar is the days around today unless told, and no fixture film comes out now: Alien opened in 1979 and Aliens in 1986
+		"GetCalendar":     {Options: map[string]any{"Start": "1979-01-01T00:00:00Z", "End": "1986-12-31T00:00:00Z", "Unmonitored": true}},
+		"GetHistoryMovie": {Options: map[string]any{"MovieId": recent[0].MovieId}},
+		"GetLogFileUpdateByFilename": {
+			Status: http.StatusNotFound,
+			Why:    "a container is updated by replacing its image, so Radarr never runs its updater and has no update log to read",
+		},
+		"GetLogFileUpdate":   {Empty: "a container is updated by replacing its image, so Radarr never runs its updater and has no update log to list"},
+		"GetUpdate":          {Empty: "the stand-in for Radarr's update server offers no build newer than the one running, so there is no update to list"},
+		"GetSystemBackup":    {Empty: "there is no backup until one is made; TestBackups makes one and reads the list with it in"},
+		"GetQueueDetails":    {Empty: "nothing is downloading when the sweep runs; TestReleases reads it with two downloads in the queue"},
+		"GetQueueStatus":     {Empty: "nothing is downloading when the sweep runs, so every count is zero; TestReleases reads it with two downloads in the queue"},
+		"GetBlocklistMovie":  {Empty: "nothing is blocklisted when the sweep runs; TestReleases marks a grab failed and reads the film's blocklist with it in"},
+		"GetRename":          {Empty: "Radarr's rename preview is empty while renaming is off, which is how it is seeded; TestSettings turns it on and reads Dune's"},
+		"GetExtraFile":       {Empty: "no fixture film has a subtitle or a metadata file beside it for Radarr to keep track of"},
+		"GetImportListMovie": {Empty: "the one import list the sweep has is Radarr itself, switched off, so no list offers a film"},
+	}
 
-	sweep(t, resolve, cases)
-}
-
-// sweepCases classifies the GETs that do not simply answer.
-var sweepCases = map[string]sweepCase{
-	"GetUpdate": {Status: 500, Why: "Radarr lists its updates from radarr.servarr.com, which the proxy answers empty " +
-		"(its answers carry Radarr's version and the machine's architecture, so no recording would replay elsewhere): with no list to sort, Radarr answers 500"},
-	"GetLogFileUpdateByFilename": {Skip: "Radarr writes an update log only when it installs an update, which the suite never does, so there is none to read"},
+	svc, err := apiDefinitions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Strict: a field Radarr sends that its document does not declare is a failure, not a value the client drops without a word
+	sweep.Sweep{Definitions: svc, Client: sdk, StatusCode: client.StatusCode, Fixtures: resolve, Cases: cases, Strict: true, Timeout: 90 * time.Second}.Run(t)
 }
 
 // customFormat is a custom format matching x265 in a release title.

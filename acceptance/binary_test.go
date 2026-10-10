@@ -27,6 +27,7 @@ import (
 	"testing"
 	"time"
 
+	acc "github.com/katbyte/go-kt/mcp/acctest"
 	"github.com/katbyte/radarr-mcp/tools"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -205,7 +206,7 @@ func TestTheBinary(t *testing.T) {
 					t.Errorf("tools = %v\nwant %v", got, want)
 				}
 				// a real answer came back over stdout, uncorrupted
-				if out := callOn(t, cs, "server_info", nil); str(out["app"]) != "Radarr" || num(t, out["movies"], "movies") == 0 {
+				if out := callOn(t, cs, "server_info", nil); acc.Str(out["app"]) != "Radarr" || acc.Num(t, out["movies"], "movies") == 0 {
 					t.Errorf("server_info = %v", out)
 				}
 				// closing stdin ends the process cleanly
@@ -219,7 +220,7 @@ func TestTheBinary(t *testing.T) {
 			cmd, stderr := bin.command(t, []string{"RADARR_TOOLSETS=curation"}, "serve")
 			cs := connect(t, &mcp.CommandTransport{Command: cmd}, stderr)
 			t.Cleanup(func() { _ = cs.Close() })
-			t.Cleanup(func() { _, _ = invoke("movie_edit", map[string]any{"movie": "Arrival", "monitored": true}) })
+			t.Cleanup(func() { _, _ = suite.Invoke("movie_edit", map[string]any{"movie": "Arrival", "monitored": true}) })
 			monitored := func(on bool) bool {
 				callOn(t, cs, "movie_edit", map[string]any{"movie": "Arrival", "monitored": on})
 				return callOn(t, cs, "movie_get", map[string]any{"movie": "Arrival"})["monitored"] == true
@@ -254,7 +255,7 @@ func TestTheBinary(t *testing.T) {
 		})
 
 		base := "http://" + addr
-		if !eventually(func() bool {
+		if !acc.EventuallyWithin(time.Minute, func() bool {
 			resp, err := http.Get(base + "/healthz") //nolint:noctx // a probe with the test's own timeout
 			if err != nil {
 				return false

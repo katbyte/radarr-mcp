@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -92,7 +92,7 @@ func registerReleaseTools(r *registry) {
 		if err != nil {
 			return nil, releaseSearchOut{}, err
 		}
-		res, err := client.GetRelease(ctx, radarr.GetReleaseOperationOptions{MovieId: m.Id})
+		res, err := client.GetRelease(ctx, radarr.GetReleaseOperationOptions{MovieId: new(m.Id)})
 		if err != nil {
 			return nil, releaseSearchOut{}, err
 		}
@@ -195,7 +195,7 @@ func registerReleaseTools(r *registry) {
 // release's guid: the newest grab carrying it.
 func grabOf(ctx context.Context, c *radarr.Client, guid string) (*radarr.HistoryResource, error) {
 	res, err := c.GetHistory(ctx, radarr.GetHistoryOperationOptions{
-		Page: 1, PageSize: 50, SortKey: "date", SortDirection: radarr.SortDirectionDescending, IncludeMovie: new(true),
+		Page: new(1), PageSize: new(50), SortKey: "date", SortDirection: radarr.SortDirectionDescending, IncludeMovie: new(true),
 	})
 	if err != nil {
 		return nil, err

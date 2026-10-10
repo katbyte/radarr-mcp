@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -30,6 +30,24 @@ type historyRow struct {
 var historyDetail = []string{
 	"indexer", "downloadClient", "downloadClientName", "releaseGroup", "size", "reason", "message",
 	"importedPath", "droppedPath", "sourcePath", "path", "sourceRelativePath", "relativePath", "publishedDate",
+}
+
+// historyPage is how many events are read at a time when the history is read
+// through for the ones young enough.
+const historyPage = 250
+
+// historyEvents are the numbers Radarr filters its history by: it answers an
+// event's name and takes its number (MovieHistoryEventType in Radarr's source,
+// which skips the ones Sonarr had and it does not).
+var historyEvents = map[radarr.MovieHistoryEventType]int{
+	radarr.MovieHistoryEventTypeUnknown:                0,
+	radarr.MovieHistoryEventTypeGrabbed:                1,
+	radarr.MovieHistoryEventTypeDownloadFolderImported: 3,
+	radarr.MovieHistoryEventTypeDownloadFailed:         4,
+	radarr.MovieHistoryEventTypeMovieFileDeleted:       6,
+	radarr.MovieHistoryEventTypeMovieFolderImported:    7,
+	radarr.MovieHistoryEventTypeMovieFileRenamed:       8,
+	radarr.MovieHistoryEventTypeDownloadIgnored:        9,
 }
 
 func historyOf(h *radarr.HistoryResource) historyRow {
@@ -76,68 +94,78 @@ func registerHistoryTools(r *registry) {
 		Movie string `json:"movie,omitempty" jsonschema:"only this film's events: its id, tmdb:<id>, imdb:<tt id> or title"`
 		Event string `json:"event,omitempty" jsonschema:"only events of this kind: grabbed, downloadFolderImported, downloadFailed, movieFileDeleted, movieFileRenamed or downloadIgnored"`
 		Days  int    `json:"days,omitempty"  jsonschema:"only events from the last this many days"`
-		Limit int    `json:"limit,omitempty" jsonschema:"events to return, newest first, default 50"`
+		pageIn
 	}
 	type historyListOut struct {
 		Events []historyRow `json:"events" jsonschema:"newest first"`
+		pageOut
 	}
 	add(r, readTool, &mcp.Tool{
-		Name: "history_list",
-		Description: "Read Radarr's history, newest first: what it grabbed and from which indexer, what it imported and where to, what failed and why, and what was renamed or deleted. " +
-			"Filter by film, kind of event and how many days back.",
+		Name:        "history_list",
+		Description: "Read Radarr's history, newest first: what it grabbed and from which indexer, what it imported and where to, what failed and why, and what was renamed or deleted. Filter by film, kind of event and how many days back.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in historyListIn) (*mcp.CallToolResult, historyListOut, error) {
-		event := strings.TrimSpace(in.Event)
-		if event != "" && !slices.Contains(radarr.PossibleValuesForMovieHistoryEventType(), event) {
-			return nil, historyListOut{}, fmt.Errorf("event %q: want one of %s", in.Event, strings.Join(radarr.PossibleValuesForMovieHistoryEventType(), ", "))
+		opts := radarr.GetHistoryOperationOptions{SortKey: "date", SortDirection: radarr.SortDirectionDescending, IncludeMovie: new(true)}
+		if event := strings.TrimSpace(in.Event); event != "" {
+			id, known := historyEvents[radarr.MovieHistoryEventType(event)]
+			if !known {
+				return nil, historyListOut{}, fmt.Errorf("event %q: want one of %s", in.Event, strings.Join(radarr.PossibleValuesForMovieHistoryEventType(), ", "))
+			}
+			opts.EventType = []int{id}
 		}
-		limit := limitOr(in.Limit, 50)
-		var since string
-		if in.Days > 0 {
-			since = time.Now().UTC().AddDate(0, 0, -in.Days).Format(time.RFC3339)
-		}
-		keep := func(h *radarr.HistoryResource) bool {
-			return (event == "" || string(h.EventType) == event) && (since == "" || h.Date >= since)
-		}
-
-		out := historyListOut{}
 		if in.Movie != "" {
 			m, err := resolveMovie(ctx, client, in.Movie)
 			if err != nil {
-				return nil, out, err
+				return nil, historyListOut{}, err
 			}
-			res, err := client.GetHistoryMovie(ctx, radarr.GetHistoryMovieOperationOptions{MovieId: m.Id, IncludeMovie: new(true)})
+			opts.MovieIds = []int{m.Id}
+		}
+		fetch := func(page, size int) ([]radarr.HistoryResource, int, error) {
+			opts.Page, opts.PageSize = new(page), new(size)
+			res, err := client.GetHistory(ctx, opts)
 			if err != nil {
-				return nil, out, err
+				return nil, 0, err
 			}
-			events := res.Model
-			slices.SortStableFunc(events, func(a, b radarr.HistoryResource) int { return strings.Compare(b.Date, a.Date) })
-			for i := range events {
-				if keep(&events[i]) && len(out.Events) < limit {
-					out.Events = append(out.Events, historyOf(&events[i]))
-				}
+
+			return res.Model.Records, res.Model.TotalRecords, nil
+		}
+
+		// with no age asked for, Radarr does the paging and says how many there are in all
+		if in.Days <= 0 {
+			records, paged, err := window(in.pageIn, fetch)
+			if err != nil {
+				return nil, historyListOut{}, err
 			}
+			out := historyListOut{Events: make([]historyRow, 0, len(records)), pageOut: paged}
+			for i := range records {
+				out.Events = append(out.Events, historyOf(&records[i]))
+			}
+
 			return nil, out, nil
 		}
 
-		// newest first, a page at a time, until enough match or the pages
-		// are older than asked for
-		for page := 1; len(out.Events) < limit; page++ {
-			res, err := client.GetHistory(ctx, radarr.GetHistoryOperationOptions{
-				Page: page, PageSize: 250, SortKey: "date", SortDirection: radarr.SortDirectionDescending, IncludeMovie: new(true),
-			})
+		// Radarr cannot filter by age, so the events are read newest first until the first one older than the cutoff, and paged from those
+		since := time.Now().UTC().AddDate(0, 0, -in.Days).Format(time.RFC3339)
+		var rows []historyRow
+		for page := 1; ; page++ {
+			records, _, err := fetch(page, historyPage)
 			if err != nil {
-				return nil, out, err
+				return nil, historyListOut{}, err
 			}
-			records := res.Model.Records
-			for i := range records {
-				if keep(&records[i]) && len(out.Events) < limit {
-					out.Events = append(out.Events, historyOf(&records[i]))
-				}
+			older := slices.IndexFunc(records, func(h radarr.HistoryResource) bool { return h.Date < since })
+			keep := len(records)
+			if older >= 0 {
+				keep = older
 			}
-			if len(records) < 250 || since != "" && records[len(records)-1].Date < since {
+			for i := range records[:keep] {
+				rows = append(rows, historyOf(&records[i]))
+			}
+			if older >= 0 || len(records) < historyPage {
 				break
 			}
 		}
+
+		out := historyListOut{}
+		out.Events, out.pageOut = pageRows(rows, in.pageIn)
 
 		return nil, out, nil
 	})
@@ -167,11 +195,11 @@ func registerHistoryTools(r *registry) {
 
 	type blocklistListIn struct {
 		Movie string `json:"movie,omitempty" jsonschema:"only this film's blocklisted releases"`
-		Limit int    `json:"limit,omitempty" jsonschema:"entries to return, newest first, default 50"`
+		pageIn
 	}
 	type blocklistListOut struct {
-		Total   int            `json:"total"`
-		Entries []blocklistRow `json:"entries"`
+		Entries []blocklistRow `json:"entries" jsonschema:"newest first"`
+		pageOut
 	}
 	add(r, readTool, &mcp.Tool{
 		Name:        "blocklist_list",
@@ -183,7 +211,7 @@ func registerHistoryTools(r *registry) {
 			if err != nil {
 				return nil, blocklistListOut{}, err
 			}
-			res, err := client.GetBlocklistMovie(ctx, radarr.GetBlocklistMovieOperationOptions{MovieId: m.Id})
+			res, err := client.GetBlocklistMovie(ctx, radarr.GetBlocklistMovieOperationOptions{MovieId: new(m.Id)})
 			if err != nil {
 				return nil, blocklistListOut{}, err
 			}
@@ -200,12 +228,10 @@ func registerHistoryTools(r *registry) {
 		}
 		slices.SortStableFunc(entries, func(a, b radarr.BlocklistResource) int { return strings.Compare(b.Date, a.Date) })
 
-		out := blocklistListOut{Total: len(entries)}
-		for i := range entries {
-			if len(out.Entries) == limitOr(in.Limit, 50) {
-				break
-			}
-			out.Entries = append(out.Entries, blocklistOf(&entries[i]))
+		page, paged := pageRows(entries, in.pageIn)
+		out := blocklistListOut{Entries: make([]blocklistRow, 0, len(page)), pageOut: paged}
+		for i := range page {
+			out.Entries = append(out.Entries, blocklistOf(&page[i]))
 		}
 
 		return nil, out, nil
@@ -250,7 +276,7 @@ func findGrab(ctx context.Context, c *radarr.Client, id int, movie string) (*rad
 		movieID = m.Id
 	}
 	if movieID != 0 {
-		res, err := c.GetHistoryMovie(ctx, radarr.GetHistoryMovieOperationOptions{MovieId: movieID, IncludeMovie: new(true)})
+		res, err := c.GetHistoryMovie(ctx, radarr.GetHistoryMovieOperationOptions{MovieId: new(movieID), IncludeMovie: new(true)})
 		if err != nil {
 			return nil, err
 		}

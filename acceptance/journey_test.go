@@ -20,6 +20,10 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
+
+	acc "github.com/katbyte/go-kt/mcp/acctest"
+	"github.com/katbyte/radarr-mcp/lib/testenv"
 )
 
 // snapshot is the state of the library a read must leave alone: every film
@@ -35,9 +39,9 @@ func snapshot(t *testing.T) string {
 		if name == "movie_list" {
 			args["limit"] = 500
 		}
-		out := call(t, name, args)
+		out := suite.Call(t, name, args)
 		if name == "rootfolder_list" {
-			for _, f := range rows(t, out["root_folders"], "root_folders") {
+			for _, f := range acc.Rows(t, out["root_folders"], "root_folders") {
 				delete(f, "free_space")
 			}
 		}
@@ -87,7 +91,7 @@ func TestJourneyLookupsChangeNothing(t *testing.T) {
 		"audit_runtime":             {"tolerance_percent": 1},
 		"audit_resolution_mismatch": {"root_folder": messyRoot},
 	} {
-		call(t, name, args)
+		suite.Call(t, name, args)
 	}
 	if after := snapshot(t); after != before {
 		b, a := strings.Split(before, "\n"), strings.Split(after, "\n")
@@ -107,37 +111,41 @@ func TestJourneyEveryFixableAudit(t *testing.T) {
 	skipUnlessReady(t)
 	cleared := func(t *testing.T, audit string, args map[string]any, film string) {
 		t.Helper()
-		if slices.Contains(findings(t, call(t, audit, args)), film) {
+		if slices.Contains(findings(t, suite.Call(t, audit, args)), film) {
 			t.Errorf("%s still finds %s after its fix", audit, film)
 		}
 	}
 
 	t.Run("unmonitored: monitor it", func(t *testing.T) {
-		call(t, "movie_edit", map[string]any{"movie": "Alien Resurrection", "monitored": true})
-		t.Cleanup(func() { _, _ = invoke("movie_edit", map[string]any{"movie": "Alien Resurrection", "monitored": false}) })
+		suite.Call(t, "movie_edit", map[string]any{"movie": "Alien Resurrection", "monitored": true})
+		t.Cleanup(func() {
+			_, _ = suite.Invoke("movie_edit", map[string]any{"movie": "Alien Resurrection", "monitored": false})
+		})
 		cleared(t, "audit_unmonitored", nil, "Alien Resurrection (1997)")
 		// and, monitored with no file, it is now what Radarr is looking for
-		if got := findings(t, call(t, "audit_missing_files", nil)); !slices.Contains(got, "Alien Resurrection (1997)") {
+		if got := findings(t, suite.Call(t, "audit_missing_files", nil)); !slices.Contains(got, "Alien Resurrection (1997)") {
 			t.Errorf("monitored, it is not missing: %v", got)
 		}
 	})
 
 	t.Run("missing files: stop wanting it", func(t *testing.T) {
-		call(t, "movie_edit", map[string]any{"movie": "tmdb:8077", "monitored": false})
-		t.Cleanup(func() { _, _ = invoke("movie_edit", map[string]any{"movie": "tmdb:8077", "monitored": true}) })
+		suite.Call(t, "movie_edit", map[string]any{"movie": "tmdb:8077", "monitored": false})
+		t.Cleanup(func() { _, _ = suite.Invoke("movie_edit", map[string]any{"movie": "tmdb:8077", "monitored": true}) })
 		cleared(t, "audit_missing_files", nil, "Alien³ (1992)")
 	})
 
 	t.Run("profile mismatch: a profile that allows the file", func(t *testing.T) {
-		call(t, "movie_edit", map[string]any{"movie": "Contact", "quality_profile": profileUHD})
-		t.Cleanup(func() { _, _ = invoke("movie_edit", map[string]any{"movie": "Contact", "quality_profile": profileHD}) })
+		suite.Call(t, "movie_edit", map[string]any{"movie": "Contact", "quality_profile": profileUHD})
+		t.Cleanup(func() {
+			_, _ = suite.Invoke("movie_edit", map[string]any{"movie": "Contact", "quality_profile": profileHD})
+		})
 		cleared(t, "audit_profile_mismatch", nil, "Contact (1997)")
 	})
 
 	t.Run("unmapped folder: add the film for it", func(t *testing.T) {
-		added := call(t, "movie_add", map[string]any{"movie": "tmdb:8195", "quality_profile": profileHD, "root_folder": moviesRoot, "folder": "Ronin (1998)"})
-		t.Cleanup(func() { _, _ = invoke("movie_delete", map[string]any{"movie": "tmdb:8195"}) })
-		if str(added["path"]) != unmappedRonin || added["has_file"] != true {
+		added := suite.Call(t, "movie_add", map[string]any{"movie": "tmdb:8195", "quality_profile": profileHD, "root_folder": moviesRoot, "folder": "Ronin (1998)"})
+		t.Cleanup(func() { _, _ = suite.Invoke("movie_delete", map[string]any{"movie": "tmdb:8195", "confirm": true}) })
+		if acc.Str(added["path"]) != unmappedRonin || added["has_file"] != true {
 			t.Errorf("Ronin added = %v", added)
 		}
 		cleared(t, "audit_unmapped_folders", nil, "Ronin (1998)")
@@ -145,28 +153,30 @@ func TestJourneyEveryFixableAudit(t *testing.T) {
 
 	t.Run("collection gaps: add one film, exclude the rest", func(t *testing.T) {
 		// the film added is no longer missing from its collection
-		call(t, "movie_add", map[string]any{
+		suite.Call(t, "movie_add", map[string]any{
 			"movie": "tmdb:604", "quality_profile": profileHD, "root_folder": moviesRoot, "monitored": false,
 		})
-		t.Cleanup(func() { _, _ = invoke("movie_delete", map[string]any{"movie": "tmdb:604", "delete_files": true}) })
-		gap := finding(t, call(t, "audit_collection_gaps", nil), "The Matrix Collection")
-		for _, m := range rows(t, gap["missing"], "missing") {
-			if num(t, m["tmdb_id"], "tmdb_id") == 604 {
+		t.Cleanup(func() {
+			_, _ = suite.Invoke("movie_delete", map[string]any{"movie": "tmdb:604", "delete_files": true, "confirm": true})
+		})
+		gap := finding(t, suite.Call(t, "audit_collection_gaps", nil), "The Matrix Collection")
+		for _, m := range acc.Rows(t, gap["missing"], "missing") {
+			if acc.Num(t, m["tmdb_id"], "tmdb_id") == 604 {
 				t.Errorf("the film added is still a gap: %v", gap)
 			}
 		}
-		if !strings.Contains(str(gap["detail"]), "holds 2 of 4") {
+		if !strings.Contains(acc.Str(gap["detail"]), "holds 2 of 4") {
 			t.Errorf("the collection now = %v", gap["detail"])
 		}
 
 		var ids []any
 		for _, tmdb := range []string{"605", "624860"} {
-			out := call(t, "exclusion_add", map[string]any{"movie": "tmdb:" + tmdb})
+			out := suite.Call(t, "exclusion_add", map[string]any{"movie": "tmdb:" + tmdb})
 			ids = append(ids, out["id"])
 		}
-		t.Cleanup(func() { _, _ = invoke("exclusion_remove", map[string]any{"ids": ids}) })
-		for _, f := range rows(t, call(t, "audit_collection_gaps", nil)["findings"], "findings") {
-			if str(f["title"]) == "The Matrix Collection" {
+		t.Cleanup(func() { _, _ = suite.Invoke("exclusion_remove", map[string]any{"ids": ids}) })
+		for _, f := range acc.Rows(t, suite.Call(t, "audit_collection_gaps", nil)["findings"], "findings") {
+			if acc.Str(f["title"]) == "The Matrix Collection" {
 				t.Errorf("the excluded films are still gaps: %v", f)
 			}
 		}
@@ -178,11 +188,11 @@ func TestJourneyEveryFixableAudit(t *testing.T) {
 		t.Cleanup(func() { moveTo(t, id, wrong) })
 		// a move to the root folder the film is already in rebuilds its
 		// folder's name from the naming scheme
-		out := call(t, "movie_edit", map[string]any{"movie": messyDune, "root_folder": messyRoot})
-		if moved := rows(t, out["movies"], "movies"); len(moved) != 1 || str(moved[0]["path"]) != right {
+		out := suite.Call(t, "movie_edit", map[string]any{"movie": messyDune, "root_folder": messyRoot})
+		if moved := acc.Rows(t, out["movies"], "movies"); len(moved) != 1 || acc.Str(moved[0]["path"]) != right {
 			t.Fatalf("movie_edit into its own root folder = %v", out)
 		}
-		if _, err := os.Stat(hostPath(right)); err != nil {
+		if _, err := os.Stat(testenv.HostPath(right)); err != nil {
 			t.Errorf("the folder was not renamed on disk: %v", err)
 		}
 		cleared(t, "audit_year_mismatch", nil, messyDune)
@@ -193,15 +203,15 @@ func TestJourneyEveryFixableAudit(t *testing.T) {
 		addScratch(t)
 		// the same film, with a file that stops after 40 of its 97 minutes
 		makeVideo(t, scratchFile, 40, "1920x1080")
-		call(t, "movie_rescan", map[string]any{"movies": []any{"Moon"}})
-		f := finding(t, call(t, "audit_runtime", nil), "Moon (2009)")
-		if !strings.Contains(str(f["detail"]), "40 minutes") {
+		suite.Call(t, "movie_rescan", map[string]any{"movies": []any{"Moon"}})
+		f := finding(t, suite.Call(t, "audit_runtime", nil), "Moon (2009)")
+		if !strings.Contains(acc.Str(f["detail"]), "40 minutes") {
 			t.Fatalf("the short file = %v", f)
 		}
-		call(t, "moviefile_delete", map[string]any{"movie": "Moon"})
+		suite.Call(t, "moviefile_delete", map[string]any{"movie": "Moon", "confirm": true})
 		cleared(t, "audit_runtime", nil, "Moon (2009)")
 		// and Radarr is looking for the film again
-		if !slices.Contains(findings(t, call(t, "audit_missing_files", nil)), "Moon (2009)") {
+		if !slices.Contains(findings(t, suite.Call(t, "audit_missing_files", nil)), "Moon (2009)") {
 			t.Error("with its file gone, the film is not what Radarr is looking for")
 		}
 	})
@@ -210,22 +220,22 @@ func TestJourneyEveryFixableAudit(t *testing.T) {
 		addScratch(t)
 		extra := scratchFolder + "/Moon.2009.720p.WEBDL.x264-GRP.mkv"
 		makeVideo(t, extra, 97, "1280x720")
-		f := finding(t, call(t, "audit_untracked_files", nil), "Moon (2009)")
-		if str(f["file"]) != "Moon.2009.720p.WEBDL.x264-GRP.mkv" {
+		f := finding(t, suite.Call(t, "audit_untracked_files", nil), "Moon (2009)")
+		if acc.Str(f["file"]) != "Moon.2009.720p.WEBDL.x264-GRP.mkv" {
 			t.Fatalf("the untracked file = %v", f)
 		}
-		call(t, "import_apply", map[string]any{"files": []any{map[string]any{"path": extra, "movie": "Moon"}}})
+		suite.Call(t, "import_apply", map[string]any{"files": []any{map[string]any{"path": extra, "movie": "Moon"}}})
 		cleared(t, "audit_untracked_files", nil, "Moon (2009)")
 		// and the film now has the file that was untracked
-		file := object(t, call(t, "movie_get", map[string]any{"movie": "Moon"})["file"], "file")
-		if str(file["quality"]) != "WEBDL-720p" {
+		file := acc.Object(t, suite.Call(t, "movie_get", map[string]any{"movie": "Moon"})["file"], "file")
+		if acc.Str(file["quality"]) != "WEBDL-720p" {
 			t.Errorf("the film's file after the import = %v", file)
 		}
 	})
 
 	t.Run("naming and a resolution lie: rename by the scheme", func(t *testing.T) {
-		call(t, "naming_edit", map[string]any{"rename_movies": true})
-		t.Cleanup(func() { _, _ = invoke("naming_edit", map[string]any{"rename_movies": false}) })
+		suite.Call(t, "naming_edit", map[string]any{"rename_movies": true})
+		t.Cleanup(func() { _, _ = suite.Invoke("naming_edit", map[string]any{"rename_movies": false}) })
 		before := map[string]string{
 			messyMatrix: messyRoot + "/The Matrix (1999)/the.matrix.1999.1080p.bluray.x264-GRP.mkv",
 			messy2049:   messyRoot + "/Blade Runner 2049 (2017)/Blade Runner 2049 (2017) Bluray-2160p.mkv",
@@ -237,13 +247,13 @@ func TestJourneyEveryFixableAudit(t *testing.T) {
 		// put the fixtures' names back on disk, and have Radarr read them
 		t.Cleanup(func() {
 			for film := range before {
-				_ = os.Rename(hostPath(after[film]), hostPath(before[film]))
-				_, _ = invoke("movie_rescan", map[string]any{"movies": []any{film}})
+				_ = os.Rename(testenv.HostPath(after[film]), testenv.HostPath(before[film]))
+				_, _ = suite.Invoke("movie_rescan", map[string]any{"movies": []any{film}})
 			}
 		})
-		call(t, "movie_rename", map[string]any{"movies": []any{messyMatrix, messy2049}, "preview": false})
+		suite.Call(t, "movie_rename", map[string]any{"movies": []any{messyMatrix, messy2049}, "preview": false})
 		for film, path := range after {
-			if _, err := os.Stat(hostPath(path)); err != nil {
+			if _, err := os.Stat(testenv.HostPath(path)); err != nil {
 				t.Errorf("%s was not renamed to %s: %v", film, path, err)
 			}
 		}
@@ -254,7 +264,7 @@ func TestJourneyEveryFixableAudit(t *testing.T) {
 
 	// every fix put back: the audits find what they found before
 	for audit, want := range filmAudits {
-		if got := findings(t, call(t, audit, nil)); !slices.Equal(got, want) {
+		if got := findings(t, suite.Call(t, audit, nil)); !slices.Equal(got, want) {
 			t.Errorf("after the fixes were put back, %s = %v, want %v", audit, got, want)
 		}
 	}
@@ -267,13 +277,13 @@ func TestJourneyEveryFixableAudit(t *testing.T) {
 func moveTo(t *testing.T, id int, folder string) {
 	t.Helper()
 
-	url := os.Getenv("RADARR_SERVER") + "/api/v3/movie/" + strconv.Itoa(id)
+	url := testenv.Server() + "/api/v3/movie/" + strconv.Itoa(id)
 	send := func(method, url string, body io.Reader) []byte {
 		req, err := http.NewRequestWithContext(context.WithoutCancel(ctx), method, url, body)
 		if err != nil {
 			t.Fatal(err)
 		}
-		req.Header.Set("X-Api-Key", os.Getenv("RADARR_TOKEN"))
+		req.Header.Set("X-Api-Key", testenv.Token())
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
@@ -297,8 +307,8 @@ func moveTo(t *testing.T, id int, folder string) {
 	}
 	send(http.MethodPut, url+"?moveFiles=true", bytes.NewReader(body))
 	// Radarr moves the folder in a command of its own, after the edit answers
-	if !eventually(func() bool {
-		_, err := os.Stat(hostPath(folder))
+	if !acc.EventuallyWithin(time.Minute, func() bool {
+		_, err := os.Stat(testenv.HostPath(folder))
 		return err == nil
 	}) {
 		t.Errorf("film %d never reached %s", id, folder)
@@ -310,14 +320,14 @@ func moveTo(t *testing.T, id int, folder string) {
 func TestJourneyWritesDoneTwice(t *testing.T) {
 	skipUnlessReady(t)
 	for range 2 {
-		call(t, "movie_edit", map[string]any{"movie": "Arrival", "monitored": false, "add_tags": []any{"twice"}})
+		suite.Call(t, "movie_edit", map[string]any{"movie": "Arrival", "monitored": false, "add_tags": []any{"twice"}})
 	}
 	t.Cleanup(func() {
-		_, _ = invoke("movie_edit", map[string]any{"movie": "Arrival", "monitored": true, "remove_tags": []any{"twice"}})
-		_, _ = invoke("tag_delete", map[string]any{"tag": "twice"})
+		_, _ = suite.Invoke("movie_edit", map[string]any{"movie": "Arrival", "monitored": true, "remove_tags": []any{"twice"}})
+		_, _ = suite.Invoke("tag_delete", map[string]any{"tag": "twice"})
 	})
-	got := call(t, "movie_get", map[string]any{"movie": "Arrival"})
-	if got["monitored"] != false || !slices.Equal(strs(t, got["tags"], "tags"), []string{"twice"}) {
+	got := suite.Call(t, "movie_get", map[string]any{"movie": "Arrival"})
+	if got["monitored"] != false || !slices.Equal(acc.Strs(t, acc.OrEmptyList(got["tags"]), "tags"), []string{"twice"}) {
 		t.Errorf("after two edits = monitored %v, tags %v", got["monitored"], got["tags"])
 	}
 
@@ -326,11 +336,11 @@ func TestJourneyWritesDoneTwice(t *testing.T) {
 		"movie_add":      {"movie": "tmdb:329865", "quality_profile": profileHD, "root_folder": moviesRoot},
 		"rootfolder_add": {"path": moviesRoot},
 	} {
-		callErr(t, name, args)
+		suite.CallErr(t, name, args)
 	}
-	out := call(t, "exclusion_add", map[string]any{"movie": "tmdb:604"})
-	t.Cleanup(func() { _, _ = invoke("exclusion_remove", map[string]any{"ids": []any{out["id"]}}) })
-	if msg := callErr(t, "exclusion_add", map[string]any{"movie": "tmdb:604"}); !strings.Contains(msg, "already excluded") {
+	out := suite.Call(t, "exclusion_add", map[string]any{"movie": "tmdb:604"})
+	t.Cleanup(func() { _, _ = suite.Invoke("exclusion_remove", map[string]any{"ids": []any{out["id"]}}) })
+	if msg := suite.CallErr(t, "exclusion_add", map[string]any{"movie": "tmdb:604"}); !strings.Contains(msg, "already excluded") {
 		t.Errorf("a second exclusion = %q", msg)
 	}
 }
@@ -339,7 +349,7 @@ func TestJourneyWritesDoneTwice(t *testing.T) {
 // time: the tools share nothing a call can trample.
 func TestJourneyCallsAtOnce(t *testing.T) {
 	skipUnlessReady(t)
-	want := findings(t, call(t, "audit_year_mismatch", nil))
+	want := findings(t, suite.Call(t, "audit_year_mismatch", nil))
 	var wg sync.WaitGroup
 	errs := make(chan string, 64)
 	for i := range 24 {
@@ -356,14 +366,14 @@ func TestJourneyCallsAtOnce(t *testing.T) {
 			default:
 				name, args = "movie_edit", map[string]any{"movie": "Arrival", "add_tags": []any{"at-once"}}
 			}
-			out, err := invoke(name, args)
+			out, err := suite.Invoke(name, args)
 			switch {
 			case err != nil:
 				errs <- err.Error()
 			case name == "audit_year_mismatch":
 				var got []string
-				for _, f := range rowsOf(out["findings"]) {
-					got = append(got, titleYear(str(f["title"]), int(num0(f["year"]))))
+				for _, f := range acc.RowsOf(out["findings"]) {
+					got = append(got, titleYear(acc.Str(f["title"]), acc.NumOr0(f["year"])))
 				}
 				if !slices.Equal(got, want) {
 					errs <- "audit_year_mismatch at once = " + strings.Join(got, ",")
@@ -374,13 +384,13 @@ func TestJourneyCallsAtOnce(t *testing.T) {
 	wg.Wait()
 	close(errs)
 	t.Cleanup(func() {
-		_, _ = invoke("movie_edit", map[string]any{"movie": "Arrival", "remove_tags": []any{"at-once"}})
-		_, _ = invoke("tag_delete", map[string]any{"tag": "at-once"})
+		_, _ = suite.Invoke("movie_edit", map[string]any{"movie": "Arrival", "remove_tags": []any{"at-once"}})
+		_, _ = suite.Invoke("tag_delete", map[string]any{"tag": "at-once"})
 	})
 	for e := range errs {
 		t.Error(e)
 	}
-	if tags := strs(t, call(t, "movie_get", map[string]any{"movie": "Arrival"})["tags"], "tags"); !slices.Equal(tags, []string{"at-once"}) {
+	if tags := acc.Strs(t, acc.OrEmptyList(suite.Call(t, "movie_get", map[string]any{"movie": "Arrival"})["tags"]), "tags"); !slices.Equal(tags, []string{"at-once"}) {
 		t.Errorf("six concurrent tag adds left %v", tags)
 	}
 }
@@ -389,18 +399,18 @@ func TestJourneyCallsAtOnce(t *testing.T) {
 // not on disk, not counted in its root folder, not carrying its tag.
 func TestJourneyADeletedFilmLeavesNothingBehind(t *testing.T) {
 	addScratch(t)
-	folders := func() map[string]float64 {
-		out := map[string]float64{}
-		for _, f := range rows(t, call(t, "rootfolder_list", nil)["root_folders"], "root_folders") {
-			out[str(f["path"])] = num0(f["movies"])
+	folders := func() map[string]int {
+		out := map[string]int{}
+		for _, f := range acc.Rows(t, suite.Call(t, "rootfolder_list", nil)["root_folders"], "root_folders") {
+			out[acc.Str(f["path"])] = acc.NumOr0(f["movies"])
 		}
 		return out
 	}
 	with := folders()
-	tagFilms := func() float64 {
-		for _, tag := range rows(t, call(t, "tag_list", nil)["tags"], "tags") {
-			if str(tag["label"]) == "scratch" {
-				return num0(tag["movies"])
+	tagFilms := func() int {
+		for _, tag := range acc.Rows(t, suite.Call(t, "tag_list", nil)["tags"], "tags") {
+			if acc.Str(tag["label"]) == "scratch" {
+				return acc.NumOr0(tag["movies"])
 			}
 		}
 		return -1
@@ -409,7 +419,7 @@ func TestJourneyADeletedFilmLeavesNothingBehind(t *testing.T) {
 		t.Fatalf("the scratch tag carries %v films", tagFilms())
 	}
 
-	call(t, "movie_delete", map[string]any{"movie": "Moon", "delete_files": true})
+	suite.Call(t, "movie_delete", map[string]any{"movie": "Moon", "delete_files": true, "confirm": true})
 	if got := folders(); got[moviesRoot] != with[moviesRoot]-1 {
 		t.Errorf("%s holds %v films, was %v", moviesRoot, got[moviesRoot], with[moviesRoot])
 	}
@@ -417,18 +427,18 @@ func TestJourneyADeletedFilmLeavesNothingBehind(t *testing.T) {
 		t.Errorf("the tag still carries %v films", n)
 	}
 	// the folder goes in the background, a moment after the delete answers
-	if !eventually(func() bool {
-		_, err := os.Stat(hostPath(scratchFolder))
+	if !acc.EventuallyWithin(time.Minute, func() bool {
+		_, err := os.Stat(testenv.HostPath(scratchFolder))
 		return os.IsNotExist(err)
 	}) {
 		t.Errorf("the folder is still on disk a minute after the delete")
 	}
-	if got := rows(t, call(t, "movie_list", map[string]any{"query": "moon"})["movies"], "movies"); len(got) != 0 {
+	if got := acc.Rows(t, suite.Call(t, "movie_list", map[string]any{"query": "moon"})["movies"], "movies"); len(got) != 0 {
 		t.Errorf("still in the library: %v", got)
 	}
 	// and no audit sees a trace of it
-	for _, f := range rows(t, call(t, "audit_unmapped_folders", nil)["findings"], "findings") {
-		if strings.Contains(str(f["path"]), "Moon") {
+	for _, f := range acc.Rows(t, suite.Call(t, "audit_unmapped_folders", nil)["findings"], "findings") {
+		if strings.Contains(acc.Str(f["path"]), "Moon") {
 			t.Errorf("its folder is unmapped: %v", f)
 		}
 	}

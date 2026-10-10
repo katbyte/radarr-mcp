@@ -8,18 +8,9 @@
 ![lint](https://github.com/katbyte/radarr-mcp/actions/workflows/pr-golangci-lint.yaml/badge.svg)
 [![coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/katbyte/radarr-mcp/badges/coverage.json)](https://github.com/katbyte/radarr-mcp/actions/workflows/coverage.yaml)
 
-An [MCP](https://modelcontextprotocol.io) server, CLI and Go SDK that **audit a
-[Radarr](https://radarr.video) film library for the things that actually go wrong, and fix
-what they find** - from Claude Code, Claude Desktop, or any other MCP client.
+An [MCP](https://modelcontextprotocol.io) server, CLI and Go SDK that **audit a [Radarr](https://radarr.video) film library for the things that actually go wrong, and fix what they find** - from Claude Code, Claude Desktop, or any other MCP client.
 
-Radarr already exposes a large API, and an MCP server that wraps it lets a model list films
-and start downloads. This one does that too, but the reason it exists is the layer above:
-**18 audits**, each a sweep over the whole library for one thing that goes wrong in a real
-collection - a folder matched to the wrong film, a folder renamed behind Radarr's back, a
-720p file named 2160p, a download cut off halfway, a 4K file on a 1080p profile, a
-dubbed-only copy of a Japanese film, a second copy nobody told Radarr about, a trilogy with a
-hole in it, a download stuck in the queue - returning a worklist rather than a dump, and
-naming the tool that fixes it.
+Radarr already exposes a large API, and an MCP server that wraps it lets a model list films and start downloads. This one does that too, but the reason it exists is the layer above: **18 audits**, each a sweep over the whole library for one thing that goes wrong in a real collection - a folder matched to the wrong film, a folder renamed behind Radarr's back, a 720p file named 2160p, a download cut off halfway, a 4K file on a 1080p profile, a dubbed-only copy of a Japanese film, a second copy nobody told Radarr about, a trilogy with a hole in it, a download stuck in the queue - returning a worklist rather than a dump, and naming the tool that fixes it.
 
 ### The audits
 
@@ -45,17 +36,12 @@ naming the tool that fixes it.
 | `audit_collection_gaps` | TMDB collections the library holds some but not all of, each with the released films it is missing, leaving out ones on the exclusions; `movie_add` fills a gap, `collection_edit` has Radarr fill them all |
 | `audit_queue` | downloads that will not finish on their own: imports Radarr blocked (no video file, not an upgrade, the wrong film) and failed downloads, with the reasons it gives; `import_apply` imports one by hand, `queue_remove` clears it |
 
-The design principle: **detection is code, correction is judgment.** The server runs cheap
-deterministic checks over the whole library and produces worklists; the AI reasons only about
-the anomalies. Most audits are one request for the whole library, because Radarr answers every
-film with its file and what its probe found inside it. Every response is a trimmed projection
-of what a decision needs, never the raw API object (`MovieResource` has 50 fields before its
-file and what is inside it; `movie_list` returns 12).
+The design principle: **detection is code, correction is judgment.** The server runs cheap deterministic checks over the whole library and produces worklists; the AI reasons only about the anomalies. Most audits are one request for the whole library, because Radarr answers every film with its file and what its probe found inside it. Every response is a trimmed projection of what a decision needs, never the raw API object (`MovieResource` has 50 fields before its file and what is inside it; `movie_list` returns 12).
 
 ### What else is in the box
 
 - **78 tools, in toolsets.** Find, read and add films, edit them one at a time or in bulk, correct a file's grade, import files by hand, search the indexers and grab a release yourself, watch the queue and the history, blocklist and exclude, collections, tags, root folders, quality profiles and size limits, naming, indexer and download client checks, health, logs, backups and tasks. Each sits in a toolset a session can load on its own, so a client spends about 850 tokens of context by default rather than 11,900.
-- **A Go SDK.** `lib/radarr` is a complete typed client for Radarr's v3 API - all 237 operations, generated from Radarr's own OpenAPI document, standard library only, no knowledge of MCP. Useful on its own, whether or not you care about AI.
+- **A Go SDK.** `sdk/radarr` is a complete typed client for Radarr's v3 API - all 237 operations, generated from Radarr's own OpenAPI document, standard library only, no knowledge of MCP. Useful on its own, whether or not you care about AI.
 - **Tested against a real Radarr.** Every tool runs against a real Radarr in Docker, with a fake indexer and a download client so grabs really download and import. The suite fails if a registered tool has no test, and Radarr's calls out to its metadata service are recorded once and replayed, so CI needs no network.
 
 ## Installation
@@ -64,8 +50,7 @@ file and what is inside it; `movie_list` returns 12).
 go install github.com/katbyte/radarr-mcp@latest
 ```
 
-Tested against Radarr 6.4; the live suites run the `lscr.io/linuxserver/radarr` image of that
-version.
+Tested against Radarr 6.4; the live suites run the `lscr.io/linuxserver/radarr` image of that version.
 
 ## Configuration
 
@@ -78,21 +63,18 @@ All options can be passed as command-line flags, environment variables, or via a
 | `RADARR_READ_ONLY` | `--read-only` | register only tools that never change server state |
 | `RADARR_ENABLE_DELETE` | `--enable-delete` | register `movie_delete` and `moviefile_delete`, the two tools that can remove films and their files |
 | `RADARR_TOOLSETS` | `--toolsets` | groups of tools to register, default `core`: `all`, `core`, `curation`, `acquire`, `organise`, `admin`, or a resource family like `movie` (`core` is always included) |
-| `RADARR_ALLOW_TOOLS` | `--allow-tools` | only register these tools (names, `movie_*` globs, or `essential`) |
-| `RADARR_DENY_TOOLS` | `--deny-tools` | never register these tools (names or globs such as `*_delete`) |
+| `RADARR_ALLOW_TOOLS` | `--allow-tools` | register these tools as well as the toolsets asked for, or only these when no toolset is (names, `movie_*` globs, or `essential`) |
+| `RADARR_DENY_TOOLS` | `--deny-tools` | never register these tools, whatever asked for them (names or globs such as `*_delete`) |
 | `RADARR_LOG` | | log level (`WARN` default; `DEBUG`, `TRACE`, ...) |
 | `RADARR_LISTEN` | `--listen` | serve MCP over HTTP on this address (e.g. `:8080`) instead of stdio |
 | `RADARR_AUTH_TOKEN` | `--auth-token` | bearer token required on the HTTP endpoint (required with `--listen`) |
 | `RADARR_ALLOW_NO_AUTH` | `--allow-no-auth` | serve HTTP with no bearer token at all: anyone who can reach the port can use every tool |
 
-Paths are always as Radarr sees them. When Radarr runs in a container, a root folder is the
-path inside that container (`/movies`), not the one on the host.
+Paths are always as Radarr sees them. When Radarr runs in a container, a root folder is the path inside that container (`/movies`), not the one on the host.
 
 ### Configuration File
 
-You can place a `.radarr-mcp` file in your home directory `~/.radarr-mcp` (for global settings)
-or in your current directory `./.radarr-mcp` (for per-project settings). Keys match the long flag
-names using the `env` format:
+You can place a `.radarr-mcp` file in your home directory `~/.radarr-mcp` (for global settings) or in your current directory `./.radarr-mcp` (for per-project settings). Keys match the long flag names using the `env` format:
 
 ```env
 SERVER=http://nas:7878
@@ -135,8 +117,7 @@ claude mcp add radarr -e RADARR_SERVER=http://nas:7878 -e RADARR_TOKEN=... -- ra
 
 ### Run as a service (HTTP transport)
 
-`serve --listen :8080` serves the MCP Streamable HTTP transport at `/mcp` (plus `GET /healthz`)
-instead of stdio. `RADARR_AUTH_TOKEN` is required: clients must send `Authorization: Bearer
+`serve --listen :8080` serves the MCP Streamable HTTP transport at `/mcp` (plus `GET /healthz`) instead of stdio. `RADARR_AUTH_TOKEN` is required: clients must send `Authorization: Bearer
 <token>`, and the server refuses to start without one unless `RADARR_ALLOW_NO_AUTH=true` says
 that anyone who can reach the port may use every tool. Register it from any machine:
 
@@ -147,30 +128,18 @@ claude mcp add --transport http radarr http://nas:8080/mcp \
 
 ### Docker
 
-Releases publish a multi-arch (amd64, arm64) image to `ghcr.io/katbyte/radarr-mcp`, tagged
-`vX.Y.Z`, `vX.Y` and `latest`. `docker-compose.yml` is the default always-on deployment: it runs
-that image and reads secrets from a gitignored `.env` (copy `.env.example`). Adjust
-`RADARR_SERVER` and `TZ` in the compose file, then:
+Releases publish a multi-arch (amd64, arm64) image to `ghcr.io/katbyte/radarr-mcp`, tagged `vX.Y.Z`, `vX.Y` and `latest`. `docker-compose.yml` is the default always-on deployment: it runs that image and reads secrets from a gitignored `.env` (copy `.env.example`). Adjust `RADARR_SERVER` and `TZ` in the compose file, then:
 
 ```bash
 cp .env.example .env      # fill in RADARR_TOKEN and RADARR_AUTH_TOKEN
 docker compose up -d
 ```
 
-`make docker` builds the same image from source, tagged `radarr-mcp`, with version info from
-git. The image is alpine-based (so `docker exec -it radarr-mcp sh` works), runs as a non-root
-user and has a healthcheck against `/healthz`. The binary is the entrypoint, so `docker run --rm
-ghcr.io/katbyte/radarr-mcp info` works as a connectivity check with the `RADARR_*` variables
-passed via `-e`.
+`make docker` builds the same image from source, tagged `radarr-mcp`, with version info from git. The image is alpine-based (so `docker exec -it radarr-mcp sh` works), runs as a non-root user and has a healthcheck against `/healthz`. The binary is the entrypoint, so `docker run --rm ghcr.io/katbyte/radarr-mcp info` works as a connectivity check with the `RADARR_*` variables passed via `-e`.
 
 ## MCP Tools
 
-Tools are named resource-first (`movie_*`, `audit_*`, `queue_*`...) so they group by what they
-act on. Every tool carries MCP annotations (read-only or destructive) and tools that change
-server state say so in their descriptions. Wherever a tool takes a film it accepts its Radarr
-id, `tmdb:<id>`, `imdb:<tt id>` or its title (`"Alien (1979)"` when two share one), and a
-profile, root folder, tag or collection by name as well as id; an unknown name comes back as an
-error listing what exists, and a title that matches two films as one naming both.
+Tools are named resource-first (`movie_*`, `audit_*`, `queue_*`...) so they group by what they act on. Every tool carries MCP annotations (read-only or destructive) and tools that change server state say so in their descriptions. Wherever a tool takes a film it accepts its Radarr id, `tmdb:<id>`, `imdb:<tt id>` or its title (`"Alien (1979)"` when two share one), and a profile, root folder, tag or collection by name as well as id; an unknown name comes back as an error listing what exists, and a title that matches two films as one naming both.
 
 | Resource | Tools |
 |---|---|
@@ -190,40 +159,28 @@ error listing what exists, and a title that matches two films as one naming both
 | naming | `naming_get` (with an example of each pattern), `naming_edit` |
 | indexers and clients | `indexer_list`, `indexer_test`, `downloadclient_list`, `downloadclient_test` |
 
-`movie_delete` (removes a film, and with `delete_files` its folder) and `moviefile_delete` are
-only registered when `--enable-delete` / `RADARR_ENABLE_DELETE` is set. `--read-only` registers
-the 50 read tools and nothing else, so a write tool is absent from `tools/list` rather than
-refused when called.
+Every list is paged the same way: it takes `limit` (100 unless given, 1000 at most) and `offset`, and answers `total`, `offset` and, while there is another page, the `next_offset` to pass back. `server_logs` is paged that way too.
+
+`movie_delete` (removes a film, and with `delete_files` its folder) and `moviefile_delete` are only registered when `--enable-delete` / `RADARR_ENABLE_DELETE` is set, and even then change nothing without `confirm`: called without it, each answers `would_delete`, what a confirmed call would remove. `--read-only` registers the 50 read tools and nothing else, so a write tool is absent from `tools/list` rather than refused when called.
 
 ### Choosing which tools load
 
-**The default is `core`: six read-only tools, about 850 tokens.** The whole surface is around
-11,900 tokens of tool definitions before anyone asks a question, which is a poor way to spend
-a client's context by default. `--toolsets` / `RADARR_TOOLSETS` loads the groups a session
-actually needs, and `core` comes along with whatever else is asked for, because nothing else
-can find a film.
+**The default is `core`: six read-only tools, about 950 tokens.** The whole surface is around 12,700 tokens of tool definitions before anyone asks a question, which is a poor way to spend a client's context by default. `--toolsets` / `RADARR_TOOLSETS` loads the groups a session actually needs, and `core` comes along with whatever else is asked for, because nothing else can find a film.
 
-**Curating a library needs `RADARR_TOOLSETS=curation`** - the audits and everything that fixes
-what they find. `RADARR_TOOLSETS=all` restores every tool.
+**Curating a library needs `RADARR_TOOLSETS=curation`** - the audits and everything that fixes what they find. `RADARR_TOOLSETS=all` restores every tool.
 
 | toolset | tools | with core | ~tokens |
 |---|---|---|---|
-| `core` *(default)* | 6 | 6 | 850 |
-| `organise` | 7 | 13 | 1,600 |
-| `admin` | 14 | 20 | 2,300 |
-| `acquire` | 11 | 17 | 2,300 |
-| `curation` | 40 | 46 | 8,200 |
-| `all` | 78 | 78 | 11,900 |
+| `core` *(default)* | 6 | 6 | 950 |
+| `organise` | 7 | 13 | 1,750 |
+| `admin` | 14 | 20 | 2,800 |
+| `acquire` | 11 | 17 | 2,600 |
+| `curation` | 40 | 46 | 8,450 |
+| `all` | 78 | 78 | 12,700 |
 
-Tokens are what the model sees: each tool's name, description and input schema, measured over
-a real `tools/list` at four bytes a token, with `--enable-delete` on (the two delete tools are
-`admin`'s). Every tool also carries an output schema, another 22,000 tokens across `all`, but
-clients keep that to themselves to validate results rather than sending it to the model.
+Tokens are what the model sees: each tool's name, description and input schema, measured over a real `tools/list` at four bytes a token, with `--enable-delete` on (the two delete tools are `admin`'s). Every tool also carries an output schema, another 24,000 tokens across `all`, but clients keep that to themselves to validate results rather than sending it to the model.
 
-`--toolsets` also takes a resource family - `movie`, `moviefile`, `audit`, `import`, `release`,
-`queue`, `history`, `blocklist`, `calendar`, `collection`, `exclusion`, `tag`, `rootfolder`,
-`qualityprofile`, `qualitydefinition`, `customformat`, `naming`, `indexer`, `downloadclient`,
-`server`, `task` - which is every tool with that prefix:
+`--toolsets` also takes a resource family - `movie`, `moviefile`, `audit`, `import`, `release`, `queue`, `history`, `blocklist`, `calendar`, `collection`, `exclusion`, `tag`, `rootfolder`, `qualityprofile`, `qualitydefinition`, `customformat`, `naming`, `indexer`, `downloadclient`, `server`, `task` - which is every tool with that prefix:
 
 ```sh
 RADARR_TOOLSETS=all                 # every tool
@@ -233,8 +190,7 @@ RADARR_TOOLSETS=audit               # read-only detection, nothing that writes
 RADARR_TOOLSETS=core,movie,queue    # core plus two whole families
 ```
 
-`radarr-mcp tools` prints what the current flags would register, grouped by toolset, and
-needs no server:
+`radarr-mcp tools` prints what the current flags would register, grouped by toolset, and needs no server:
 
 ```sh
 radarr-mcp tools                    # the default set
@@ -242,75 +198,51 @@ radarr-mcp tools --toolsets all     # every tool
 radarr-mcp tools --read-only -q     # names only
 ```
 
-### Narrowing further
+### One tool more, or a few less
 
-`--allow-tools` and `--deny-tools` narrow whatever the toolsets left, and take comma-separated
-tool names, globs with a leading or trailing `*`, or the `essential` preset (`movie_list`,
-`movie_get`, `movie_lookup`, `movie_add`, `queue_list`):
+`--allow-tools` asks for tools by name, as `--toolsets` asks for them by set, and a session gets what either names: "these sets, and this tool as well". On its own, with no toolset beside it, it is only the tools it names. `--deny-tools` takes tools out of whatever was asked for, which is how a toolset is narrowed. Both take comma-separated tool names, globs with a leading or trailing `*`, and `--allow-tools` the `essential` preset (`movie_list`, `movie_get`, `movie_lookup`, `movie_add`, `queue_list`). Neither gets a tool past `--read-only` or the delete gate.
 
 ```sh
-RADARR_ALLOW_TOOLS=essential
-RADARR_ALLOW_TOOLS=movie_*,queue_list
+RADARR_TOOLSETS=curation RADARR_ALLOW_TOOLS=queue_list    # the curation set, and the queue as well
+RADARR_ALLOW_TOOLS=essential                              # the five essential tools and nothing else
+RADARR_ALLOW_TOOLS=movie_*,queue_list                     # only these
+RADARR_TOOLSETS=curation RADARR_DENY_TOOLS=audit_*        # the curation set without its audits
 RADARR_DENY_TOOLS=*_delete,release_grab
 ```
 
-A pattern that matches no tool aborts startup and names it, so a typo cannot silently hide a
-tool.
+Before 0.2 an allow list beside toolsets narrowed them, so a tool the sets did not hold was silently left out.
+
+A pattern that matches no tool aborts startup and names it, so a typo cannot silently hide a tool.
 
 ### A typical curation session
 
 1. `audit_all` says where the library needs work.
-2. `audit_unmapped_folders` lists the films on disk Radarr has never heard of;
-   `import_identify` says which film each folder holds and what is in it, `movie_add` with
-   the folder takes each in, and the second copies it finds are for `import_scan`.
-   `audit_missing_folders` is the reverse - folders renamed or moved behind Radarr's back -
-   and `movie_edit` with the folder points each film at where it is now.
-3. `audit_year_mismatch` finds folders matched to the wrong film; `movie_get` shows the
-   match. A wrong match is replaced by adding the right film for the folder; a right one in a
-   misnamed folder is renamed by `movie_edit` into the root folder it is already in.
-4. `audit_runtime`, `audit_resolution_mismatch` and `audit_size` find files that are not what
-   they claim; `moviefile_edit` corrects a wrong grade, and `history_mark_failed` rejects a
-   bad release so Radarr looks for another.
-5. `audit_quality` and `audit_cutoff_unmet` list what is worth upgrading;
-   `qualityprofile_edit upgrade_allowed=true` lets Radarr do it, and `movie_download`
-   searches now rather than waiting for the next RSS sync.
+2. `audit_unmapped_folders` lists the films on disk Radarr has never heard of; `import_identify` says which film each folder holds and what is in it, `movie_add` with the folder takes each in, and the second copies it finds are for `import_scan`. `audit_missing_folders` is the reverse - folders renamed or moved behind Radarr's back - and `movie_edit` with the folder points each film at where it is now.
+3. `audit_year_mismatch` finds folders matched to the wrong film; `movie_get` shows the match. A wrong match is replaced by adding the right film for the folder; a right one in a misnamed folder is renamed by `movie_edit` into the root folder it is already in.
+4. `audit_runtime`, `audit_resolution_mismatch` and `audit_size` find files that are not what they claim; `moviefile_edit` corrects a wrong grade, and `history_mark_failed` rejects a bad release so Radarr looks for another.
+5. `audit_quality` and `audit_cutoff_unmet` list what is worth upgrading; `qualityprofile_edit upgrade_allowed=true` lets Radarr do it, and `movie_download` searches now rather than waiting for the next RSS sync.
 6. `audit_naming` and `movie_rename` (a preview, then `preview=false`) tidy the names.
-7. `audit_collection_gaps` lists what is missing from each franchise; `movie_add` or
-   `collection_edit` fill the gaps worth filling and `exclusion_add` rules out the rest.
-8. `audit_queue` shows the downloads stuck in the queue; `import_scan` and `import_apply`
-   import one by hand, `queue_remove` clears it.
+7. `audit_collection_gaps` lists what is missing from each franchise; `movie_add` or `collection_edit` fill the gaps worth filling and `exclusion_add` rules out the rest.
+8. `audit_queue` shows the downloads stuck in the queue; `import_scan` and `import_apply` import one by hand, `queue_remove` clears it.
 
 ## Using the client on its own
 
-`lib/radarr` is a complete Go client for Radarr's v3 API that depends on nothing but the
-standard library, the shared base client in `lib/client` and `go-kt/version`, and knows
-nothing of MCP. If you only want to talk to Radarr from Go, take the package and ignore the
-rest:
+`sdk/radarr` is a complete Go client for Radarr's v3 API that knows nothing of MCP: it is built on pandorest's base client and, under that, go-kt's HTTP client, which is standard library only. If you only want to talk to Radarr from Go, take the package and ignore the rest:
 
 ```go
-import "github.com/katbyte/radarr-mcp/lib/radarr"
+import "github.com/katbyte/radarr-mcp/sdk/radarr"
 
 c, err := radarr.New("http://nas:7878", os.Getenv("RADARR_TOKEN"))
 res, err := c.GetMovie(ctx, radarr.GetMovieOperationOptions{})
 for _, m := range res.Model { ... } // every film, each with its file and media info
 
-all, err := c.GetHistoryComplete(ctx, radarr.GetHistoryOperationOptions{PageSize: 250}) // every page
+all, err := c.GetHistoryComplete(ctx, radarr.GetHistoryOperationOptions{PageSize: new(250)}) // every page
 for _, h := range all.Items { ... }
 ```
 
-It is generated from Radarr's own OpenAPI document (`docs/`, see
-[docs/README.md](docs/README.md)) by `internal/pandorest`, a generator kept in this
-repository and modelled on [hashicorp/pandora](https://github.com/hashicorp/pandora): an
-importer normalises the spec into checked-in definitions (`api-definitions/`, one file per
-tag) through named workarounds for the spec's known bugs, a differ reports what a spec
-refresh changes, and a generator writes one file per operation and model from the
-definitions. That is **a method for every one of Radarr's 237 operations**, each with typed
-options, a typed body, a `{Model, HttpResponse}` result, the status codes the operation
-answers (anything else is an error), and a `Complete` pager on every paged list. `make
-apicheck` proves the coverage claim against the spec, `make gencheck` (and the unit tests) fail
-when the generated code is stale, and the integration suite proves the shapes **against a
-running Radarr** - which is the only thing that catches the server changing shape underneath a
-spec that says otherwise. See [internal/pandorest/README.md](internal/pandorest/README.md).
+A read is asked again when a gateway could not reach Radarr or the connection dropped, three times in all, and a write is sent once. An error says what Radarr said went wrong (`Path: Folder '/nowhere' does not exist`) rather than quoting its JSON, a redirect is refused rather than followed unless it is the answer (a login's is, and comes back as it was sent), and `radarr.New(url, key, client.WithLog(logger))` traces every request and answer with the API key hidden.
+
+It is generated from Radarr's own OpenAPI document (`api-defs/`, see [api-defs/README.md](api-defs/README.md)) by [pandorest](https://github.com/katbyte/pandorest), a generator modelled on [hashicorp/pandora](https://github.com/hashicorp/pandora) and shared with the other servers in this family: an importer normalises the spec into checked-in definitions (`api-defs/radarr-<release>/`, one file per tag) through named workarounds for the spec's known bugs, a differ reports what a spec refresh changes, and a generator writes one file per operation and model from the definitions. What is this repository's own is the service's settings and its twelve workarounds in `sdk/pandorest`, and `sdk/radarr/service.go`, the one file in the package written by hand: what is Radarr's own about being talked to, from where its API key is found to how it words a refusal. That is **a method for every one of Radarr's 237 operations**, each with typed options, a typed body, a `{Model, HttpResponse}` result, the status codes the operation answers (anything else is an error), and a `Complete` pager on every paged list. `make apicheck` proves the coverage claim against the spec, `make gencheck` (and the unit tests) fail when the generated code is stale, and the integration suite proves the shapes **against a running Radarr** - which is the only thing that catches the server changing shape underneath a spec that says otherwise.
 
 ## Development
 
@@ -321,21 +253,13 @@ make check-all  # build + unit tests + both live suites (needs docker) + every l
 
 ### Tests
 
-`make test` is hermetic and fast. It covers the pure logic - tool registration and toolsets,
-name resolution, the audit heuristics, the CLI's flags, config files and HTTP auth, the
-record/replay proxy, the fake indexer - and, against a canned server, the requests the base
-client and the tools build and the answers they decode, including what a real Radarr is hard
-to make do: a command that fails, an indexer test that fails, a film TMDB deleted, two calls
-creating the same tag at once. It also re-imports the spec and regenerates the SDK to check the
-checked-in code is current, and applies every importer workaround twice to prove each one
-notices when its bug is fixed.
+`make test` is hermetic and fast. It covers the pure logic - which tools a session gets and what each says of itself, name resolution, the audit heuristics, the CLI's flags and config files - and, against a canned server, the requests the base client and the tools build and the answers they decode, including what a real Radarr is hard to make do: a command that fails, an indexer test that fails, a film TMDB deleted, two calls creating the same tag at once. It also re-imports the spec and regenerates the SDK to check the checked-in code is current, and applies every workaround twice to prove each one notices when its bug is fixed.
 
-Everything else runs against **a real Radarr in Docker**, because a stub can only confirm what
-you already believed. Two suites, each in its own container:
+Everything else runs against **a real Radarr in Docker**, because a stub can only confirm what you already believed. Two suites, each in its own container:
 
 | | Covers | Command |
 |---|---|---|
-| `integration/` | the `lib/radarr` client against the server it was generated for: all 125 GETs called and decoded strictly (a field the SDK lacks fails the run), 108 of the 112 writes called - all but restart, shutdown and the two backup restores, which would take Radarr out from under the suite - with every answer checked against what the SDK declares, and bespoke tests of what the tools rely on: a release grabbed from the fake indexer into a download client, failed, blocklisted and taken off the blocklist, held back by a delay profile and grabbed from the queue, imported by hand, and a queued command cancelled | `make testacc-integration` |
+| `integration/` | the `sdk/radarr` client against the server it was generated for: all 125 GETs called and decoded strictly (a field the SDK lacks fails the run), 108 of the 112 writes called - all but restart, shutdown and the two backup restores, which would take Radarr out from under the suite - with every answer checked against what the SDK declares, and bespoke tests of what the tools rely on: a release grabbed from the fake indexer into a download client, failed, blocklisted and taken off the blocklist, held back by a delay profile and grabbed from the queue, imported by hand, and a queued command cancelled | `make testacc-integration` |
 | `acceptance/` | the tools: name resolution, projections, every audit against fixtures seeded with what it exists to find, the settings tools, and journeys that chain them (a film searched for, grabbed by hand, downloaded and imported; every fixable audit fixed and re-audited; files imported by hand; writes repeated and made at once; a deleted film leaving nothing behind; lookups that must change nothing), and the built binary itself over stdio and HTTP (flags and environment reaching the server, nothing but protocol on stdout, the bearer check, clean shutdown, refusing to start without a key) | `make testacc-acceptance` |
 
 ```bash
@@ -344,60 +268,22 @@ make check-all      # build + unit + live suites + every linter
 make cover          # every suite merged into one coverage number
 ```
 
-Coverage has to span every suite or it lies: `go test -cover ./...` reports a fraction for
-`tools/`, because almost everything real happens in the live suites behind the `integration`
-tag. `make cover` runs each into its own binary coverage directory and merges them with
-`go tool covdata` - stdlib tooling, no third-party merger - which is what the badge reports.
-The generated `lib/radarr` is left out of the number and reported on a line of its own: it is
-one method per operation, and the integration suite exercises the ones the tools rely on
-rather than all 237.
+Coverage has to span every suite or it lies: `go test -cover ./...` reports a fraction for `tools/`, because almost everything real happens in the live suites behind the `integration` tag. `make cover` runs each into its own binary coverage directory and merges them with `go tool covdata` - stdlib tooling, no third-party merger - which is what the badge reports. The generated `sdk/radarr` is left out of the number and reported on a line of its own: it is one method per operation, and the integration suite exercises the ones the tools rely on rather than all 237.
 
-**Every tool is exercised.** Tool coverage is enforced rather than claimed: the acceptance
-suite records every tool it calls and fails if the server registered one nothing called, so a
-new tool cannot ship untested.
+**Every tool is exercised.** Tool coverage is enforced rather than claimed: the acceptance suite records every tool it calls and fails if the server registered one that nothing called, or one that only ever failed, so a new tool cannot ship untested.
 
-**Every audit is followed to its fix.** Fifteen of the eighteen are found on the fixtures and
-then cleared by the tool the audit names - the film monitored, re-profiled, renamed,
-re-pointed at its folder, imported, excluded, added, downloaded better or let go of - with
-the fixture put back and the audits checked again to prove it. Three are not: no fixture can
-make a film's TMDB metadata incomplete (`audit_missing_metadata`) or have TMDB delete a film
-(`audit_removed`), and `audit_language` is cleared only by a copy with different audio, which
-the fake indexer does not offer. All three checks are tested against a canned library, and
-`audit_language` is found live as well. Radarr's own calls out to its metadata service
-(`api.radarr.video`) and TMDB's image CDN go through a record/replay proxy
-(`lib/providerproxy`) - the container is started with `HTTPS_PROXY` pointing at it and trusts
-its certificate authority - so neither suite needs a network:
+**Every audit is followed to its fix.** Fifteen of the eighteen are found on the fixtures and then cleared by the tool the audit names - the film monitored, re-profiled, renamed, re-pointed at its folder, imported, excluded, added, downloaded better or let go of - with the fixture put back and the audits checked again to prove it. Three are not: no fixture can make a film's TMDB metadata incomplete (`audit_missing_metadata`) or have TMDB delete a film (`audit_removed`), and `audit_language` is cleared only by a copy with different audio, which the fake indexer does not offer. All three checks are tested against a canned library, and `audit_language` is found live as well. Radarr's own calls out to its metadata service (`api.radarr.video`) and TMDB's image CDN go through a record/replay proxy (go-kt's `test/replayproxy`, set up in `lib/testenv`) - the container is started with `HTTPS_PROXY` pointing at it and trusts its certificate authority - so neither suite needs a network:
 
 ```bash
-make record         # re-record the cassettes against the real services
+make record         # re-record every cassette against the real services
 make record-check   # check the cassettes still match, without rewriting them
+RADARR_TEST_RECORD=1 make testacc-acceptance   # record only the requests no cassette holds
 ```
 
-`record-check` compares the *shape* of live responses against the recordings - renamed fields,
-vanished fields, changed types - and ignores values, so it goes red when a service changes its
-contract rather than when a poster changes.
+`record-check` compares the *shape* of live responses against the recordings - renamed fields, vanished fields, changed types - and ignores values, so it goes red when a service changes its contract rather than when a poster changes.
 
-Downloads are real too. `internal/fakeindexer` is a small Newznab indexer the suites start on
-the host and hand to Radarr, offering the releases a test chooses; Radarr grabs from it into a
-Usenet Blackhole folder, the test writes the finished download where the blackhole expects it,
-and Radarr imports it. So searching, grabbing, the queue, blocklisting, history and imports
-all run through Radarr's own code, not a stub of it.
+Downloads are real too. The suites start a small Newznab indexer on the host (go-kt's `test/services/newznab`, shared with sonarr-mcp and prowlarr-mcp) and hand it to Radarr, offering the releases a test chooses; Radarr grabs from it into a Usenet Blackhole folder, the test writes the finished download where the blackhole expects it, and Radarr imports it. So searching, grabbing, the queue, blocklisting, history and imports all run through Radarr's own code, not a stub of it.
 
-Fixtures are generated, never committed: `scripts/testenv.sh` writes tiny videos with
-`ffmpeg` - a still frame for the film's real running time, at the resolution and in the codec
-the test needs, a few tens of kilobytes each - under `~/.cache/radarr-mcp`
-(`RADARR_TEST_DATA` to move them - not `$TMPDIR`, which Docker Desktop does not share), starts
-Radarr with an API key it wrote into its config, and prints the environment. The suites add
-the root folders and the films through `rootfolder_add` and `movie_add`, so building the
-fixtures is itself part of the coverage. One root folder is clean, so the audits have
-something to leave alone; the other is seeded with every defect the audits exist to find - a
-folder named for the wrong year, a file that stops at 40 minutes, a 720p file named 2160p, an XviD DVD rip,
-a Japanese film with only English audio, a file below its profile's cutoff, a scene-named file,
-a second copy beside the one Radarr tracks, a film on disk Radarr has never heard of and a
-second copy of one it has - and each audit has a test against them.
-Requires docker, ffmpeg, curl and openssl; the suites skip when `RADARR_SERVER` and
-`RADARR_TOKEN` are unset, so they never fail for want of a daemon.
+Fixtures are generated, never committed: `scripts/testenv.sh` writes tiny videos with `ffmpeg` - a still frame for the film's real running time, at the resolution and in the codec the test needs, a few tens of kilobytes each - under `~/.cache/radarr-mcp` (`RADARR_TEST_DATA` to move them - not `$TMPDIR`, which Docker Desktop does not share), starts Radarr with an API key it wrote into its config, and prints the environment. The suites add the root folders and the films through `rootfolder_add` and `movie_add`, so building the fixtures is itself part of the coverage. One root folder is clean, so the audits have something to leave alone; the other is seeded with every defect the audits exist to find - a folder named for the wrong year, a file that stops at 40 minutes, a 720p file named 2160p, an XviD DVD rip, a Japanese film with only English audio, a file below its profile's cutoff, a scene-named file, a second copy beside the one Radarr tracks, a film on disk Radarr has never heard of and a second copy of one it has - and each audit has a test against them. Requires docker, ffmpeg, curl and openssl; the suites skip when `RADARR_SERVER`, `RADARR_TOKEN` and `RADARR_TEST_DATA` are unset, so they never fail for want of a daemon.
 
-Dev tools are pinned in `.tools/go.mod` (actionlint in `.tools/actionlint/go.mod`) and built
-into `.tools/bin` by make. On a noexec checkout point `TOOLS_BIN` somewhere local, e.g.
-`make TOOLS_BIN=~/.cache/radarr-mcp/bin lint`.
+Dev tools are pinned in `.tools/go.mod` (actionlint in `.tools/actionlint/go.mod`) and built into `.tools/bin` by make. On a noexec checkout point `TOOLS_BIN` somewhere local, e.g. `make TOOLS_BIN=~/.cache/radarr-mcp/bin lint`.

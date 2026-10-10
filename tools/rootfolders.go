@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -21,7 +21,7 @@ type rootFolderRow struct {
 
 // rootFolderRows lists the root folders with how many films each holds.
 func rootFolderRows(ctx context.Context, c *radarr.Client) ([]rootFolderRow, error) {
-	folders, err := c.GetRootfolder(ctx)
+	folders, err := c.GetRootFolder(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -56,14 +56,21 @@ func registerRootFolderTools(r *registry) {
 
 	type rootFolderListOut struct {
 		RootFolders []rootFolderRow `json:"root_folders"`
+		pageOut
 	}
 	add(r, readTool, &mcp.Tool{
 		Name:        "rootfolder_list",
 		Description: "List the root folders Radarr keeps films in, as paths Radarr sees: whether each is reachable, its free space, how many films it holds and how many folders in it no film is in the library for.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ noArgs) (*mcp.CallToolResult, rootFolderListOut, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in pageIn) (*mcp.CallToolResult, rootFolderListOut, error) {
 		rows, err := rootFolderRows(ctx, client)
+		if err != nil {
+			return nil, rootFolderListOut{}, err
+		}
 
-		return nil, rootFolderListOut{RootFolders: rows}, err
+		out := rootFolderListOut{}
+		out.RootFolders, out.pageOut = pageRows(rows, in)
+
+		return nil, out, nil
 	})
 
 	type rootFolderAddIn struct {
@@ -77,7 +84,7 @@ func registerRootFolderTools(r *registry) {
 		if path == "" {
 			return nil, rootFolderRow{}, errors.New("no path")
 		}
-		res, err := client.PostRootfolder(ctx, radarr.RootFolderResource{Path: path})
+		res, err := client.PostRootFolder(ctx, radarr.RootFolderResource{Path: path})
 		if err != nil {
 			return nil, rootFolderRow{}, err
 		}
@@ -105,7 +112,7 @@ func registerRootFolderTools(r *registry) {
 		if err != nil {
 			return nil, rootFolderRow{}, err
 		}
-		if _, err := client.DeleteRootfolderById(ctx, f.Id); err != nil {
+		if _, err := client.DeleteRootFolderById(ctx, f.Id); err != nil {
 			return nil, rootFolderRow{}, err
 		}
 		for _, row := range rows {

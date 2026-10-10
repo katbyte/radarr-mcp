@@ -10,8 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/katbyte/radarr-mcp/internal/fakeindexer"
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/go-kt/test/services/newznab"
+	"github.com/katbyte/radarr-mcp/lib/testenv"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 )
 
 // The download flow, end to end: the fake indexer offers a release, Radarr
@@ -26,8 +27,8 @@ import (
 var dune2 = filmFixture{"Dune: Part Two", 2024, 693134, messyRoot + "/Dune - Part Two (2024)", ""}
 
 // release is a release of a film, as big as a Blu-ray rip.
-func release(title string, f *radarr.MovieResource) fakeindexer.Release {
-	return fakeindexer.Release{Title: title, TmdbID: f.TmdbId, ImdbID: f.ImdbId, Size: 8 << 30}
+func release(title string, f *radarr.MovieResource) newznab.Release {
+	return newznab.Release{Category: newznab.CategoryMoviesHD, Title: title, TMDBID: f.TmdbId, IMDBID: f.ImdbId, Size: 8 << 30}
 }
 
 // nzb waits for the blackhole to have written a release's .nzb, and removes
@@ -35,7 +36,7 @@ func release(title string, f *radarr.MovieResource) fakeindexer.Release {
 func nzb(t *testing.T, title string) {
 	t.Helper()
 
-	path := hostPath(nzbFolder + "/" + title + ".nzb")
+	path := testenv.HostPath(nzbFolder + "/" + title + ".nzb")
 	t.Cleanup(func() { _ = os.Remove(path) })
 	if !poll(30*time.Second, func() bool { _, err := os.Stat(path); return err == nil }) {
 		t.Errorf("no .nzb for %s in the blackhole", title)
@@ -53,11 +54,11 @@ func TestReleases(t *testing.T) {
 
 	// a failed download is not searched for again while the test runs,
 	// which offers each release itself
-	dc := must(sdk.GetConfigDownloadclient(ctx)).Model
+	dc := must(sdk.GetConfigDownloadClient(ctx)).Model
 	noRetry := *dc
 	noRetry.AutoRedownloadFailed = new(false)
-	must(sdk.PutConfigDownloadclientById(ctx, dc.Id, noRetry))
-	t.Cleanup(func() { _, _ = sdk.PutConfigDownloadclientById(context.WithoutCancel(ctx), dc.Id, *dc) })
+	must(sdk.PutConfigDownloadClientById(ctx, dc.Id, noRetry))
+	t.Cleanup(func() { _, _ = sdk.PutConfigDownloadClientById(context.WithoutCancel(ctx), dc.Id, *dc) })
 
 	before := len(hooks.received())
 	hook := must(sdk.PostNotification(ctx, webhook(t, "SDK Grab Hook"), radarr.PostNotificationOperationOptions{})).Model
@@ -70,12 +71,14 @@ func TestReleases(t *testing.T) {
 	grabAndFail := func(t *testing.T, title string) radarr.BlocklistResource {
 		t.Helper()
 
-		indexer.Offer(release(title, &a3))
+		if err := indexer.Offer(release(title, &a3)); err != nil {
+			t.Fatal(err)
+		}
 		t.Cleanup(func() { indexer.Withdraw(title) })
 
 		// an interactive search answers every release with Radarr's
 		// decision on it
-		releases := must(sdk.GetRelease(ctx, radarr.GetReleaseOperationOptions{MovieId: a3.Id})).Model
+		releases := must(sdk.GetRelease(ctx, radarr.GetReleaseOperationOptions{MovieId: new(a3.Id)})).Model
 		i := slices.IndexFunc(releases, func(r radarr.ReleaseResource) bool { return r.Title == title })
 		if i < 0 {
 			t.Fatalf("the search did not find %s among %d releases", title, len(releases))
@@ -99,7 +102,7 @@ func TestReleases(t *testing.T) {
 
 		var grab radarr.HistoryResource
 		if !poll(30*time.Second, func() bool {
-			history := must(sdk.GetHistoryMovie(ctx, radarr.GetHistoryMovieOperationOptions{MovieId: a3.Id, EventType: radarr.MovieHistoryEventTypeGrabbed})).Model
+			history := must(sdk.GetHistoryMovie(ctx, radarr.GetHistoryMovieOperationOptions{MovieId: new(a3.Id), EventType: radarr.MovieHistoryEventTypeGrabbed})).Model
 			i := slices.IndexFunc(history, func(h radarr.HistoryResource) bool { return h.SourceTitle == title })
 			if i >= 0 {
 				grab = history[i]
@@ -120,6 +123,10 @@ func TestReleases(t *testing.T) {
 			return i >= 0
 		}) {
 			t.Fatalf("marking the grab of %s failed did not blocklist it", title)
+		}
+		// the film's own blocklist, which is not paged, holds the same entry
+		if byFilm := must(sdk.GetBlocklistMovie(ctx, radarr.GetBlocklistMovieOperationOptions{MovieId: new(a3.Id)})).Model; !slices.ContainsFunc(byFilm, func(b radarr.BlocklistResource) bool { return b.Id == entry.Id && b.SourceTitle == title }) {
+			t.Errorf("the blocklist of %s does not hold the grab of %s: %+v", alien3.Title, title, byFilm)
 		}
 
 		return entry
@@ -158,12 +165,12 @@ func TestReleases(t *testing.T) {
 		removeAfter(ctx, t, "the tag", func(ctx context.Context) (radarr.DeleteTagByIdOperationResponse, error) {
 			return sdk.DeleteTagById(ctx, tag.Id)
 		})
-		delay := must(sdk.PostDelayprofile(ctx, radarr.DelayProfileResource{
+		delay := must(sdk.PostDelayProfile(ctx, radarr.DelayProfileResource{
 			EnableUsenet: new(true), EnableTorrent: new(true), PreferredProtocol: radarr.DownloadProtocolUsenet,
 			UsenetDelay: 600, Tags: []int{tag.Id}, BypassIfHighestQuality: new(false), BypassIfAboveCustomFormatScore: new(false),
 		})).Model
-		removeAfter(ctx, t, "the delay profile", func(ctx context.Context) (radarr.DeleteDelayprofileByIdOperationResponse, error) {
-			return sdk.DeleteDelayprofileById(ctx, delay.Id)
+		removeAfter(ctx, t, "the delay profile", func(ctx context.Context) (radarr.DeleteDelayProfileByIdOperationResponse, error) {
+			return sdk.DeleteDelayProfileById(ctx, delay.Id)
 		})
 
 		// two missing films, one pending release each
@@ -179,8 +186,10 @@ func TestReleases(t *testing.T) {
 		titles := map[int]string{a3.Id: "Alien3.1992.1080p.BluRay.x264-PEND", d2.Id: "Dune.Part.Two.2024.1080p.BluRay.x264-PEND"}
 		for id, title := range titles {
 			r := release(title, must(sdk.GetMovieById(ctx, id)).Model)
-			r.Published = time.Now()
-			indexer.Offer(r)
+			r.PubDate = time.Now()
+			if err := indexer.Offer(r); err != nil {
+				t.Fatal(err)
+			}
 			t.Cleanup(func() { indexer.Withdraw(title) })
 		}
 		command(ctx, t, `{"name":"RssSync"}`)
@@ -217,7 +226,7 @@ func TestReleases(t *testing.T) {
 		names := []string{"sdk-queue-one", "sdk-queue-two"}
 		for _, name := range names {
 			copyFile(t, alien.Path+"/"+alien.File, watchFolder+"/"+name+"/"+name+".mkv")
-			t.Cleanup(func() { _ = os.RemoveAll(hostPath(watchFolder + "/" + name)) })
+			t.Cleanup(func() { _ = os.RemoveAll(testenv.HostPath(watchFolder + "/" + name)) })
 		}
 		command(ctx, t, `{"name":"RefreshMonitoredDownloads"}`)
 		items := map[string]radarr.QueueResource{}
@@ -232,12 +241,22 @@ func TestReleases(t *testing.T) {
 		}) {
 			t.Fatalf("the queue has %d of the watch folder's downloads, want %d", len(items), len(names))
 		}
+		// the queue read whole and its counts say the same: two downloads, neither a film Radarr knows
+		details := must(sdk.GetQueueDetails(ctx, radarr.GetQueueDetailsOperationOptions{})).Model
+		for _, name := range names {
+			if !slices.ContainsFunc(details, func(q radarr.QueueResource) bool { return q.Title == name && q.Id == items[name].Id }) {
+				t.Errorf("the queue's details do not hold %s: %d items", name, len(details))
+			}
+		}
+		if status := must(sdk.GetQueueStatus(ctx)).Model; status.UnknownCount < len(names) {
+			t.Errorf("the queue's status counts %d downloads for no film Radarr knows, want at least %d: %+v", status.UnknownCount, len(names), status)
+		}
 
 		// removing one from the client deletes it from the watch folder
 		must(sdk.DeleteQueueById(ctx, items[names[0]].Id, radarr.DeleteQueueByIdOperationOptions{RemoveFromClient: new(true), Blocklist: new(false)}))
 		must(sdk.DeleteQueueBulk(ctx, radarr.QueueBulkResource{Ids: []int{items[names[1]].Id}}, radarr.DeleteQueueBulkOperationOptions{RemoveFromClient: new(true), Blocklist: new(false)}))
 		for _, name := range names {
-			if _, err := os.Stat(hostPath(watchFolder + "/" + name)); !os.IsNotExist(err) {
+			if _, err := os.Stat(testenv.HostPath(watchFolder + "/" + name)); !os.IsNotExist(err) {
 				t.Errorf("%s is still in the watch folder after removing it from the queue: %v", name, err)
 			}
 		}
@@ -251,7 +270,7 @@ func TestReleases(t *testing.T) {
 		const title = "Alien.1979.1080p.BluRay.x264-PUSH"
 		pushed := must(sdk.PostReleasePush(ctx, radarr.ReleaseResource{
 			Title: title, Protocol: radarr.DownloadProtocolUsenet, Size: 8 << 30,
-			DownloadUrl: indexer.BaseURL() + "/download/" + strings.ToLower(title),
+			DownloadUrl: indexer.URL() + "/download/" + strings.ToLower(title),
 			PublishDate: time.Now().UTC().Format(time.RFC3339),
 		})).Model
 		if len(pushed) != 1 || !isTrue(pushed[0].Rejected) || len(pushed[0].Rejections) == 0 {

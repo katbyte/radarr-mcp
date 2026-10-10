@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -26,14 +26,12 @@ type movieListIn struct {
 	YearTo         int    `json:"year_to,omitempty"`
 	Sort           string `json:"sort,omitempty"            jsonschema:"title (default), year, added, size or rating"`
 	Descending     bool   `json:"descending,omitempty"`
-	Offset         int    `json:"offset,omitempty"`
-	Limit          int    `json:"limit,omitempty"           jsonschema:"films to return, default 50"`
+	pageIn
 }
 
 type movieListOut struct {
-	Total  int        `json:"total"  jsonschema:"films matching the filters; movies holds at most limit of them"`
-	Offset int        `json:"offset"`
-	Movies []movieRow `json:"movies"`
+	Movies []movieRow `json:"movies" jsonschema:"one page of the films matching the filters"`
+	pageOut
 }
 
 type movieIn struct {
@@ -137,10 +135,10 @@ func registerMovieTools(r *registry) {
 			return nil, movieListOut{}, err
 		}
 
-		out := movieListOut{Total: len(matched), Offset: in.Offset}
-		limit := limitOr(in.Limit, 50)
-		for i := in.Offset; i < len(matched) && len(out.Movies) < limit; i++ {
-			out.Movies = append(out.Movies, rowOf(&matched[i], lk))
+		page, paged := pageRows(matched, in.pageIn)
+		out := movieListOut{Movies: make([]movieRow, 0, len(page)), pageOut: paged}
+		for i := range page {
+			out.Movies = append(out.Movies, rowOf(&page[i], lk))
 		}
 
 		return nil, out, nil
@@ -167,7 +165,7 @@ func registerMovieTools(r *registry) {
 		}
 		out.Queue = queue
 
-		history, err := client.GetHistoryMovie(ctx, radarr.GetHistoryMovieOperationOptions{MovieId: m.Id})
+		history, err := client.GetHistoryMovie(ctx, radarr.GetHistoryMovieOperationOptions{MovieId: new(m.Id)})
 		if err != nil {
 			return nil, out, err
 		}
@@ -234,7 +232,7 @@ func registerMovieTools(r *registry) {
 		if err != nil {
 			return nil, creditsOut{}, err
 		}
-		res, err := client.GetCredit(ctx, radarr.GetCreditOperationOptions{MovieId: m.Id})
+		res, err := client.GetCredit(ctx, radarr.GetCreditOperationOptions{MovieId: new(m.Id)})
 		if err != nil {
 			return nil, creditsOut{}, err
 		}
@@ -435,7 +433,7 @@ func lookupMovies(ctx context.Context, c *radarr.Client, term string) ([]radarr.
 		if err != nil {
 			return nil, fmt.Errorf("%q: a tmdb id is a number", term)
 		}
-		res, err := c.GetMovieLookupTmdb(ctx, radarr.GetMovieLookupTmdbOperationOptions{TmdbId: id})
+		res, err := c.GetMovieLookupTmdb(ctx, radarr.GetMovieLookupTmdbOperationOptions{TmdbId: new(id)})
 		if err != nil {
 			return nil, fmt.Errorf("looking up tmdb:%d: %w", id, err)
 		}

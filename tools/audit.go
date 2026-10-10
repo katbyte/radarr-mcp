@@ -19,7 +19,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -91,7 +91,7 @@ func (e *auditEnv) allMovies(ctx context.Context) ([]radarr.MovieResource, error
 
 func (e *auditEnv) profile(ctx context.Context, id int) (*radarr.QualityProfileResource, error) {
 	if e.profiles == nil {
-		res, err := e.c.GetQualityprofile(ctx)
+		res, err := e.c.GetQualityProfile(ctx)
 		if err != nil {
 			return nil, err
 		}

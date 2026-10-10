@@ -19,8 +19,8 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/katbyte/radarr-mcp/lib/client"
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/pandorest/client"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 )
 
 // allMovies reads every film in the library. Radarr answers the whole list in
@@ -190,7 +190,7 @@ type lookups struct {
 
 func loadLookups(ctx context.Context, c *radarr.Client) (lookups, error) {
 	lk := lookups{profiles: map[int]string{}, tags: map[int]string{}}
-	profiles, err := c.GetQualityprofile(ctx)
+	profiles, err := c.GetQualityProfile(ctx)
 	if err != nil {
 		return lk, err
 	}
@@ -225,7 +225,7 @@ func (lk lookups) tagLabels(ids []int) []string {
 // resolveProfile finds a quality profile by name or id; an unknown one is an
 // error listing the profiles there are.
 func resolveProfile(ctx context.Context, c *radarr.Client, ref string) (*radarr.QualityProfileResource, error) {
-	res, err := c.GetQualityprofile(ctx)
+	res, err := c.GetQualityProfile(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +246,7 @@ func resolveProfile(ctx context.Context, c *radarr.Client, ref string) (*radarr.
 // resolveRootFolder finds a root folder by path or id; with no reference and
 // exactly one root folder, that one.
 func resolveRootFolder(ctx context.Context, c *radarr.Client, ref string) (*radarr.RootFolderResource, error) {
-	res, err := c.GetRootfolder(ctx)
+	res, err := c.GetRootFolder(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -618,6 +618,83 @@ func limitOr(limit, dflt int) int {
 	}
 
 	return limit
+}
+
+const (
+	// defaultLimit is a page of a list asked for with no limit.
+	defaultLimit = 100
+	// maxLimit caps a page: a limit of a million is one call reading a whole
+	// library into a client's context.
+	maxLimit = 1000
+)
+
+// pageIn is how every list is paged: the same limit and offset whatever is
+// listed, so a client that has paged one list can page them all.
+type pageIn struct {
+	Limit  int `json:"limit,omitempty"  jsonschema:"rows to return, default 100, at most 1000"`
+	Offset int `json:"offset,omitempty" jsonschema:"rows to skip: a previous page's next_offset"`
+}
+
+// pageOut is what every list answers beside its rows: how many there are in
+// all, where this page starts, and where the next one does.
+type pageOut struct {
+	Total      int `json:"total"                 jsonschema:"rows there are in all, of which this page is a slice"`
+	Offset     int `json:"offset"                jsonschema:"where this page starts"`
+	NextOffset int `json:"next_offset,omitempty" jsonschema:"pass back as offset for the next page; absent on the last"`
+}
+
+// args settles the limit and offset the way every list takes them: the
+// default when no limit is given, never more than maxLimit, never before the
+// start.
+func (p pageIn) args() (limit, offset int) {
+	return min(limitOr(p.Limit, defaultLimit), maxLimit), max(p.Offset, 0)
+}
+
+// pageRows is one page of a list held whole: at most limit rows from offset,
+// and where they sit in the whole.
+func pageRows[T any](all []T, in pageIn) ([]T, pageOut) {
+	limit, offset := in.args()
+	from := min(offset, len(all))
+	rows := all[from:min(from+limit, len(all))]
+
+	return rows, pageOut{Total: len(all), Offset: offset, NextOffset: nextOffset(offset, len(rows), len(all))}
+}
+
+// nextOffset is where the page after one of n rows from offset starts, or 0
+// when that was the last.
+func nextOffset(offset, n, total int) int {
+	if n == 0 || offset+n >= total {
+		return 0
+	}
+
+	return offset + n
+}
+
+// window reads limit rows from offset out of a listing Radarr pages by page
+// number, with how many there are in all. An offset that is not a whole
+// number of pages falls inside one, so the page it falls in and the next are
+// read and cut to the rows asked for: dividing it by the limit would round it
+// down and answer rows before it. fetch is given the page, counted from 1.
+func window[T any](in pageIn, fetch func(page, size int) ([]T, int, error)) ([]T, pageOut, error) {
+	limit, offset := in.args()
+	first := offset / limit
+	rows, total, err := fetch(first+1, limit)
+	if err != nil {
+		return nil, pageOut{}, err
+	}
+	if skip := offset - first*limit; skip > 0 {
+		if (first+1)*limit < total {
+			more, _, err := fetch(first+2, limit)
+			if err != nil {
+				return nil, pageOut{}, err
+			}
+			rows = append(rows, more...)
+		}
+		rows = rows[min(skip, len(rows)):]
+		rows = rows[:min(limit, len(rows))]
+	}
+
+	return rows, pageOut{Total: total, Offset: offset, NextOffset: nextOffset(offset, len(rows), total)}, nil
 }
 
 // decodeBody decodes a response's JSON body into v, for the operations whose

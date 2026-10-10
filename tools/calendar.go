@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -23,11 +23,13 @@ func registerCalendarTools(r *registry) {
 		DaysBack    int  `json:"days_back,omitempty"   jsonschema:"days before today to include, default 7"`
 		DaysAhead   int  `json:"days_ahead,omitempty"  jsonschema:"days after today to include, default 30"`
 		Unmonitored bool `json:"unmonitored,omitempty" jsonschema:"include unmonitored films"`
+		pageIn
 	}
 	type calendarOut struct {
 		Start  string        `json:"start"`
 		End    string        `json:"end"`
 		Movies []calendarRow `json:"movies" jsonschema:"soonest first"`
+		pageOut
 	}
 	add(r, readTool, &mcp.Tool{
 		Name:        "calendar_list",
@@ -46,11 +48,11 @@ func registerCalendarTools(r *registry) {
 		if err != nil {
 			return nil, calendarOut{}, err
 		}
-		out := calendarOut{Start: start.Format(time.DateOnly), End: end.Format(time.DateOnly)}
 		within := func(stamp string) bool {
 			t, err := time.Parse(time.RFC3339, stamp)
 			return err == nil && !t.Before(start) && t.Before(end)
 		}
+		rows := make([]calendarRow, 0, len(res.Model))
 		for i := range res.Model {
 			m := &res.Model[i]
 			row := calendarRow{movieRow: rowOf(m, lk)}
@@ -59,9 +61,12 @@ func registerCalendarTools(r *registry) {
 					row.Releases = append(row.Releases, rel.kind+" "+rel.date[:10])
 				}
 			}
-			out.Movies = append(out.Movies, row)
+			rows = append(rows, row)
 		}
-		slices.SortStableFunc(out.Movies, func(a, b calendarRow) int { return strings.Compare(firstDate(a.Releases), firstDate(b.Releases)) })
+		slices.SortStableFunc(rows, func(a, b calendarRow) int { return strings.Compare(firstDate(a.Releases), firstDate(b.Releases)) })
+
+		out := calendarOut{Start: start.Format(time.DateOnly), End: end.Format(time.DateOnly)}
+		out.Movies, out.pageOut = pageRows(rows, in.pageIn)
 
 		return nil, out, nil
 	})

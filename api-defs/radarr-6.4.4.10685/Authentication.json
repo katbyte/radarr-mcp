@@ -1,0 +1,38 @@
+{
+  "Name": "Authentication",
+  "Tag": "Authentication",
+  "Operations": [
+    {
+      "Name": "GetLogout",
+      "Method": "GET",
+      "Path": "/logout",
+      "ExpectedStatusCodes": [
+        302
+      ]
+    },
+    {
+      "Name": "PostLogin",
+      "Method": "POST",
+      "Path": "/login",
+      "Options": [
+        {
+          "Name": "returnUrl",
+          "Field": "ReturnUrl",
+          "In": "Query",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ],
+      "Request": {
+        "ContentType": "multipart/form-data",
+        "Type": {
+          "Type": "RawFile"
+        }
+      },
+      "ExpectedStatusCodes": [
+        302
+      ]
+    }
+  ]
+}

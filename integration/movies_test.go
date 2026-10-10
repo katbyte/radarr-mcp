@@ -11,8 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/katbyte/radarr-mcp/lib/client"
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/pandorest/client"
+	"github.com/katbyte/radarr-mcp/lib/testenv"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 )
 
 // The films the write tests add of their own, from the catalogue
@@ -59,7 +60,7 @@ func TestMovies(t *testing.T) {
 	fixtures(t)
 
 	copyFile(t, moviesRoot+"/Arrival (2016)/"+arrival.File, arrival.Path+"/"+arrival.File)
-	t.Cleanup(func() { _ = os.RemoveAll(hostPath(arrival.Path)) })
+	t.Cleanup(func() { _ = os.RemoveAll(testenv.HostPath(arrival.Path)) })
 	added := must(sdk.PostMovie(ctx, newMovie(arrival))).Model
 	removeAfter(ctx, t, arrival.Title, func(ctx context.Context) (radarr.DeleteMovieByIdOperationResponse, error) {
 		return sdk.DeleteMovieById(ctx, added.Id, radarr.DeleteMovieByIdOperationOptions{DeleteFiles: new(false)})
@@ -84,28 +85,28 @@ func TestMovies(t *testing.T) {
 
 		edit := file
 		edit.ReleaseGroup = "SDK"
-		if got := must(sdk.PutMoviefileById(ctx, file.Id, edit)).Model; got.ReleaseGroup != "SDK" {
+		if got := must(sdk.PutMovieFileById(ctx, file.Id, edit)).Model; got.ReleaseGroup != "SDK" {
 			t.Errorf("release group %q after the update", got.ReleaseGroup)
 		}
 
 		// the bulk edit takes whole files, applying the fields it reads
 		// (edition, release group, quality, languages, indexer flags), and
 		// answers every file it changed
-		bulk := must(sdk.PutMoviefileBulk(ctx, []radarr.MovieFileResource{{Id: file.Id, Edition: "SDK Cut", ReleaseGroup: "SDK"}})).Model
+		bulk := must(sdk.PutMovieFileBulk(ctx, []radarr.MovieFileResource{{Id: file.Id, Edition: "SDK Cut", ReleaseGroup: "SDK"}})).Model
 		if len(bulk) != 1 || bulk[0].Edition != "SDK Cut" {
 			t.Errorf("the bulk edit answered %+v", bulk)
 		}
 
 		// the editor sets fields on a list of files, and answers them
 		//nolint:staticcheck // deprecated in the document, and still served: exercised while it is
-		edited := must(sdk.PutMoviefileEditor(ctx, radarr.MovieFileListResource{MovieFileIds: []int{file.Id}, ReleaseGroup: "SDK2"})).Model
+		edited := must(sdk.PutMovieFileEditor(ctx, radarr.MovieFileListResource{MovieFileIds: []int{file.Id}, ReleaseGroup: "SDK2"})).Model
 		if len(edited) != 1 || edited[0].ReleaseGroup != "SDK2" {
 			t.Errorf("the editor answered %+v", edited)
 		}
 
 		// deleting a file deletes it from disk, and the film is missing
-		must(sdk.DeleteMoviefileById(ctx, file.Id))
-		if _, err := os.Stat(hostPath(arrival.Path + "/" + arrival.File)); !os.IsNotExist(err) {
+		must(sdk.DeleteMovieFileById(ctx, file.Id))
+		if _, err := os.Stat(testenv.HostPath(arrival.Path + "/" + arrival.File)); !os.IsNotExist(err) {
 			t.Errorf("the file is still on disk after deleting it: %v", err)
 		}
 		if isTrue(must(sdk.GetMovieById(ctx, m.Id)).Model.HasFile) {
@@ -116,8 +117,8 @@ func TestMovies(t *testing.T) {
 		copyFile(t, moviesRoot+"/Arrival (2016)/"+arrival.File, arrival.Path+"/"+arrival.File)
 		command(ctx, t, `{"name":"RescanMovie","movieId":`+strconv.Itoa(m.Id)+`}`)
 		again := withFile(ctx, t, m.Id).MovieFile
-		must(sdk.DeleteMoviefileBulk(ctx, radarr.MovieFileListResource{MovieFileIds: []int{again.Id}}))
-		res, err := sdk.GetMoviefileById(ctx, again.Id)
+		must(sdk.DeleteMovieFileBulk(ctx, radarr.MovieFileListResource{MovieFileIds: []int{again.Id}}))
+		res, err := sdk.GetMovieFileById(ctx, again.Id)
 		gone(t, "the bulk-deleted file", res, err)
 	})
 
@@ -134,7 +135,7 @@ func TestMovies(t *testing.T) {
 	res, err := sdk.GetMovieById(ctx, m.Id)
 	gone(t, arrival.Title, res, err)
 	// the folder goes in the background, after the delete has answered
-	if !poll(30*time.Second, func() bool { _, err := os.Stat(hostPath(arrival.Path)); return os.IsNotExist(err) }) {
+	if !poll(30*time.Second, func() bool { _, err := os.Stat(testenv.HostPath(arrival.Path)); return os.IsNotExist(err) }) {
 		t.Error("the film's folder is still on disk after deleting it with its files")
 	}
 }
@@ -161,7 +162,7 @@ func TestMovieImports(t *testing.T) {
 	}
 	ids = append(ids, imported[0].Id)
 
-	listed := must(sdk.PostImportlistMovie(ctx, []radarr.MovieResource{newMovie(thirteenth)})).Model
+	listed := must(sdk.PostImportListMovie(ctx, []radarr.MovieResource{newMovie(thirteenth)})).Model
 	if len(listed) != 1 || listed[0].TmdbId != thirteenth.TmdbID || listed[0].Id == 0 {
 		t.Fatalf("the add from the discoveries answered %+v", listed)
 	}
@@ -172,7 +173,7 @@ func TestMovieImports(t *testing.T) {
 	if _, err := sdk.PostMovieImport(ctx, []radarr.MovieResource{newMovie(mononoke)}); client.StatusCode(err) != http.StatusBadRequest {
 		t.Errorf("importing a film already added: want 400, got %v", err)
 	}
-	if again := must(sdk.PostImportlistMovie(ctx, []radarr.MovieResource{newMovie(thirteenth)})).Model; len(again) != 0 {
+	if again := must(sdk.PostImportListMovie(ctx, []radarr.MovieResource{newMovie(thirteenth)})).Model; len(again) != 0 {
 		t.Errorf("adding a film already added answered %+v", again)
 	}
 
@@ -183,7 +184,7 @@ func TestMovieImports(t *testing.T) {
 	}
 	// their files were left where they were
 	for _, f := range []filmFixture{mononoke, thirteenth} {
-		if _, err := os.Stat(hostPath(f.Path + "/" + f.File)); err != nil {
+		if _, err := os.Stat(testenv.HostPath(f.Path + "/" + f.File)); err != nil {
 			t.Errorf("%s: %v", f.Title, err)
 		}
 	}
@@ -195,18 +196,18 @@ func TestRootFolders(t *testing.T) {
 	ctx := skipUnlessUp(t)
 
 	const path = "/media/sdk-root"
-	mediaMkdir(hostPath(path))
-	t.Cleanup(func() { _ = os.RemoveAll(hostPath(path)) })
-	root := must(sdk.PostRootfolder(ctx, radarr.RootFolderResource{Path: path})).Model
-	removeAfter(ctx, t, "the root folder", func(ctx context.Context) (radarr.DeleteRootfolderByIdOperationResponse, error) {
-		return sdk.DeleteRootfolderById(ctx, root.Id)
+	mediaMkdir(testenv.HostPath(path))
+	t.Cleanup(func() { _ = os.RemoveAll(testenv.HostPath(path)) })
+	root := must(sdk.PostRootFolder(ctx, radarr.RootFolderResource{Path: path})).Model
+	removeAfter(ctx, t, "the root folder", func(ctx context.Context) (radarr.DeleteRootFolderByIdOperationResponse, error) {
+		return sdk.DeleteRootFolderById(ctx, root.Id)
 	})
 	if root.Path != path || !isTrue(root.Accessible) {
 		t.Errorf("added %q, accessible %v", root.Path, isTrue(root.Accessible))
 	}
 
-	must(sdk.DeleteRootfolderById(ctx, root.Id))
-	res, err := sdk.GetRootfolderById(ctx, root.Id)
+	must(sdk.DeleteRootFolderById(ctx, root.Id))
+	res, err := sdk.GetRootFolderById(ctx, root.Id)
 	gone(t, "the root folder", res, err)
 }
 

@@ -14,8 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/katbyte/radarr-mcp/lib/client"
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/pandorest/client"
+	"github.com/katbyte/radarr-mcp/lib/testenv"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 )
 
 // The providers - indexers, download clients, import lists, notifications
@@ -114,7 +115,7 @@ func TestIndexers(t *testing.T) {
 	}
 
 	must(sdk.PostIndexerTest(ctx, *b, radarr.PostIndexerTestOperationOptions{}))
-	all := must(sdk.PostIndexerTestall(ctx)).Model
+	all := must(sdk.PostIndexerTestAll(ctx)).Model
 	for _, id := range []int{d.indexer, ids[0], ids[1]} {
 		if r := testResult(t, all, id); !isTrue(r.IsValid) {
 			t.Errorf("indexer %d failed its test: %+v", id, r.ValidationFailures)
@@ -153,26 +154,26 @@ func TestDownloadClients(t *testing.T) {
 		c := blackhole("SDK Blackhole " + strings.ToUpper(name))
 		folders := "/media/downloads/sdk-" + name
 		c.Fields = []radarr.Field{{Name: "nzbFolder", Value: folders + "/nzb"}, {Name: "watchFolder", Value: folders + "/watch"}}
-		mediaMkdir(hostPath(folders + "/nzb"))
-		mediaMkdir(hostPath(folders + "/watch"))
-		t.Cleanup(func() { _ = os.RemoveAll(hostPath(folders)) })
-		created := must(sdk.PostDownloadclient(ctx, c, radarr.PostDownloadclientOperationOptions{})).Model
-		removeAfter(ctx, t, c.Name, func(ctx context.Context) (radarr.DeleteDownloadclientByIdOperationResponse, error) {
-			return sdk.DeleteDownloadclientById(ctx, created.Id)
+		mediaMkdir(testenv.HostPath(folders + "/nzb"))
+		mediaMkdir(testenv.HostPath(folders + "/watch"))
+		t.Cleanup(func() { _ = os.RemoveAll(testenv.HostPath(folders)) })
+		created := must(sdk.PostDownloadClient(ctx, c, radarr.PostDownloadClientOperationOptions{})).Model
+		removeAfter(ctx, t, c.Name, func(ctx context.Context) (radarr.DeleteDownloadClientByIdOperationResponse, error) {
+			return sdk.DeleteDownloadClientById(ctx, created.Id)
 		})
 		ids = append(ids, created.Id)
 	}
-	b := must(sdk.GetDownloadclientById(ctx, ids[0])).Model
+	b := must(sdk.GetDownloadClientById(ctx, ids[0])).Model
 
 	edit := *b
 	edit.Priority = 5
-	b = must(sdk.PutDownloadclientById(ctx, b.Id, edit, radarr.PutDownloadclientByIdOperationOptions{})).Model
+	b = must(sdk.PutDownloadClientById(ctx, b.Id, edit, radarr.PutDownloadClientByIdOperationOptions{})).Model
 	if b.Priority != 5 {
 		t.Errorf("priority %d after the update, want 5", b.Priority)
 	}
 
-	must(sdk.PostDownloadclientTest(ctx, *b, radarr.PostDownloadclientTestOperationOptions{}))
-	for _, r := range must(sdk.PostDownloadclientTestall(ctx)).Model {
+	must(sdk.PostDownloadClientTest(ctx, *b, radarr.PostDownloadClientTestOperationOptions{}))
+	for _, r := range must(sdk.PostDownloadClientTestAll(ctx)).Model {
 		if !isTrue(r.IsValid) {
 			t.Errorf("download client %d failed its test: %+v", r.Id, r.ValidationFailures)
 		}
@@ -180,14 +181,14 @@ func TestDownloadClients(t *testing.T) {
 
 	// a test of every client answers 400 when one fails, with every
 	// client's result: a blackhole fails once its folders are gone
-	if err := os.RemoveAll(hostPath("/media/downloads/sdk-c")); err != nil {
+	if err := os.RemoveAll(testenv.HostPath("/media/downloads/sdk-c")); err != nil {
 		t.Fatal(err)
 	}
-	res, err := sdk.PostDownloadclientTestall(ctx)
-	if client.StatusCode(err) != http.StatusBadRequest {
-		t.Fatalf("a test of every client with one failing: want 400, got %v", err)
+	res, err := sdk.PostDownloadClientTestAll(ctx)
+	if err != nil || res.HttpResponse.StatusCode != http.StatusBadRequest {
+		t.Fatalf("a test of every client with one failing: want 400 and its results, got %v", err)
 	}
-	results := decodeAnswer[[]radarr.ProviderTestAllResult](t, res.HttpResponse)
+	results := res.Model
 	if r := testResult(t, results, ids[1]); isTrue(r.IsValid) || len(r.ValidationFailures) == 0 || r.ValidationFailures[0].Severity != "error" {
 		t.Errorf("the client without folders: %+v", r)
 	}
@@ -196,8 +197,8 @@ func TestDownloadClients(t *testing.T) {
 	}
 	// and a test of the one client answers 400 with its failures, which
 	// say whether each is only a warning
-	c := must(sdk.GetDownloadclientById(ctx, ids[1])).Model
-	one, err := sdk.PostDownloadclientTest(ctx, *c, radarr.PostDownloadclientTestOperationOptions{})
+	c := must(sdk.GetDownloadClientById(ctx, ids[1])).Model
+	one, err := sdk.PostDownloadClientTest(ctx, *c, radarr.PostDownloadClientTestOperationOptions{})
 	if client.StatusCode(err) != http.StatusBadRequest {
 		t.Fatalf("a test of the client without folders: want 400, got %v", err)
 	}
@@ -206,20 +207,20 @@ func TestDownloadClients(t *testing.T) {
 	}
 
 	// a blackhole has no actions: an action it does not have answers null
-	if act := must(sdk.PostDownloadclientActionByName(ctx, "sdk-no-such-action", *b)).Model; string(act) != "null" {
+	if act := must(sdk.PostDownloadClientActionByName(ctx, "sdk-no-such-action", *b)).Model; string(act) != "null" {
 		t.Errorf("an action the client does not have answered %s", act)
 	}
 
-	changed := must(sdk.PutDownloadclientBulk(ctx, radarr.DownloadClientBulkResource{Ids: ids[:1], Priority: new(10)})).Model
+	changed := must(sdk.PutDownloadClientBulk(ctx, radarr.DownloadClientBulkResource{Ids: ids[:1], Priority: new(10)})).Model
 	if len(changed) != 1 || changed[0].Priority != 10 {
 		t.Errorf("the bulk edit answered %+v, want the one client at priority 10", changed)
 	}
 
-	must(sdk.DeleteDownloadclientBulk(ctx, radarr.DownloadClientBulkResource{Ids: ids[1:]}))
-	gotten, err := sdk.GetDownloadclientById(ctx, ids[1])
+	must(sdk.DeleteDownloadClientBulk(ctx, radarr.DownloadClientBulkResource{Ids: ids[1:]}))
+	gotten, err := sdk.GetDownloadClientById(ctx, ids[1])
 	gone(t, "the bulk-deleted client", gotten, err)
-	must(sdk.DeleteDownloadclientById(ctx, ids[0]))
-	gotten, err = sdk.GetDownloadclientById(ctx, ids[0])
+	must(sdk.DeleteDownloadClientById(ctx, ids[0]))
+	gotten, err = sdk.GetDownloadClientById(ctx, ids[0])
 	gone(t, "the client", gotten, err)
 }
 
@@ -234,23 +235,23 @@ func TestImportLists(t *testing.T) {
 		// enabled, so a test of every list includes it; nothing is added
 		// automatically
 		l.Enabled = new(true)
-		created := must(sdk.PostImportlist(ctx, l, radarr.PostImportlistOperationOptions{})).Model
-		removeAfter(ctx, t, name, func(ctx context.Context) (radarr.DeleteImportlistByIdOperationResponse, error) {
-			return sdk.DeleteImportlistById(ctx, created.Id)
+		created := must(sdk.PostImportList(ctx, l, radarr.PostImportListOperationOptions{})).Model
+		removeAfter(ctx, t, name, func(ctx context.Context) (radarr.DeleteImportListByIdOperationResponse, error) {
+			return sdk.DeleteImportListById(ctx, created.Id)
 		})
 		ids = append(ids, created.Id)
 	}
-	b := must(sdk.GetImportlistById(ctx, ids[0])).Model
+	b := must(sdk.GetImportListById(ctx, ids[0])).Model
 
 	edit := *b
 	edit.Name = "SDK List B Renamed"
-	b = must(sdk.PutImportlistById(ctx, b.Id, edit, radarr.PutImportlistByIdOperationOptions{})).Model
+	b = must(sdk.PutImportListById(ctx, b.Id, edit, radarr.PutImportListByIdOperationOptions{})).Model
 	if b.Name != edit.Name {
 		t.Errorf("named %q after the update", b.Name)
 	}
 
-	must(sdk.PostImportlistTest(ctx, *b, radarr.PostImportlistTestOperationOptions{}))
-	all := must(sdk.PostImportlistTestall(ctx)).Model
+	must(sdk.PostImportListTest(ctx, *b, radarr.PostImportListTestOperationOptions{}))
+	all := must(sdk.PostImportListTestAll(ctx)).Model
 	for _, id := range ids {
 		if r := testResult(t, all, id); !isTrue(r.IsValid) {
 			t.Errorf("list %d failed its test: %+v", id, r.ValidationFailures)
@@ -259,21 +260,21 @@ func TestImportLists(t *testing.T) {
 
 	// the profiles of the other Radarr are an action on the list, which
 	// asks that Radarr: this one, whose profiles include HD-1080p
-	profiles := actionOptions(t, must(sdk.PostImportlistActionByName(ctx, "getProfiles", *b)).Model)
+	profiles := actionOptions(t, must(sdk.PostImportListActionByName(ctx, "getProfiles", *b)).Model)
 	if !slices.ContainsFunc(profiles, func(o map[string]any) bool { return o["name"] == "HD-1080p" }) {
 		t.Errorf("the other Radarr's profiles: %v", profiles)
 	}
 
-	changed := must(sdk.PutImportlistBulk(ctx, radarr.ImportListBulkResource{Ids: ids, EnableAuto: new(false), Enabled: new(false)})).Model
+	changed := must(sdk.PutImportListBulk(ctx, radarr.ImportListBulkResource{Ids: ids, EnableAuto: new(false), Enabled: new(false)})).Model
 	if len(changed) != 2 || isTrue(changed[0].Enabled) || isTrue(changed[1].Enabled) {
 		t.Errorf("the bulk edit answered %d lists, want both disabled", len(changed))
 	}
 
-	must(sdk.DeleteImportlistBulk(ctx, radarr.ImportListBulkResource{Ids: ids[1:]}))
-	res, err := sdk.GetImportlistById(ctx, ids[1])
+	must(sdk.DeleteImportListBulk(ctx, radarr.ImportListBulkResource{Ids: ids[1:]}))
+	res, err := sdk.GetImportListById(ctx, ids[1])
 	gone(t, "the bulk-deleted list", res, err)
-	must(sdk.DeleteImportlistById(ctx, ids[0]))
-	res, err = sdk.GetImportlistById(ctx, ids[0])
+	must(sdk.DeleteImportListById(ctx, ids[0]))
+	res, err = sdk.GetImportListById(ctx, ids[0])
 	gone(t, "the list", res, err)
 }
 
@@ -306,7 +307,7 @@ func TestNotifications(t *testing.T) {
 	if !poll(10*time.Second, func() bool { return tests() > sent }) {
 		t.Error("a test of the webhook sent it nothing")
 	}
-	if r := testResult(t, must(sdk.PostNotificationTestall(ctx)).Model, n.Id); !isTrue(r.IsValid) {
+	if r := testResult(t, must(sdk.PostNotificationTestAll(ctx)).Model, n.Id); !isTrue(r.IsValid) {
 		t.Errorf("the webhook failed its test: %+v", r.ValidationFailures)
 	}
 	if act := must(sdk.PostNotificationActionByName(ctx, "sdk-no-such-action", *n)).Model; string(act) != "null" {
@@ -354,7 +355,7 @@ func TestMetadataConsumers(t *testing.T) {
 	}
 
 	must(sdk.PostMetadataTest(ctx, *m, radarr.PostMetadataTestOperationOptions{}))
-	if r := testResult(t, must(sdk.PostMetadataTestall(ctx)).Model, m.Id); !isTrue(r.IsValid) {
+	if r := testResult(t, must(sdk.PostMetadataTestAll(ctx)).Model, m.Id); !isTrue(r.IsValid) {
 		t.Errorf("the consumer failed its test: %+v", r.ValidationFailures)
 	}
 	if act := must(sdk.PostMetadataActionByName(ctx, "sdk-no-such-action", *m)).Model; string(act) != "null" {

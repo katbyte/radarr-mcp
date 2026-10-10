@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -156,11 +156,19 @@ func registerMovieEditTools(r *registry) {
 		if err != nil {
 			return nil, editOut{}, err
 		}
+		unlock := r.locking().By(movieLocks(m.Id)...)
+		defer unlock()
 		if in.Folder != "" {
 			if in.RootFolder != "" {
 				return nil, editOut{}, errors.New("folder and root_folder do not go together: root_folder moves the film's folder, folder points the film at one already there")
 			}
-			row, pointErr := pointAt(ctx, client, m, in.Folder)
+
+			// pointing a film at a folder sends it back whole, so it is read again now that it is held
+			held, heldErr := client.GetMovieById(ctx, m.Id)
+			if heldErr != nil {
+				return nil, editOut{}, heldErr
+			}
+			row, pointErr := pointAt(ctx, client, held.Model, in.Folder)
 			if pointErr != nil {
 				return nil, editOut{}, pointErr
 			}
@@ -187,6 +195,8 @@ func registerMovieEditTools(r *registry) {
 			m := &movies[i]
 			ids = append(ids, m.Id)
 		}
+		unlock := r.locking().By(movieLocks(ids...)...)
+		defer unlock()
 		rows, err := applyEdit(ctx, client, ids, in.editFields)
 
 		return nil, editOut{Movies: rows}, err
@@ -196,16 +206,18 @@ func registerMovieEditTools(r *registry) {
 		Movie        string `json:"movie"                   jsonschema:"the film: its Radarr id, tmdb:<id>, imdb:<tt id>, or its title"`
 		DeleteFiles  bool   `json:"delete_files,omitempty"  jsonschema:"also delete its folder and files from disk; default false leaves them there"`
 		AddExclusion bool   `json:"add_exclusion,omitempty" jsonschema:"also add it to the import list exclusions, so a list does not add it back"`
+		Confirm      bool   `json:"confirm,omitempty"       jsonschema:"true to delete; without it nothing changes and the answer says what a confirmed call would remove"`
 	}
 	type movieDeleteOut struct {
-		Deleted      movieRow `json:"deleted"`
-		FilesDeleted bool     `json:"files_deleted" jsonschema:"its folder and files are being deleted: Radarr does it in the background, so they can still be on disk for a moment after this answers"`
-		Excluded     bool     `json:"excluded"      jsonschema:"it is being added to the exclusions, likewise in the background"`
+		Deleted      *movieRow `json:"deleted,omitempty"      jsonschema:"the film removed from the library"`
+		WouldDelete  *movieRow `json:"would_delete,omitempty" jsonschema:"without confirm: the film a confirmed call removes; nothing has changed"`
+		Files        string    `json:"files,omitempty"        jsonschema:"with delete_files: what is erased from disk, the film's folder and everything in it"`
+		FilesDeleted bool      `json:"files_deleted"          jsonschema:"its folder and files are being deleted: Radarr does it in the background, so they can still be on disk for a moment after this answers"`
+		Excluded     bool      `json:"excluded"               jsonschema:"it is being added to the exclusions, likewise in the background"`
 	}
 	add(r, deleteTool, &mcp.Tool{
-		Name: "movie_delete",
-		Description: "Remove a film from the library; with delete_files, delete its folder and files from disk as well (to the recycle bin, when Radarr has one set up). " +
-			"add_exclusion stops an import list adding it back.",
+		Name:        "movie_delete",
+		Description: "Remove a film from the library; with delete_files, delete its folder and files from disk as well (to the recycle bin, when Radarr has one set up). add_exclusion stops an import list adding it back. Nothing changes without confirm: the answer says what a confirmed call would remove.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in movieDeleteIn) (*mcp.CallToolResult, movieDeleteOut, error) {
 		m, err := resolveMovie(ctx, client, in.Movie)
 		if err != nil {
@@ -215,13 +227,28 @@ func registerMovieEditTools(r *registry) {
 		if err != nil {
 			return nil, movieDeleteOut{}, err
 		}
-		if _, err := client.DeleteMovieById(ctx, m.Id, radarr.DeleteMovieByIdOperationOptions{
-			DeleteFiles: new(in.DeleteFiles), AddImportExclusion: new(in.AddExclusion),
-		}); err != nil {
-			return nil, movieDeleteOut{}, err
+
+		// an edit of this film in the same turn finishes first, rather than writing back a film that has just gone
+		unlock := r.locking().By(movieLocks(m.Id)...)
+		defer unlock()
+
+		row := rowOf(m, lk)
+		out := movieDeleteOut{}
+		if in.DeleteFiles {
+			out.Files = "the folder " + m.Path + " and everything in it"
+		}
+		if !in.Confirm {
+			out.WouldDelete = &row
+
+			return nil, out, nil
 		}
 
-		return nil, movieDeleteOut{Deleted: rowOf(m, lk), FilesDeleted: in.DeleteFiles, Excluded: in.AddExclusion}, nil
+		if _, err := client.DeleteMovieById(ctx, m.Id, radarr.DeleteMovieByIdOperationOptions{DeleteFiles: new(in.DeleteFiles), AddImportExclusion: new(in.AddExclusion)}); err != nil {
+			return nil, movieDeleteOut{}, err
+		}
+		out.Deleted, out.FilesDeleted, out.Excluded = &row, in.DeleteFiles, in.AddExclusion
+
+		return nil, out, nil
 	})
 
 	type commandsOut struct {

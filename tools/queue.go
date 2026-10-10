@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -111,10 +111,11 @@ func registerQueueTools(r *registry) {
 	type queueListIn struct {
 		Movie          string `json:"movie,omitempty"           jsonschema:"only this film's downloads: its id, tmdb:<id>, imdb:<tt id> or title"`
 		IncludeUnknown bool   `json:"include_unknown,omitempty" jsonschema:"also list downloads Radarr could not match to a film in the library"`
+		pageIn
 	}
 	type queueListOut struct {
-		Total int        `json:"total"`
 		Items []queueRow `json:"items" jsonschema:"stuck ones (health warning or error) first"`
+		pageOut
 	}
 	add(r, readTool, &mcp.Tool{
 		Name: "queue_list",
@@ -133,11 +134,14 @@ func registerQueueTools(r *registry) {
 		if err != nil {
 			return nil, queueListOut{}, err
 		}
-		out := queueListOut{Total: len(items)}
+		rows := make([]queueRow, 0, len(items))
 		for i := range items {
-			out.Items = append(out.Items, queueOf(&items[i]))
+			rows = append(rows, queueOf(&items[i]))
 		}
-		slices.SortStableFunc(out.Items, func(a, b queueRow) int { return healthRank(b.Health) - healthRank(a.Health) })
+		slices.SortStableFunc(rows, func(a, b queueRow) int { return healthRank(b.Health) - healthRank(a.Health) })
+
+		out := queueListOut{}
+		out.Items, out.pageOut = pageRows(rows, in.pageIn)
 
 		return nil, out, nil
 	})

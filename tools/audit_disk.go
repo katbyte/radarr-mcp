@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -121,7 +121,7 @@ func parseFolder(name string) (title string, year int, rest string) {
 // library is in, and says which of them are a second copy of a film the
 // library has elsewhere.
 func unmappedAudit(ctx context.Context, e *auditEnv, in auditIn) (auditOut, error) {
-	folders, err := e.c.GetRootfolder(ctx)
+	folders, err := e.c.GetRootFolder(ctx)
 	if err != nil {
 		return auditOut{}, err
 	}
@@ -167,7 +167,7 @@ func unmappedAudit(ctx context.Context, e *auditEnv, in auditIn) (auditOut, erro
 // folderNames lists the folders directly inside a path, as Radarr sees them
 // from where it runs.
 func folderNames(ctx context.Context, c *radarr.Client, path string) (map[string]bool, error) {
-	res, err := c.GetFilesystem(ctx, radarr.GetFilesystemOperationOptions{
+	res, err := c.GetFileSystem(ctx, radarr.GetFileSystemOperationOptions{
 		Path: strings.TrimSuffix(path, "/") + "/", IncludeFiles: new(false), AllowFoldersWithoutTrailingSlashes: new(true),
 	})
 	if err != nil {
@@ -202,7 +202,7 @@ func missingFoldersAudit(ctx context.Context, e *auditEnv, in auditIn) (auditOut
 	if err != nil {
 		return auditOut{}, err
 	}
-	roots, err := e.c.GetRootfolder(ctx)
+	roots, err := e.c.GetRootFolder(ctx)
 	if err != nil {
 		return auditOut{}, err
 	}
@@ -316,7 +316,7 @@ func untrackedAudit(ctx context.Context, e *auditEnv, in auditIn) (auditOut, err
 		out.Scanned++
 		// by folder alone: given the film's id as well, Radarr ignores the
 		// folder and the filter and answers the film's own tracked files
-		files, err := scanImport(ctx, e.c, radarr.GetManualimportOperationOptions{Folder: m.Path, FilterExistingFiles: new(true)})
+		files, err := scanImport(ctx, e.c, radarr.GetManualImportOperationOptions{Folder: m.Path, FilterExistingFiles: new(true)})
 		if err != nil {
 			return out, fmt.Errorf("scanning %s: %w", m.Path, err)
 		}

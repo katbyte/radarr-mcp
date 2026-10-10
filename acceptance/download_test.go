@@ -8,8 +8,12 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
-	"github.com/katbyte/radarr-mcp/internal/fakeindexer"
+	acc "github.com/katbyte/go-kt/mcp/acctest"
+	"github.com/katbyte/go-kt/test/env"
+	"github.com/katbyte/go-kt/test/services/newznab"
+	"github.com/katbyte/radarr-mcp/lib/testenv"
 )
 
 // The download film: added with no file for the journey to fetch, and
@@ -25,9 +29,9 @@ const (
 // The releases the fake indexer offers for it: one the HD-1080p profile
 // wants, and two it rejects.
 var (
-	primerBluray = fakeindexer.Release{Title: "Primer.2004.1080p.BluRay.x264-GRP", TmdbID: downloadTmdb, ImdbID: downloadImdb, Size: 8 << 30}
-	primerHDTV   = fakeindexer.Release{Title: "Primer.2004.720p.HDTV.x264-GRP", TmdbID: downloadTmdb, ImdbID: downloadImdb, Size: 3 << 30}
-	primerCam    = fakeindexer.Release{Title: "Primer.2004.CAM.XviD-BAD", TmdbID: downloadTmdb, ImdbID: downloadImdb, Size: 700 << 20}
+	primerBluray = newznab.Release{Category: newznab.CategoryMoviesHD, Title: "Primer.2004.1080p.BluRay.x264-GRP", TMDBID: downloadTmdb, IMDBID: downloadImdb, Size: 8 << 30}
+	primerHDTV   = newznab.Release{Category: newznab.CategoryMoviesHD, Title: "Primer.2004.720p.HDTV.x264-GRP", TMDBID: downloadTmdb, IMDBID: downloadImdb, Size: 3 << 30}
+	primerCam    = newznab.Release{Category: newznab.CategoryMoviesHD, Title: "Primer.2004.CAM.XviD-BAD", TMDBID: downloadTmdb, IMDBID: downloadImdb, Size: 700 << 20}
 )
 
 // finish lays a release's download out in the blackhole's watch folder, the
@@ -40,8 +44,8 @@ func finish(t *testing.T, release string, minutes int, size string, video bool) 
 	if video {
 		makeVideo(t, dir+"/"+release+".mkv", minutes, size)
 	} else {
-		mediaMkdir(t, hostPath(dir))
-		if err := os.WriteFile(hostPath(dir+"/readme.txt"), []byte("nothing to see here\n"), 0o666); err != nil { //nolint:gosec // the container reads it as another user
+		env.Mkdir(t, testenv.DataDir(), testenv.HostPath(dir))
+		if err := os.WriteFile(testenv.HostPath(dir+"/readme.txt"), []byte("nothing to see here\n"), 0o666); err != nil { //nolint:gosec // the container reads it as another user
 			t.Fatal(err)
 		}
 	}
@@ -52,8 +56,8 @@ func finish(t *testing.T, release string, minutes int, size string, video bool) 
 func checkDownloads(t *testing.T) {
 	t.Helper()
 
-	out := call(t, "task_run", map[string]any{"task": "RefreshMonitoredDownloads"})
-	if cmd := object(t, out["command"], "command"); str(cmd["status"]) != "completed" {
+	out := suite.Call(t, "task_run", map[string]any{"task": "RefreshMonitoredDownloads"})
+	if cmd := acc.Object(t, out["command"], "command"); acc.Str(cmd["status"]) != "completed" {
 		t.Fatalf("RefreshMonitoredDownloads = %v", out)
 	}
 }
@@ -63,8 +67,8 @@ func events(t *testing.T) []string {
 	t.Helper()
 
 	var kinds []string
-	for _, e := range rows(t, call(t, "history_list", map[string]any{"movie": "tmdb:14337"})["events"], "events") {
-		kinds = append(kinds, str(e["event"]))
+	for _, e := range acc.Rows(t, suite.Call(t, "history_list", map[string]any{"movie": "tmdb:14337"})["events"], "events") {
+		kinds = append(kinds, acc.Str(e["event"]))
 	}
 
 	return kinds
@@ -79,56 +83,58 @@ func events(t *testing.T) []string {
 //nolint:paralleltest // the steps share one film and one download client, in order
 func TestDownloadJourney(t *testing.T) {
 	skipUnlessReady(t)
-	indexer.Offer(primerBluray, primerHDTV, primerCam)
-	call(t, "movie_add", map[string]any{"movie": "tmdb:14337", "quality_profile": profileHD, "root_folder": moviesRoot})
+	if err := indexer.Offer(primerBluray, primerHDTV, primerCam); err != nil {
+		t.Fatal(err)
+	}
+	suite.Call(t, "movie_add", map[string]any{"movie": "tmdb:14337", "quality_profile": profileHD, "root_folder": moviesRoot})
 	t.Cleanup(func() {
 		indexer.Withdraw(primerBluray.Title, primerHDTV.Title, primerCam.Title)
-		_, _ = invoke("movie_delete", map[string]any{"movie": "tmdb:14337", "delete_files": true})
+		_, _ = suite.Invoke("movie_delete", map[string]any{"movie": "tmdb:14337", "delete_files": true, "confirm": true})
 		for _, dir := range []string{downloadFolder, watchFolder, nzbFolder} {
-			entries, _ := os.ReadDir(hostPath(dir))
+			entries, _ := os.ReadDir(testenv.HostPath(dir))
 			for _, e := range entries {
 				if strings.HasPrefix(e.Name(), "Primer") {
-					_ = os.RemoveAll(filepath.Join(hostPath(dir), e.Name()))
+					_ = os.RemoveAll(filepath.Join(testenv.HostPath(dir), e.Name()))
 				}
 			}
 		}
-		_ = os.RemoveAll(hostPath(downloadFolder))
+		_ = os.RemoveAll(testenv.HostPath(downloadFolder))
 	})
 
 	var releases []map[string]any
 	t.Run("the indexers offer three releases, and Radarr wants one", func(t *testing.T) {
-		out := call(t, "release_search", map[string]any{"movie": "Primer"})
-		releases = rows(t, out["releases"], "releases")
-		if num(t, out["total"], "total") != 3 || len(releases) != 3 {
+		out := suite.Call(t, "release_search", map[string]any{"movie": "Primer"})
+		releases = acc.Rows(t, out["releases"], "releases")
+		if acc.Num(t, out["total"], "total") != 3 || len(releases) != 3 {
 			t.Fatalf("release_search = %v", out)
 		}
 		byTitle := map[string]map[string]any{}
 		for _, r := range releases {
-			byTitle[str(r["title"])] = r
-			if str(r["indexer"]) != "Fake Indexer" || num(t, r["indexer_id"], "indexer_id") == 0 || str(r["guid"]) == "" || str(r["protocol"]) != "usenet" {
+			byTitle[acc.Str(r["title"])] = r
+			if acc.Str(r["indexer"]) != "Fake Indexer" || acc.Num(t, r["indexer_id"], "indexer_id") == 0 || acc.Str(r["guid"]) == "" || acc.Str(r["protocol"]) != "usenet" {
 				t.Errorf("release = %v", r)
 			}
 		}
-		if bluray := byTitle[primerBluray.Title]; bluray == nil || bluray["approved"] != true || str(bluray["quality"]) != "Bluray-1080p" || num(t, bluray["size"], "size") != int(primerBluray.Size) {
+		if bluray := byTitle[primerBluray.Title]; bluray == nil || bluray["approved"] != true || acc.Str(bluray["quality"]) != "Bluray-1080p" || acc.Num(t, bluray["size"], "size") != int(primerBluray.Size) {
 			t.Errorf("the 1080p BluRay = %v", bluray)
 		}
 		for _, title := range []string{primerHDTV.Title, primerCam.Title} {
-			if r := byTitle[title]; r == nil || r["approved"] != false || len(strs(t, r["rejections"], "rejections")) == 0 {
+			if r := byTitle[title]; r == nil || r["approved"] != false || len(acc.Strs(t, acc.OrEmptyList(r["rejections"]), "rejections")) == 0 {
 				t.Errorf("%s should be rejected with reasons: %v", title, r)
 			}
 		}
 		// Radarr's own order puts what it would take first
-		if str(releases[0]["title"]) != primerBluray.Title {
+		if acc.Str(releases[0]["title"]) != primerBluray.Title {
 			t.Errorf("the first release = %v", releases[0]["title"])
 		}
-		approved := rows(t, call(t, "release_search", map[string]any{"movie": "Primer", "approved": true})["releases"], "releases")
-		if len(approved) != 1 || str(approved[0]["title"]) != primerBluray.Title {
+		approved := acc.Rows(t, suite.Call(t, "release_search", map[string]any{"movie": "Primer", "approved": true})["releases"], "releases")
+		if len(approved) != 1 || acc.Str(approved[0]["title"]) != primerBluray.Title {
 			t.Errorf("approved only = %v", approved)
 		}
 		// and the indexer was asked by id, the way Radarr searches for a film
 		var byID bool
 		for _, r := range indexer.Requests() {
-			if r.Query["t"] == "movie" && (r.Query["tmdbid"] == "14337" || strings.TrimPrefix(r.Query["imdbid"], "tt") == "0390384") {
+			if r.Query.Get("t") == "movie" && (r.Query.Get("tmdbid") == "14337" || strings.TrimPrefix(r.Query.Get("imdbid"), "tt") == "0390384") {
 				byID = true
 			}
 		}
@@ -138,87 +144,93 @@ func TestDownloadJourney(t *testing.T) {
 	})
 
 	t.Run("a release parses the way Radarr reads it", func(t *testing.T) {
-		out := call(t, "release_parse", map[string]any{"title": primerHDTV.Title})
-		movie := object(t, out["movie"], "movie")
-		if str(out["quality"]) != "HDTV-720p" || str(out["release_group"]) != "GRP" || num(t, out["year"], "year") != downloadYear || str(movie["title"]) != downloadTitle {
+		out := suite.Call(t, "release_parse", map[string]any{"title": primerHDTV.Title})
+		movie := acc.Object(t, out["movie"], "movie")
+		if acc.Str(out["quality"]) != "HDTV-720p" || acc.Str(out["release_group"]) != "GRP" || acc.Num(t, out["year"], "year") != downloadYear || acc.Str(movie["title"]) != downloadTitle {
 			t.Errorf("release_parse = %v", out)
 		}
-		stranger := call(t, "release_parse", map[string]any{"title": "Some.Other.Film.2011.1080p.WEB-DL-XYZ"})
-		if stranger["movie"] != nil || str(stranger["quality"]) != "WEBDL-1080p" || num(t, stranger["year"], "year") != 2011 {
+		stranger := suite.Call(t, "release_parse", map[string]any{"title": "Some.Other.Film.2011.1080p.WEB-DL-XYZ"})
+		if stranger["movie"] != nil || acc.Str(stranger["quality"]) != "WEBDL-1080p" || acc.Num(t, stranger["year"], "year") != 2011 {
 			t.Errorf("an unknown film = %v", stranger)
 		}
-		callErr(t, "release_parse", map[string]any{"title": " "})
+		suite.CallErr(t, "release_parse", map[string]any{"title": " "})
 	})
 
 	t.Run("a rejected release is grabbed by hand, and the download client gets it", func(t *testing.T) {
 		var hdtv map[string]any
 		for _, r := range releases {
-			if str(r["title"]) == primerHDTV.Title {
+			if acc.Str(r["title"]) == primerHDTV.Title {
 				hdtv = r
 			}
 		}
-		out := call(t, "release_grab", map[string]any{"guid": hdtv["guid"], "indexer_id": hdtv["indexer_id"]})
+		out := suite.Call(t, "release_grab", map[string]any{"guid": hdtv["guid"], "indexer_id": hdtv["indexer_id"]})
 		// Radarr's answer to a grab is only what it was sent: the release's
 		// name, the film and the indexer come from the history it wrote
-		grabbed := object(t, out["grabbed"], "grabbed")
-		if str(out["guid"]) != str(hdtv["guid"]) || str(grabbed["event"]) != "grabbed" || str(grabbed["source_title"]) != primerHDTV.Title ||
-			str(grabbed["movie"]) != "Primer (2004)" || object(t, grabbed["details"], "details")["indexer"] != "Fake Indexer" {
+		grabbed := acc.Object(t, out["grabbed"], "grabbed")
+		if acc.Str(out["guid"]) != acc.Str(hdtv["guid"]) || acc.Str(grabbed["event"]) != "grabbed" || acc.Str(grabbed["source_title"]) != primerHDTV.Title ||
+			acc.Str(grabbed["movie"]) != "Primer (2004)" || acc.Object(t, grabbed["details"], "details")["indexer"] != "Fake Indexer" {
 			t.Errorf("release_grab = %v", out)
 		}
 		if !slices.Contains(indexer.Grabbed(), primerHDTV.Title) {
 			t.Errorf("Radarr never fetched the .nzb: %v", indexer.Grabbed())
 		}
-		if _, err := os.Stat(hostPath(nzbFolder + "/" + primerHDTV.Title + ".nzb")); err != nil {
+		if _, err := os.Stat(testenv.HostPath(nzbFolder + "/" + primerHDTV.Title + ".nzb")); err != nil {
 			t.Errorf("the blackhole has no .nzb: %v", err)
 		}
 		if ev := events(t); len(ev) == 0 || ev[0] != "grabbed" {
 			t.Errorf("history = %v, want a grab first", ev)
 		}
-		grab := rows(t, call(t, "history_list", map[string]any{"movie": "Primer", "event": "grabbed"})["events"], "events")
-		if len(grab) != 1 || str(grab[0]["source_title"]) != primerHDTV.Title || object(t, grab[0]["details"], "details")["indexer"] != "Fake Indexer" {
+		grab := acc.Rows(t, suite.Call(t, "history_list", map[string]any{"movie": "Primer", "event": "grabbed"})["events"], "events")
+		if len(grab) != 1 || acc.Str(grab[0]["source_title"]) != primerHDTV.Title || acc.Object(t, grab[0]["details"], "details")["indexer"] != "Fake Indexer" {
 			t.Errorf("the grab in history = %v", grab)
 		} else if grab[0]["id"] != grabbed["id"] {
 			t.Errorf("release_grab answered history %v, the history holds %v", grabbed["id"], grab[0]["id"])
 		}
-		if msg := callErr(t, "release_grab", map[string]any{"guid": "", "indexer_id": 0}); !strings.Contains(msg, "guid and indexer_id are both required") {
+		if msg := suite.CallErr(t, "release_grab", map[string]any{"guid": "", "indexer_id": 0}); !strings.Contains(msg, "guid and indexer_id are both required") {
 			t.Errorf("a grab of nothing = %q", msg)
 		}
 	})
 
 	t.Run("the download finishes and Radarr imports it", func(t *testing.T) {
 		finish(t, primerHDTV.Title, 77, "1280x720", true)
-		if !eventually(func() bool {
+		if !acc.EventuallyWithin(time.Minute, func() bool {
 			checkDownloads(t)
-			got := call(t, "movie_get", map[string]any{"movie": "Primer"})
+			got := suite.Call(t, "movie_get", map[string]any{"movie": "Primer"})
 			return got["has_file"] == true
 		}) {
-			t.Fatalf("Primer was never imported; queue %v, history %v", call(t, "queue_list", map[string]any{"include_unknown": true}), events(t))
+			t.Fatalf("Primer was never imported; queue %v, history %v", suite.Call(t, "queue_list", map[string]any{"include_unknown": true}), events(t))
 		}
-		got := call(t, "movie_get", map[string]any{"movie": "Primer"})
-		file := object(t, got["file"], "file")
-		if str(file["quality"]) != "HDTV-720p" || !strings.HasPrefix(str(file["path"]), downloadFolder+"/") || str(file["release_group"]) != "GRP" {
+		got := suite.Call(t, "movie_get", map[string]any{"movie": "Primer"})
+		file := acc.Object(t, got["file"], "file")
+		if acc.Str(file["quality"]) != "HDTV-720p" || !strings.HasPrefix(acc.Str(file["path"]), downloadFolder+"/") || acc.Str(file["release_group"]) != "GRP" {
 			t.Errorf("the imported file = %v", file)
 		}
 		if ev := events(t); !slices.Contains(ev, "downloadFolderImported") {
 			t.Errorf("history = %v, want an import", ev)
 		}
-		imported := rows(t, call(t, "history_list", map[string]any{"event": "downloadFolderImported", "days": 1})["events"], "events")
-		if len(imported) == 0 || str(imported[0]["movie"]) != "Primer (2004)" {
+		imported := acc.Rows(t, suite.Call(t, "history_list", map[string]any{"event": "downloadFolderImported", "days": 1})["events"], "events")
+		if len(imported) == 0 || acc.Str(imported[0]["movie"]) != "Primer (2004)" {
 			t.Errorf("the library's imports today = %v", imported)
 		}
+		// Radarr pages a film's history: the second event asked for alone is the second of the first two
+		both := suite.Call(t, "history_list", map[string]any{"movie": "Primer", "limit": 2})
+		second := suite.Call(t, "history_list", map[string]any{"movie": "Primer", "limit": 1, "offset": 1})
+		if two, one := acc.Rows(t, both["events"], "events"), acc.Rows(t, second["events"], "events"); len(two) != 2 || len(one) != 1 || one[0]["id"] != two[1]["id"] || acc.Num(t, both["total"], "total") < 2 || acc.Num(t, second["offset"], "offset") != 1 || second["total"] != both["total"] {
+			t.Errorf("the second event alone = %v, the first two = %v", second, both)
+		}
 		// the movie's recent history is part of movie_get
-		if h := rows(t, got["history"], "history"); len(h) < 2 {
+		if h := acc.Rows(t, got["history"], "history"); len(h) < 2 {
 			t.Errorf("movie_get history = %v", h)
 		}
 		// downloading it is what audit_missing_files asked for, and the file
 		// it got is what audit_cutoff_unmet and audit_quality ask to replace
-		if slices.Contains(findings(t, call(t, "audit_missing_files", nil)), "Primer (2004)") {
+		if slices.Contains(findings(t, suite.Call(t, "audit_missing_files", nil)), "Primer (2004)") {
 			t.Error("Primer is still missing after its download imported")
 		}
-		if !slices.Contains(findings(t, call(t, "audit_cutoff_unmet", nil)), "Primer (2004)") {
+		if !slices.Contains(findings(t, suite.Call(t, "audit_cutoff_unmet", nil)), "Primer (2004)") {
 			t.Error("a 720p file below the profile's Bluray-1080p cutoff is not flagged")
 		}
-		if !slices.Contains(findings(t, call(t, "audit_quality", map[string]any{"min_resolution": 1080})), "Primer (2004)") {
+		if !slices.Contains(findings(t, suite.Call(t, "audit_quality", map[string]any{"min_resolution": 1080})), "Primer (2004)") {
 			t.Error("a 720p file is not flagged below 1080 lines")
 		}
 	})
@@ -226,32 +238,32 @@ func TestDownloadJourney(t *testing.T) {
 	t.Run("an automatic search grabs the release the profile wants", func(t *testing.T) {
 		// Radarr's profiles are made with upgrades off, and with them off it
 		// never replaces a file it has; the journey's film needs one on
-		call(t, "qualityprofile_edit", map[string]any{"profile": profileHD, "upgrade_allowed": true})
+		suite.Call(t, "qualityprofile_edit", map[string]any{"profile": profileHD, "upgrade_allowed": true})
 		t.Cleanup(func() {
-			_, _ = invoke("qualityprofile_edit", map[string]any{"profile": profileHD, "upgrade_allowed": false})
+			_, _ = suite.Invoke("qualityprofile_edit", map[string]any{"profile": profileHD, "upgrade_allowed": false})
 		})
-		out := call(t, "movie_download", map[string]any{"movies": []any{"Primer"}})
-		if cmd := object(t, out["command"], "command"); str(cmd["name"]) != "MoviesSearch" || str(cmd["status"]) != "completed" {
+		out := suite.Call(t, "movie_download", map[string]any{"movies": []any{"Primer"}})
+		if cmd := acc.Object(t, out["command"], "command"); acc.Str(cmd["name"]) != "MoviesSearch" || acc.Str(cmd["status"]) != "completed" {
 			t.Fatalf("movie_download = %v", out)
 		}
-		if !eventually(func() bool { return slices.Contains(indexer.Grabbed(), primerBluray.Title) }) {
+		if !acc.EventuallyWithin(time.Minute, func() bool { return slices.Contains(indexer.Grabbed(), primerBluray.Title) }) {
 			t.Fatalf("the automatic search grabbed %v", indexer.Grabbed())
 		}
-		grabs := rows(t, call(t, "history_list", map[string]any{"movie": "Primer", "event": "grabbed"})["events"], "events")
-		if len(grabs) != 2 || str(grabs[0]["source_title"]) != primerBluray.Title {
+		grabs := acc.Rows(t, suite.Call(t, "history_list", map[string]any{"movie": "Primer", "event": "grabbed"})["events"], "events")
+		if len(grabs) != 2 || acc.Str(grabs[0]["source_title"]) != primerBluray.Title {
 			t.Errorf("grabs = %v", grabs)
 		}
 	})
 
 	t.Run("a grab marked failed is blocklisted, and taken off the blocklist", func(t *testing.T) {
-		out := call(t, "history_mark_failed", map[string]any{"movie": "Primer"})
-		if marked := object(t, out["marked"], "marked"); str(marked["source_title"]) != primerBluray.Title || str(marked["event"]) != "grabbed" {
+		out := suite.Call(t, "history_mark_failed", map[string]any{"movie": "Primer"})
+		if marked := acc.Object(t, out["marked"], "marked"); acc.Str(marked["source_title"]) != primerBluray.Title || acc.Str(marked["event"]) != "grabbed" {
 			t.Fatalf("history_mark_failed = %v", out)
 		}
 		var entry map[string]any
-		if !eventually(func() bool {
-			for _, b := range rows(t, call(t, "blocklist_list", map[string]any{"movie": "Primer"})["entries"], "entries") {
-				if str(b["source_title"]) == primerBluray.Title {
+		if !acc.EventuallyWithin(time.Minute, func() bool {
+			for _, b := range acc.Rows(t, suite.Call(t, "blocklist_list", map[string]any{"movie": "Primer"})["entries"], "entries") {
+				if acc.Str(b["source_title"]) == primerBluray.Title {
 					entry = b
 				}
 			}
@@ -259,11 +271,11 @@ func TestDownloadJourney(t *testing.T) {
 		}) {
 			t.Fatalf("the failed release is not on the blocklist")
 		}
-		if str(entry["movie"]) != "Primer (2004)" || str(entry["indexer"]) != "Fake Indexer" {
+		if acc.Str(entry["movie"]) != "Primer (2004)" || acc.Str(entry["indexer"]) != "Fake Indexer" {
 			t.Errorf("the blocklist entry = %v", entry)
 		}
-		all := call(t, "blocklist_list", nil)
-		if num(t, all["total"], "total") < 1 {
+		all := suite.Call(t, "blocklist_list", nil)
+		if acc.Num(t, all["total"], "total") < 1 {
 			t.Errorf("the whole blocklist = %v", all)
 		}
 		if ev := events(t); !slices.Contains(ev, "downloadFailed") {
@@ -271,24 +283,24 @@ func TestDownloadJourney(t *testing.T) {
 		}
 		// a blocklisted release is one Radarr no longer takes on its own
 		var blocked bool
-		for _, r := range rows(t, call(t, "release_search", map[string]any{"movie": "Primer"})["releases"], "releases") {
-			if str(r["title"]) == primerBluray.Title && r["approved"] == false && strings.Contains(strings.Join(strs(t, r["rejections"], "rejections"), " "), "blocklist") {
+		for _, r := range acc.Rows(t, suite.Call(t, "release_search", map[string]any{"movie": "Primer"})["releases"], "releases") {
+			if acc.Str(r["title"]) == primerBluray.Title && r["approved"] == false && strings.Contains(strings.Join(acc.Strs(t, acc.OrEmptyList(r["rejections"]), "rejections"), " "), "blocklist") {
 				blocked = true
 			}
 		}
 		if !blocked {
 			t.Error("the blocklisted release is still approved")
 		}
-		removed := call(t, "blocklist_remove", map[string]any{"ids": []any{entry["id"]}})
+		removed := suite.Call(t, "blocklist_remove", map[string]any{"ids": []any{entry["id"]}})
 		if got := removed["removed"].([]any); len(got) != 1 { //nolint:forcetypeassert // the tool's own output
 			t.Errorf("blocklist_remove = %v", removed)
 		}
-		if left := rows(t, call(t, "blocklist_list", map[string]any{"movie": "Primer"})["entries"], "entries"); len(left) != 0 {
+		if left := acc.Rows(t, suite.Call(t, "blocklist_list", map[string]any{"movie": "Primer"})["entries"], "entries"); len(left) != 0 {
 			t.Errorf("still blocklisted: %v", left)
 		}
 		// marking an import failed is refused: only a grab can fail
-		for _, e := range rows(t, call(t, "history_list", map[string]any{"movie": "Primer", "event": "downloadFolderImported"})["events"], "events") {
-			if msg := callErr(t, "history_mark_failed", map[string]any{"id": e["id"]}); !strings.Contains(msg, "only a grab can be marked failed") {
+		for _, e := range acc.Rows(t, suite.Call(t, "history_list", map[string]any{"movie": "Primer", "event": "downloadFolderImported"})["events"], "events") {
+			if msg := suite.CallErr(t, "history_mark_failed", map[string]any{"id": e["id"]}); !strings.Contains(msg, "only a grab can be marked failed") {
 				t.Errorf("marking an import failed = %q", msg)
 			}
 		}
@@ -297,43 +309,43 @@ func TestDownloadJourney(t *testing.T) {
 	t.Run("a download with nothing to import is stuck, found, and cleared", func(t *testing.T) {
 		finish(t, primerBluray.Title, 0, "", false)
 		var stuck map[string]any
-		if !eventually(func() bool {
+		if !acc.EventuallyWithin(time.Minute, func() bool {
 			checkDownloads(t)
-			for _, f := range rows(t, call(t, "audit_queue", nil)["findings"], "findings") {
-				if str(f["title"]) == primerBluray.Title {
+			for _, f := range acc.Rows(t, suite.Call(t, "audit_queue", nil)["findings"], "findings") {
+				if acc.Str(f["title"]) == primerBluray.Title {
 					stuck = f
 				}
 			}
 			return stuck != nil
 		}) {
-			t.Fatalf("the empty download never showed as stuck: %v", call(t, "queue_list", map[string]any{"include_unknown": true}))
+			t.Fatalf("the empty download never showed as stuck: %v", suite.Call(t, "queue_list", map[string]any{"include_unknown": true}))
 		}
-		if num(t, stuck["queue_id"], "queue_id") == 0 || !strings.Contains(str(stuck["detail"]), "Primer (2004)") {
+		if acc.Num(t, stuck["queue_id"], "queue_id") == 0 || !strings.Contains(acc.Str(stuck["detail"]), "Primer (2004)") {
 			t.Errorf("the stuck download = %v", stuck)
 		}
-		queue := call(t, "queue_list", map[string]any{"movie": "Primer"})
-		items := rows(t, queue["items"], "items")
-		if len(items) != 1 || str(items[0]["health"]) == "ok" || len(strs(t, items[0]["messages"], "messages")) == 0 || str(items[0]["movie"]) != "Primer (2004)" {
+		queue := suite.Call(t, "queue_list", map[string]any{"movie": "Primer"})
+		items := acc.Rows(t, queue["items"], "items")
+		if len(items) != 1 || acc.Str(items[0]["health"]) == "ok" || len(acc.Strs(t, acc.OrEmptyList(items[0]["messages"]), "messages")) == 0 || acc.Str(items[0]["movie"]) != "Primer (2004)" {
 			t.Errorf("queue_list = %v", queue)
 		}
 		// nothing in it to import by hand
-		if files := rows(t, call(t, "import_scan", map[string]any{"download_id": items[0]["download_id"]})["files"], "files"); len(files) != 0 {
+		if files := acc.Rows(t, suite.Call(t, "import_scan", map[string]any{"download_id": items[0]["download_id"]})["files"], "files"); len(files) != 0 {
 			t.Errorf("import_scan of the empty download = %v", files)
 		}
-		out := call(t, "queue_remove", map[string]any{"ids": []any{stuck["queue_id"]}, "remove_from_client": true})
-		if removed := rows(t, out["removed"], "removed"); len(removed) != 1 || str(removed[0]["title"]) != primerBluray.Title {
+		out := suite.Call(t, "queue_remove", map[string]any{"ids": []any{stuck["queue_id"]}, "remove_from_client": true})
+		if removed := acc.Rows(t, out["removed"], "removed"); len(removed) != 1 || acc.Str(removed[0]["title"]) != primerBluray.Title {
 			t.Errorf("queue_remove = %v", out)
 		}
-		if !eventually(func() bool {
-			_, err := os.Stat(hostPath(watchFolder + "/" + primerBluray.Title))
+		if !acc.EventuallyWithin(time.Minute, func() bool {
+			_, err := os.Stat(testenv.HostPath(watchFolder + "/" + primerBluray.Title))
 			return os.IsNotExist(err)
 		}) {
 			t.Error("removed from the client, the download is still in the watch folder")
 		}
-		if got := findings(t, call(t, "audit_queue", nil)); len(got) != 0 {
+		if got := findings(t, suite.Call(t, "audit_queue", nil)); len(got) != 0 {
 			t.Errorf("the queue is still not clear: %v", got)
 		}
-		if msg := callErr(t, "queue_remove", map[string]any{"ids": []any{999999}}); !strings.Contains(msg, "no queue item 999999") {
+		if msg := suite.CallErr(t, "queue_remove", map[string]any{"ids": []any{999999}}); !strings.Contains(msg, "no queue item 999999") {
 			t.Errorf("removing what is not there = %q", msg)
 		}
 	})
@@ -341,30 +353,30 @@ func TestDownloadJourney(t *testing.T) {
 	t.Run("a better copy clears what the quality audits asked for", func(t *testing.T) {
 		// Radarr refuses to import over a file it has while its profile does
 		// not upgrade, however the release was grabbed
-		call(t, "qualityprofile_edit", map[string]any{"profile": profileHD, "upgrade_allowed": true})
+		suite.Call(t, "qualityprofile_edit", map[string]any{"profile": profileHD, "upgrade_allowed": true})
 		t.Cleanup(func() {
-			_, _ = invoke("qualityprofile_edit", map[string]any{"profile": profileHD, "upgrade_allowed": false})
+			_, _ = suite.Invoke("qualityprofile_edit", map[string]any{"profile": profileHD, "upgrade_allowed": false})
 		})
 		// the automatic search grabbed the Bluray, the blocklist test marked
 		// it failed: grab it by hand and let it finish this time
-		releases := rows(t, call(t, "release_search", map[string]any{"movie": "Primer"})["releases"], "releases")
+		releases := acc.Rows(t, suite.Call(t, "release_search", map[string]any{"movie": "Primer"})["releases"], "releases")
 		var bluray map[string]any
 		for _, r := range releases {
-			if str(r["title"]) == primerBluray.Title {
+			if acc.Str(r["title"]) == primerBluray.Title {
 				bluray = r
 			}
 		}
 		if bluray == nil {
 			t.Fatalf("the Bluray is not on offer: %v", releases)
 		}
-		call(t, "release_grab", map[string]any{"guid": bluray["guid"], "indexer_id": bluray["indexer_id"]})
+		suite.Call(t, "release_grab", map[string]any{"guid": bluray["guid"], "indexer_id": bluray["indexer_id"]})
 		finish(t, primerBluray.Title, 77, "1920x1080", true)
-		if !eventually(func() bool {
+		if !acc.EventuallyWithin(time.Minute, func() bool {
 			checkDownloads(t)
-			file, ok := call(t, "movie_get", map[string]any{"movie": "Primer"})["file"].(map[string]any)
-			return ok && str(file["quality"]) == "Bluray-1080p"
+			file, ok := suite.Call(t, "movie_get", map[string]any{"movie": "Primer"})["file"].(map[string]any)
+			return ok && acc.Str(file["quality"]) == "Bluray-1080p"
 		}) {
-			t.Fatalf("the better copy never imported: %v", call(t, "movie_get", map[string]any{"movie": "Primer"})["file"])
+			t.Fatalf("the better copy never imported: %v", suite.Call(t, "movie_get", map[string]any{"movie": "Primer"})["file"])
 		}
 		for _, tc := range []struct {
 			audit string
@@ -373,7 +385,7 @@ func TestDownloadJourney(t *testing.T) {
 			{"audit_cutoff_unmet", nil},
 			{"audit_quality", map[string]any{"min_resolution": 1080}},
 		} {
-			if got := findings(t, call(t, tc.audit, tc.args)); slices.Contains(got, "Primer (2004)") {
+			if got := findings(t, suite.Call(t, tc.audit, tc.args)); slices.Contains(got, "Primer (2004)") {
 				t.Errorf("%s still finds Primer with a Bluray-1080p file: %v", tc.audit, got)
 			}
 		}

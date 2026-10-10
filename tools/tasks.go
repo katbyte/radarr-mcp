@@ -62,26 +62,45 @@ func canonicalTask(name string) (string, bool) {
 func registerTaskTools(r *registry) {
 	client := r.client
 
+	type taskListIn struct {
+		CommandID int `json:"command_id,omitempty" jsonschema:"answer this one command in commands, by the id the tool that started it gave: whether it is still queued or running, or how it ended"`
+		pageIn
+	}
 	type taskListOut struct {
-		Tasks    []taskRow    `json:"tasks"    jsonschema:"the scheduled tasks, with when each last and next runs"`
-		Commands []commandOut `json:"commands" jsonschema:"the commands queued, running or recently finished, newest first"`
+		Tasks    []taskRow    `json:"tasks"    jsonschema:"the scheduled tasks, with when each last and next runs: these are what the page is of"`
+		Commands []commandOut `json:"commands" jsonschema:"the 20 newest commands queued, running or recently finished, newest first, whatever the page; with command_id, that command alone"`
+		pageOut
 	}
 	add(r, readTool, &mcp.Tool{
 		Name:        "task_list",
-		Description: "List Radarr's scheduled tasks (RSS sync, refreshing films and collections, checking downloads, backups, housekeeping) with when each last ran and runs next, and the commands queued, running or recently finished.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ noArgs) (*mcp.CallToolResult, taskListOut, error) {
+		Description: "List Radarr's scheduled tasks (RSS sync, refreshing films and collections, checking downloads, backups, housekeeping) with when each last ran and runs next, and the commands queued, running or recently finished. With command_id, the one command a tool started and stopped waiting for: Radarr starts several of its own every minute, which bury it in the list.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in taskListIn) (*mcp.CallToolResult, taskListOut, error) {
 		tasks, err := client.GetSystemTask(ctx)
 		if err != nil {
 			return nil, taskListOut{}, err
 		}
-		out := taskListOut{}
+		rows := make([]taskRow, 0, len(tasks.Model))
 		for _, t := range tasks.Model {
-			out.Tasks = append(out.Tasks, taskRow{
+			rows = append(rows, taskRow{
 				Name: t.Name, TaskName: t.TaskName, IntervalMinutes: t.Interval,
 				LastExecution: t.LastExecution, LastDuration: t.LastDuration, NextExecution: t.NextExecution,
 			})
 		}
-		slices.SortFunc(out.Tasks, func(a, b taskRow) int { return strings.Compare(a.Name, b.Name) })
+		slices.SortFunc(rows, func(a, b taskRow) int { return strings.Compare(a.Name, b.Name) })
+
+		out := taskListOut{}
+		out.Tasks, out.pageOut = pageRows(rows, in.pageIn)
+
+		// a command still running when its tool stopped waiting is followed by its id, rather than looked for among the ones Radarr starts for itself every minute
+		if in.CommandID != 0 {
+			one, getErr := client.GetCommandById(ctx, in.CommandID)
+			if getErr != nil {
+				return nil, out, fmt.Errorf("command %d: %w", in.CommandID, getErr)
+			}
+			out.Commands = []commandOut{commandOf(one.Model)}
+
+			return nil, out, nil
+		}
 
 		commands, err := client.GetCommand(ctx)
 		if err != nil {

@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/katbyte/radarr-mcp/lib/client"
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/pandorest/client"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 )
 
 // The profiles and the rest of the settings kept as records: each is
@@ -80,23 +80,23 @@ func TestTags(t *testing.T) {
 func TestCustomFilters(t *testing.T) {
 	ctx := skipUnlessUp(t)
 
-	filter := must(sdk.PostCustomfilter(ctx, radarr.CustomFilterResource{
+	filter := must(sdk.PostCustomFilter(ctx, radarr.CustomFilterResource{
 		Type: "movieIndex", Label: "SDK Filter", Filters: []map[string]any{{"key": "monitored", "value": []any{true}, "type": "equal"}},
 	})).Model
-	removeAfter(ctx, t, "the filter", func(ctx context.Context) (radarr.DeleteCustomfilterByIdOperationResponse, error) {
-		return sdk.DeleteCustomfilterById(ctx, filter.Id)
+	removeAfter(ctx, t, "the filter", func(ctx context.Context) (radarr.DeleteCustomFilterByIdOperationResponse, error) {
+		return sdk.DeleteCustomFilterById(ctx, filter.Id)
 	})
 
 	edit := *filter
 	edit.Label = "SDK Filter Renamed"
 	edit.Filters = append(edit.Filters, map[string]any{"key": "hasFile", "value": []any{false}, "type": "equal"})
-	got := must(sdk.PutCustomfilterById(ctx, filter.Id, edit)).Model
+	got := must(sdk.PutCustomFilterById(ctx, filter.Id, edit)).Model
 	if got.Label != edit.Label || len(got.Filters) != 2 {
 		t.Errorf("updated to %q with %d filters, want %q with 2", got.Label, len(got.Filters), edit.Label)
 	}
 
-	must(sdk.DeleteCustomfilterById(ctx, filter.Id))
-	res, err := sdk.GetCustomfilterById(ctx, filter.Id)
+	must(sdk.DeleteCustomFilterById(ctx, filter.Id))
+	res, err := sdk.GetCustomFilterById(ctx, filter.Id)
 	gone(t, "the filter", res, err)
 }
 
@@ -104,23 +104,23 @@ func TestCustomFilters(t *testing.T) {
 func TestCustomFormats(t *testing.T) {
 	ctx := skipUnlessUp(t)
 
-	a := must(sdk.PostCustomformat(ctx, customFormat("SDK Format A"))).Model
-	removeAfter(ctx, t, "format A", func(ctx context.Context) (radarr.DeleteCustomformatByIdOperationResponse, error) {
-		return sdk.DeleteCustomformatById(ctx, a.Id)
+	a := must(sdk.PostCustomFormat(ctx, customFormat("SDK Format A"))).Model
+	removeAfter(ctx, t, "format A", func(ctx context.Context) (radarr.DeleteCustomFormatByIdOperationResponse, error) {
+		return sdk.DeleteCustomFormatById(ctx, a.Id)
 	})
-	b := must(sdk.PostCustomformat(ctx, customFormat("SDK Format B"))).Model
-	removeAfter(ctx, t, "format B", func(ctx context.Context) (radarr.DeleteCustomformatByIdOperationResponse, error) {
-		return sdk.DeleteCustomformatById(ctx, b.Id)
+	b := must(sdk.PostCustomFormat(ctx, customFormat("SDK Format B"))).Model
+	removeAfter(ctx, t, "format B", func(ctx context.Context) (radarr.DeleteCustomFormatByIdOperationResponse, error) {
+		return sdk.DeleteCustomFormatById(ctx, b.Id)
 	})
 
 	edit := *a
 	edit.Name = "SDK Format A Renamed"
-	if got := must(sdk.PutCustomformatById(ctx, a.Id, edit)).Model; got.Name != edit.Name {
+	if got := must(sdk.PutCustomFormatById(ctx, a.Id, edit)).Model; got.Name != edit.Name {
 		t.Errorf("renamed to %q", got.Name)
 	}
 
 	// a bulk edit answers every format it changed
-	changed := must(sdk.PutCustomformatBulk(ctx, radarr.CustomFormatBulkResource{Ids: []int{a.Id, b.Id}, IncludeCustomFormatWhenRenaming: new(true)})).Model
+	changed := must(sdk.PutCustomFormatBulk(ctx, radarr.CustomFormatBulkResource{Ids: []int{a.Id, b.Id}, IncludeCustomFormatWhenRenaming: new(true)})).Model
 	if len(changed) != 2 {
 		t.Fatalf("the bulk edit answered %d formats, want 2", len(changed))
 	}
@@ -130,11 +130,11 @@ func TestCustomFormats(t *testing.T) {
 		}
 	}
 
-	must(sdk.DeleteCustomformatBulk(ctx, radarr.CustomFormatBulkResource{Ids: []int{b.Id}}))
-	res, err := sdk.GetCustomformatById(ctx, b.Id)
+	must(sdk.DeleteCustomFormatBulk(ctx, radarr.CustomFormatBulkResource{Ids: []int{b.Id}}))
+	res, err := sdk.GetCustomFormatById(ctx, b.Id)
 	goneFromCache(t, "format B", res, err)
-	must(sdk.DeleteCustomformatById(ctx, a.Id))
-	res, err = sdk.GetCustomformatById(ctx, a.Id)
+	must(sdk.DeleteCustomFormatById(ctx, a.Id))
+	res, err = sdk.GetCustomFormatById(ctx, a.Id)
 	goneFromCache(t, "format A", res, err)
 }
 
@@ -150,12 +150,12 @@ func TestDelayProfiles(t *testing.T) {
 		removeAfter(ctx, t, label, func(ctx context.Context) (radarr.DeleteTagByIdOperationResponse, error) {
 			return sdk.DeleteTagById(ctx, tag.Id)
 		})
-		p := must(sdk.PostDelayprofile(ctx, radarr.DelayProfileResource{
+		p := must(sdk.PostDelayProfile(ctx, radarr.DelayProfileResource{
 			EnableUsenet: new(true), EnableTorrent: new(true), PreferredProtocol: radarr.DownloadProtocolUsenet,
 			UsenetDelay: 60, Tags: []int{tag.Id}, BypassIfHighestQuality: new(false), BypassIfAboveCustomFormatScore: new(false),
 		})).Model
-		removeAfter(ctx, t, label, func(ctx context.Context) (radarr.DeleteDelayprofileByIdOperationResponse, error) {
-			return sdk.DeleteDelayprofileById(ctx, p.Id)
+		removeAfter(ctx, t, label, func(ctx context.Context) (radarr.DeleteDelayProfileByIdOperationResponse, error) {
+			return sdk.DeleteDelayProfileById(ctx, p.Id)
 		})
 		profiles[i] = p
 	}
@@ -163,13 +163,13 @@ func TestDelayProfiles(t *testing.T) {
 
 	edit := *a
 	edit.UsenetDelay = 120
-	if got := must(sdk.PutDelayprofileById(ctx, a.Id, edit)).Model; got.UsenetDelay != 120 {
+	if got := must(sdk.PutDelayProfileById(ctx, a.Id, edit)).Model; got.UsenetDelay != 120 {
 		t.Errorf("the delay is %d after the update, want 120", got.UsenetDelay)
 	}
 
 	// the newer profile is ordered after the older; moving the older after
 	// the newer swaps them, and the answer is every profile in its new order
-	order := must(sdk.PutDelayprofileReorderById(ctx, a.Id, radarr.PutDelayprofileReorderByIdOperationOptions{After: b.Id})).Model
+	order := must(sdk.PutDelayProfileReorderById(ctx, a.Id, radarr.PutDelayProfileReorderByIdOperationOptions{After: new(b.Id)})).Model
 	ids := make([]int, 0, len(order))
 	for _, p := range slices.SortedFunc(slices.Values(order), func(x, y radarr.DelayProfileResource) int { return x.Order - y.Order }) {
 		ids = append(ids, p.Id)
@@ -179,8 +179,8 @@ func TestDelayProfiles(t *testing.T) {
 	}
 
 	for _, p := range profiles {
-		must(sdk.DeleteDelayprofileById(ctx, p.Id))
-		res, err := sdk.GetDelayprofileById(ctx, p.Id)
+		must(sdk.DeleteDelayProfileById(ctx, p.Id))
+		res, err := sdk.GetDelayProfileById(ctx, p.Id)
 		gone(t, "the delay profile", res, err)
 	}
 }
@@ -189,20 +189,20 @@ func TestDelayProfiles(t *testing.T) {
 func TestReleaseProfiles(t *testing.T) {
 	ctx := skipUnlessUp(t)
 
-	p := must(sdk.PostReleaseprofile(ctx, radarr.ReleaseProfileResource{Name: "SDK Release Profile", Enabled: new(true), Required: []string{"x264"}})).Model
-	removeAfter(ctx, t, "the release profile", func(ctx context.Context) (radarr.DeleteReleaseprofileByIdOperationResponse, error) {
-		return sdk.DeleteReleaseprofileById(ctx, p.Id)
+	p := must(sdk.PostReleaseProfile(ctx, radarr.ReleaseProfileResource{Name: "SDK Release Profile", Enabled: new(true), Required: []string{"x264"}})).Model
+	removeAfter(ctx, t, "the release profile", func(ctx context.Context) (radarr.DeleteReleaseProfileByIdOperationResponse, error) {
+		return sdk.DeleteReleaseProfileById(ctx, p.Id)
 	})
 
 	edit := *p
 	edit.Ignored = []string{"cam", "telesync"}
-	got := must(sdk.PutReleaseprofileById(ctx, p.Id, edit)).Model
+	got := must(sdk.PutReleaseProfileById(ctx, p.Id, edit)).Model
 	if ignored, ok := got.Ignored.([]any); !ok || len(ignored) != 2 {
 		t.Errorf("ignores %v after the update, want cam and telesync", got.Ignored)
 	}
 
-	must(sdk.DeleteReleaseprofileById(ctx, p.Id))
-	res, err := sdk.GetReleaseprofileById(ctx, p.Id)
+	must(sdk.DeleteReleaseProfileById(ctx, p.Id))
+	res, err := sdk.GetReleaseProfileById(ctx, p.Id)
 	gone(t, "the release profile", res, err)
 }
 
@@ -214,21 +214,21 @@ func TestAutoTagging(t *testing.T) {
 	removeAfter(ctx, t, "the tag", func(ctx context.Context) (radarr.DeleteTagByIdOperationResponse, error) {
 		return sdk.DeleteTagById(ctx, tag.Id)
 	})
-	rule := must(sdk.PostAutotagging(ctx, autoTagging("SDK Auto Tag", tag.Id))).Model
-	removeAfter(ctx, t, "the rule", func(ctx context.Context) (radarr.DeleteAutotaggingByIdOperationResponse, error) {
-		return sdk.DeleteAutotaggingById(ctx, rule.Id)
+	rule := must(sdk.PostAutoTagging(ctx, autoTagging("SDK Auto Tag", tag.Id))).Model
+	removeAfter(ctx, t, "the rule", func(ctx context.Context) (radarr.DeleteAutoTaggingByIdOperationResponse, error) {
+		return sdk.DeleteAutoTaggingById(ctx, rule.Id)
 	})
 
 	edit := *rule
 	edit.Name = "SDK Auto Tag Renamed"
 	edit.RemoveTagsAutomatically = new(true)
-	got := must(sdk.PutAutotaggingById(ctx, rule.Id, edit)).Model
+	got := must(sdk.PutAutoTaggingById(ctx, rule.Id, edit)).Model
 	if got.Name != edit.Name || !isTrue(got.RemoveTagsAutomatically) {
 		t.Errorf("updated to %q, removing tags %v", got.Name, isTrue(got.RemoveTagsAutomatically))
 	}
 
-	must(sdk.DeleteAutotaggingById(ctx, rule.Id))
-	res, err := sdk.GetAutotaggingById(ctx, rule.Id)
+	must(sdk.DeleteAutoTaggingById(ctx, rule.Id))
+	res, err := sdk.GetAutoTaggingById(ctx, rule.Id)
 	goneFromCache(t, "the rule", res, err)
 }
 
@@ -236,19 +236,19 @@ func TestAutoTagging(t *testing.T) {
 func TestRemotePathMappings(t *testing.T) {
 	ctx := skipUnlessUp(t)
 
-	m := must(sdk.PostRemotepathmapping(ctx, radarr.RemotePathMappingResource{Host: "sdk-host", RemotePath: "/remote/", LocalPath: "/media/downloads/"})).Model
-	removeAfter(ctx, t, "the mapping", func(ctx context.Context) (radarr.DeleteRemotepathmappingByIdOperationResponse, error) {
-		return sdk.DeleteRemotepathmappingById(ctx, m.Id)
+	m := must(sdk.PostRemotePathMapping(ctx, radarr.RemotePathMappingResource{Host: "sdk-host", RemotePath: "/remote/", LocalPath: "/media/downloads/"})).Model
+	removeAfter(ctx, t, "the mapping", func(ctx context.Context) (radarr.DeleteRemotePathMappingByIdOperationResponse, error) {
+		return sdk.DeleteRemotePathMappingById(ctx, m.Id)
 	})
 
 	edit := *m
 	edit.RemotePath = "/elsewhere/"
-	if got := must(sdk.PutRemotepathmappingById(ctx, m.Id, edit)).Model; got.RemotePath != "/elsewhere/" {
+	if got := must(sdk.PutRemotePathMappingById(ctx, m.Id, edit)).Model; got.RemotePath != "/elsewhere/" {
 		t.Errorf("maps %q after the update", got.RemotePath)
 	}
 
-	must(sdk.DeleteRemotepathmappingById(ctx, m.Id))
-	res, err := sdk.GetRemotepathmappingById(ctx, m.Id)
+	must(sdk.DeleteRemotePathMappingById(ctx, m.Id))
+	res, err := sdk.GetRemotePathMappingById(ctx, m.Id)
 	gone(t, "the mapping", res, err)
 }
 
@@ -295,13 +295,13 @@ func TestQualityProfiles(t *testing.T) {
 	ctx := skipUnlessUp(t)
 
 	// a new profile is a copy of HD-1080p under another name
-	source := must(sdk.GetQualityprofileById(ctx, hd1080)).Model
+	source := must(sdk.GetQualityProfileById(ctx, hd1080)).Model
 	fresh := *source
 	fresh.Id = 0
 	fresh.Name = "SDK Profile"
-	p := must(sdk.PostQualityprofile(ctx, fresh)).Model
-	removeAfter(ctx, t, "the profile", func(ctx context.Context) (radarr.DeleteQualityprofileByIdOperationResponse, error) {
-		return sdk.DeleteQualityprofileById(ctx, p.Id)
+	p := must(sdk.PostQualityProfile(ctx, fresh)).Model
+	removeAfter(ctx, t, "the profile", func(ctx context.Context) (radarr.DeleteQualityProfileByIdOperationResponse, error) {
+		return sdk.DeleteQualityProfileById(ctx, p.Id)
 	})
 	if p.Id == 0 || p.Id == hd1080 || p.Cutoff != source.Cutoff {
 		t.Fatalf("created profile %d with cutoff %d, want a new one with cutoff %d", p.Id, p.Cutoff, source.Cutoff)
@@ -309,12 +309,12 @@ func TestQualityProfiles(t *testing.T) {
 
 	edit := *p
 	edit.UpgradeAllowed = new(!isTrue(p.UpgradeAllowed))
-	if got := must(sdk.PutQualityprofileById(ctx, p.Id, edit)).Model; isTrue(got.UpgradeAllowed) != isTrue(edit.UpgradeAllowed) {
+	if got := must(sdk.PutQualityProfileById(ctx, p.Id, edit)).Model; isTrue(got.UpgradeAllowed) != isTrue(edit.UpgradeAllowed) {
 		t.Errorf("upgrades allowed is %v after the update", isTrue(got.UpgradeAllowed))
 	}
 
-	must(sdk.DeleteQualityprofileById(ctx, p.Id))
-	res, err := sdk.GetQualityprofileById(ctx, p.Id)
+	must(sdk.DeleteQualityProfileById(ctx, p.Id))
+	res, err := sdk.GetQualityProfileById(ctx, p.Id)
 	gone(t, "the profile", res, err)
 }
 
@@ -322,7 +322,7 @@ func TestQualityProfiles(t *testing.T) {
 func TestQualityDefinitions(t *testing.T) {
 	ctx := skipUnlessUp(t)
 
-	all := must(sdk.GetQualitydefinition(ctx)).Model
+	all := must(sdk.GetQualityDefinition(ctx)).Model
 	i := slices.IndexFunc(all, func(d radarr.QualityDefinitionResource) bool {
 		return d.Quality != nil && d.Quality.Name == "Bluray-1080p"
 	})
@@ -331,11 +331,11 @@ func TestQualityDefinitions(t *testing.T) {
 	}
 	def := all[i]
 	id := def.Id
-	t.Cleanup(func() { _, _ = sdk.PutQualitydefinitionUpdate(context.WithoutCancel(ctx), all) })
+	t.Cleanup(func() { _, _ = sdk.PutQualityDefinitionUpdate(context.WithoutCancel(ctx), all) })
 
 	edit := def
 	edit.Title = "Blu-ray 1080p"
-	if got := must(sdk.PutQualitydefinitionById(ctx, id, edit)).Model; got.Title != edit.Title {
+	if got := must(sdk.PutQualityDefinitionById(ctx, id, edit)).Model; got.Title != edit.Title {
 		t.Errorf("titled %q after the update", got.Title)
 	}
 
@@ -345,13 +345,13 @@ func TestQualityDefinitions(t *testing.T) {
 	// later
 	changed := slices.Clone(all)
 	changed[i].Title = "Blu-ray 1080p (bulk)"
-	got := must(sdk.PutQualitydefinitionUpdate(ctx, changed)).Model
+	got := must(sdk.PutQualityDefinitionUpdate(ctx, changed)).Model
 	if len(got) != len(all) {
 		t.Errorf("the bulk update answered %d definitions, want %d", len(got), len(all))
 	}
 	titled(ctx, t, def.Id, changed[i].Title)
 
-	must(sdk.PutQualitydefinitionUpdate(ctx, all))
+	must(sdk.PutQualityDefinitionUpdate(ctx, all))
 	titled(ctx, t, def.Id, def.Title)
 }
 
@@ -361,7 +361,7 @@ func titled(ctx context.Context, t *testing.T, id int, title string) {
 
 	var got string
 	if !poll(time.Minute, func() bool {
-		got = must(sdk.GetQualitydefinitionById(ctx, id)).Model.Title
+		got = must(sdk.GetQualityDefinitionById(ctx, id)).Model.Title
 		return got == title
 	}) {
 		t.Errorf("definition %d is still titled %q, want %q", id, got, title)

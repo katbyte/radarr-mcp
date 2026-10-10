@@ -5,13 +5,14 @@ package tools
 // their own.
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"slices"
 	"strings"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -267,21 +268,23 @@ func registerAuditAll(r *registry) {
 	type allRow struct {
 		Audit   string `json:"audit"`
 		Scanned int    `json:"scanned"`
-		Found   int    `json:"total_findings"`
+		Found   *int   `json:"total_findings,omitempty" jsonschema:"how many findings the audit has; absent when it could not run, which is unknown, not none"`
+		Error   string `json:"error,omitempty"          jsonschema:"why the audit could not run"`
 	}
 	type allOut struct {
-		Found   int      `json:"total_findings"`
+		Found   int      `json:"total_findings"    jsonschema:"the findings of the audits that ran"`
 		Audits  []allRow `json:"audits"            jsonschema:"every audit run, with how many findings it has; run the audit itself for the worklist"`
+		Failed  []string `json:"failed,omitempty"  jsonschema:"the audits that could not run: each has its error in audits and no count"`
 		Skipped []string `json:"skipped,omitempty" jsonschema:"the slow audits left out, which deep runs"`
 	}
 	add(r, readTool, &mcp.Tool{
-		Name: "audit_all",
-		Description: "Run every audit at once and report how many findings each has, counts only, so one call says where the library needs work - start here. " +
-			"The two that ask Radarr about every film in turn run only with deep.",
+		Name:        "audit_all",
+		Description: "Run every audit at once and report how many findings each has, counts only, so one call says where the library needs work - start here. The two that ask Radarr about every film in turn run only with deep. An audit that could not run is listed under failed with its error and has no count: that is unknown, not none.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in allIn) (*mcp.CallToolResult, allOut, error) {
 		env := newAuditEnv(client)
 		scope := auditIn{RootFolder: in.RootFolder, Tag: in.Tag, Limit: 1}
 		out := allOut{}
+		var first error
 		for _, a := range auditRuns() {
 			if a.deep && !in.Deep {
 				out.Skipped = append(out.Skipped, a.name)
@@ -289,13 +292,21 @@ func registerAuditAll(r *registry) {
 			}
 			res, err := a.run(ctx, env, scope)
 			if err != nil {
-				return nil, out, fmt.Errorf("%s: %w", a.name, err)
+				// one audit's read failing is that audit's to report: the others' counts stand, and its own is left out rather than read as none
+				first = cmp.Or(first, fmt.Errorf("%s: %w", a.name, err))
+				out.Failed = append(out.Failed, a.name)
+				out.Audits = append(out.Audits, allRow{Audit: a.name, Error: err.Error()})
+				continue
 			}
-			out.Audits = append(out.Audits, allRow{Audit: a.name, Scanned: res.Scanned, Found: res.Found})
+			out.Audits = append(out.Audits, allRow{Audit: a.name, Scanned: res.Scanned, Found: new(res.Found)})
 			out.Found += res.Found
 		}
 		if len(out.Audits) == 0 {
 			return nil, out, errors.New("no audit ran")
+		}
+		// nothing ran, or the call was given up on: there is no answer to keep
+		if len(out.Failed) == len(out.Audits) || ctx.Err() != nil {
+			return nil, allOut{}, first
 		}
 
 		return nil, out, nil

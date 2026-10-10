@@ -14,7 +14,7 @@
 # so those tools are exercised rather than bypassed.
 #
 # The container is pointed at the record/replay proxy the tests run (see
-# lib/providerproxy): Radarr, not radarr-mcp, is what calls its metadata
+# lib/testenv): Radarr, not radarr-mcp, is what calls its metadata
 # service (api.radarr.video) and the image CDN, so intercepting those calls
 # has to happen at its edge. Radarr is a .NET app, which honours HTTPS_PROXY
 # and, on Linux, trusts whatever SSL_CERT_FILE names - so the proxy's
@@ -148,7 +148,7 @@ wipe_data() {
   rm -rf "${DATA}" 2>/dev/null && return 0
 
   log "removing container-owned files"
-  docker run --rm -v "${DATA}:/data" alpine:3 sh -c 'rm -rf /data/..?* /data/.[!.]* /data/*' >/dev/null 2>&1 || true
+  docker run --rm -v "${DATA}:/data" mirror.gcr.io/library/alpine:3 sh -c 'rm -rf /data/..?* /data/.[!.]* /data/*' >/dev/null 2>&1 || docker run --rm -v "${DATA}:/data" alpine:3 sh -c 'rm -rf /data/..?* /data/.[!.]* /data/*' >/dev/null 2>&1 || true
   rm -rf "${DATA}" 2>/dev/null || true
 }
 
@@ -232,11 +232,14 @@ EOF
 }
 
 # proxy_ca mints the certificate authority the tests' provider proxy signs
-# with, once, so every container started here trusts the same one. The tests
-# load these files (providerproxy.Options.CACert/CAKey) rather than minting
-# their own.
+# with, and again when it has under a day left, so every container started
+# here trusts the same one and a cache kept for a month does not break. The tests
+# load these files (go-kt's test/env reads RADARR_TEST_PROXY_CA) rather than
+# minting their own.
 proxy_ca() {
-  [ -f "${PROXY_CA}/ca.pem" ] && [ -f "${PROXY_CA}/ca.key" ] && return 0
+  if [ -f "${PROXY_CA}/ca.pem" ] && [ -f "${PROXY_CA}/ca.key" ] && openssl x509 -checkend 86400 -noout -in "${PROXY_CA}/ca.pem" >/dev/null 2>&1; then
+    return 0
+  fi
   command -v openssl >/dev/null || { echo "openssl is required to mint the provider proxy CA" >&2; exit 1; }
   log "minting the provider proxy CA under ${PROXY_CA}"
   mkdir -p "${PROXY_CA}"

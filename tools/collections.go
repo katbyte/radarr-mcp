@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -96,9 +96,11 @@ func registerCollectionTools(r *registry) {
 	type collectionListIn struct {
 		MissingOnly       bool `json:"missing_only,omitempty"       jsonschema:"only collections the library holds some but not all of"`
 		IncludeUnreleased bool `json:"include_unreleased,omitempty" jsonschema:"count announced films as missing too"`
+		pageIn
 	}
 	type collectionListOut struct {
 		Collections []collectionRow `json:"collections"`
+		pageOut
 	}
 	add(r, readTool, &mcp.Tool{
 		Name: "collection_list",
@@ -113,15 +115,18 @@ func registerCollectionTools(r *registry) {
 		if err != nil {
 			return nil, collectionListOut{}, err
 		}
-		out := collectionListOut{}
+		rows := make([]collectionRow, 0, len(res.Model))
 		for i := range res.Model {
 			row := collectionOf(&res.Model[i], lk, in.IncludeUnreleased)
 			if in.MissingOnly && len(row.Missing) == 0 {
 				continue
 			}
-			out.Collections = append(out.Collections, row)
+			rows = append(rows, row)
 		}
-		slices.SortFunc(out.Collections, func(a, b collectionRow) int { return strings.Compare(a.Title, b.Title) })
+		slices.SortFunc(rows, func(a, b collectionRow) int { return strings.Compare(a.Title, b.Title) })
+
+		out := collectionListOut{}
+		out.Collections, out.pageOut = pageRows(rows, in.pageIn)
 
 		return nil, out, nil
 	})

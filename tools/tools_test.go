@@ -3,14 +3,16 @@ package tools
 import (
 	"context"
 	"encoding/json"
-	"reflect"
+	"errors"
+	"fmt"
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -94,11 +96,80 @@ func TestRegisterAllFilters(t *testing.T) {
 		t.Errorf("allow list not honoured: %v", got)
 	}
 
+	// movie_* stops at the underscore: a film's file is another resource
+	if slices.Contains(got, "moviefile_edit") {
+		t.Errorf("movie_* reached moviefile_edit: %v", got)
+	}
+
+	// the documented way to turn every deleting tool off has to reach both
+	got = register(t, Options{EnableDelete: true, Deny: []string{"*_delete"}})
+	for _, name := range []string{"movie_delete", "moviefile_delete", "tag_delete", "rootfolder_delete"} {
+		if slices.Contains(got, name) {
+			t.Errorf("%s registered with *_delete denied", name)
+		}
+	}
+
 	if _, err := RegisterAll(mcp.NewServer(&mcp.Implementation{Name: "t", Version: "0"}, nil), newTestClient(t), Options{Allow: []string{"bogus_*"}}); err == nil {
 		t.Error("unknown allow pattern accepted")
 	}
 	if _, err := RegisterAll(mcp.NewServer(&mcp.Implementation{Name: "t", Version: "0"}, nil), newTestClient(t), Options{Deny: []string{"nope"}}); err == nil {
 		t.Error("unknown deny pattern accepted")
+	}
+}
+
+// Beside toolsets an allow list adds the tools it names to them, these sets
+// and these tools as well, whatever set holds them; on its own it is only
+// the tools it names, with no core put beside it. It gets nothing past the
+// read-only switch or the delete gate, and a set is narrowed with a deny
+// list.
+func TestAnAllowListBesideToolsets(t *testing.T) {
+	t.Parallel()
+
+	with := func(base []string, more ...string) []string {
+		out := slices.Clone(base)
+		for _, name := range more {
+			if !slices.Contains(out, name) {
+				out = append(out, name)
+			}
+		}
+		slices.Sort(out)
+
+		return out
+	}
+	core := register(t, Options{Toolsets: []string{"core"}})
+
+	// core and the essential five, two of which no part of core is
+	if got, want := register(t, Options{Toolsets: []string{"core"}, Allow: []string{"essential"}}), with(core, EssentialTools...); !slices.Equal(got, want) || !slices.Contains(got, "movie_add") || !slices.Contains(got, "queue_list") {
+		t.Errorf("essential beside core = %v, want %v", got, want)
+	}
+	// a pattern adds every tool it names, and nothing else comes with them
+	if got, want := register(t, Options{Toolsets: []string{"core"}, Allow: []string{"tag_*"}}), with(core, "tag_create", "tag_delete", "tag_list", "tag_rename"); !slices.Equal(got, want) {
+		t.Errorf("tag_* beside core = %v, want %v", got, want)
+	}
+	// a tool of another set's, by name
+	if got, want := register(t, Options{Toolsets: []string{"acquire"}, Allow: []string{"task_list"}}), with(register(t, Options{Toolsets: []string{"acquire"}}), "task_list"); !slices.Equal(got, want) {
+		t.Errorf("task_list beside acquire = %v, want %v", got, want)
+	}
+
+	// naming a tool does not get it past the delete gate or the read-only switch
+	if got := register(t, Options{Toolsets: []string{"core"}, Allow: []string{"movie_delete"}}); !slices.Equal(got, core) {
+		t.Errorf("movie_delete beside core, deletes not enabled = %v, want core alone", got)
+	}
+	if got := register(t, Options{Toolsets: []string{"core"}, Allow: []string{"movie_delete"}, EnableDelete: true}); !slices.Equal(got, with(core, "movie_delete")) {
+		t.Errorf("movie_delete beside core, deletes enabled = %v", got)
+	}
+	if got := register(t, Options{Toolsets: []string{"core"}, Allow: []string{"movie_rescan"}, ReadOnly: true}); !slices.Equal(got, core) {
+		t.Errorf("movie_rescan beside core, read only = %v, want core alone", got)
+	}
+
+	// on its own an allow list is the whole of what loads
+	if got := register(t, Options{Allow: []string{"task_list"}}); !slices.Equal(got, []string{"task_list"}) {
+		t.Errorf("task_list alone = %v", got)
+	}
+	// and a set is narrowed by denying, which takes from whatever asked
+	narrowed := register(t, Options{Toolsets: []string{"acquire"}, Allow: []string{"task_list"}, Deny: []string{"exclusion_*", "task_*"}})
+	if slices.ContainsFunc(narrowed, func(n string) bool { return strings.HasPrefix(n, "exclusion_") || strings.HasPrefix(n, "task_") }) || !slices.Contains(narrowed, "release_search") {
+		t.Errorf("acquire and task_list, exclusion_* and task_* denied = %v", narrowed)
 	}
 }
 
@@ -217,24 +288,29 @@ func TestToolsetsNameOnlyWhatTheyLoad(t *testing.T) {
 	}
 }
 
-// Every tool's annotations say what it does: a read never changes state, a
-// write does, and only a delete is destructive.
-func TestAnnotations(t *testing.T) {
+// Every tool tells a client what it changes, without the client reading the
+// text: a read tool says it changes nothing, every write tool says whether
+// it can take away what was there and whether a repeat changes more, from
+// its own entry rather than its kind, and every delete is destructive. The
+// ones that can remove or overwrite, and would read as harmless marked like
+// the rest, are named.
+func TestEveryWriteToolIsHinted(t *testing.T) {
 	t.Parallel()
 
-	res, err := session(t, newFakeRadarr(t), Options{EnableDelete: true}).ListTools(t.Context(), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	infos, err := Describe(Options{Toolsets: []string{"all"}, EnableDelete: true})
+	listed, err := session(t, newFakeRadarr(t), Options{EnableDelete: true}).ListTools(t.Context(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	kinds := map[string]string{}
-	for _, ti := range infos {
+	described, err := Describe(Options{Toolsets: []string{"all"}, EnableDelete: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, ti := range described {
 		kinds[ti.Name] = ti.Kind
 	}
-	for _, tool := range res.Tools {
+	seen := map[string]bool{}
+	for _, tool := range listed.Tools {
 		a := tool.Annotations
 		if a == nil || a.DestructiveHint == nil {
 			t.Errorf("%s has no annotations", tool.Name)
@@ -243,19 +319,42 @@ func TestAnnotations(t *testing.T) {
 		switch kinds[tool.Name] {
 		case "read":
 			if !a.ReadOnlyHint || *a.DestructiveHint {
-				t.Errorf("%s is a read but annotated %+v", tool.Name, a)
+				t.Errorf("%s: read-only %v, destructive %v", tool.Name, a.ReadOnlyHint, *a.DestructiveHint)
 			}
 		case "write":
-			if a.ReadOnlyHint || *a.DestructiveHint {
-				t.Errorf("%s is a write but annotated %+v", tool.Name, a)
+			seen[tool.Name] = true
+			h, ok := toolHints[tool.Name]
+			if !ok {
+				t.Errorf("%s is a write tool with no hints of its own", tool.Name)
+				continue
+			}
+			if a.ReadOnlyHint || *a.DestructiveHint == h.Additive || a.IdempotentHint != h.Idempotent || h.WritesHere {
+				t.Errorf("%s: read-only %v, destructive %v, idempotent %v; want %+v", tool.Name, a.ReadOnlyHint, *a.DestructiveHint, a.IdempotentHint, h)
 			}
 		case "delete":
 			if a.ReadOnlyHint || !*a.DestructiveHint {
-				t.Errorf("%s is a delete but annotated %+v", tool.Name, a)
+				t.Errorf("%s deletes: read-only %v, destructive %v", tool.Name, a.ReadOnlyHint, *a.DestructiveHint)
 			}
+		default:
+			t.Errorf("%s has no kind", tool.Name)
 		}
 		if tool.OutputSchema == nil {
 			t.Errorf("%s has no output schema", tool.Name)
+		}
+	}
+	for name := range toolHints {
+		if !seen[name] {
+			t.Errorf("toolHints names %s, which is no write tool", name)
+		}
+	}
+	for _, name := range []string{"movie_edit", "movie_rescan", "movie_rename", "movie_download", "release_grab", "import_apply", "queue_remove", "tag_delete", "rootfolder_delete", "task_run"} {
+		if h, ok := toolHints[name]; !ok || h.Additive {
+			t.Errorf("%s can remove or overwrite what was there, and is marked additive", name)
+		}
+	}
+	for _, name := range []string{"movie_add", "tag_create", "exclusion_add", "rootfolder_add", "server_backup_create"} {
+		if !toolHints[name].Additive {
+			t.Errorf("%s only ever adds, and no longer says so", name)
 		}
 	}
 }
@@ -300,53 +399,44 @@ func TestDescribe(t *testing.T) {
 	}
 }
 
-func TestMatchPattern(t *testing.T) {
+// A handler that panics answers its call with an error naming the tool and
+// logs the stack, rather than ending the session: the next call is served.
+func TestAPanicInAToolIsAnErrorNotACrash(t *testing.T) {
 	t.Parallel()
 
-	for _, tc := range []struct {
-		pattern, name string
-		want          bool
-	}{
-		{"movie_get", "movie_get", true},
-		{"movie_get", "movie_gets", false},
-		{"movie_*", "movie_get", true},
-		{"movie_*", "moviefile_edit", false},
-		{"*_delete", "movie_delete", true},
-		// the documented way to turn every destructive tool off has to reach this one
-		{"*_delete", "moviefile_delete", true},
-		{"*", "anything", true},
-	} {
-		if got := matchPattern(tc.pattern, tc.name); got != tc.want {
-			t.Errorf("matchPattern(%q, %q) = %v", tc.pattern, tc.name, got)
-		}
+	var (
+		mu     sync.Mutex
+		logged strings.Builder
+	)
+	r := &registry{client: newTestClient(t), errorLog: func(format string, args ...any) {
+		mu.Lock()
+		defer mu.Unlock()
+		_, _ = fmt.Fprintf(&logged, format, args...)
+	}}
+	type none struct{}
+	add(r, writeTool, &mcp.Tool{Name: "zzyzx_panic"}, func(context.Context, *mcp.CallToolRequest, none) (*mcp.CallToolResult, none, error) {
+		var found map[int]*radarr.MovieResource
+
+		return nil, none{}, errors.New(found[9].Title) // a nil dereference
+	})
+	add(r, readTool, &mcp.Tool{Name: "zzyzx_fine"}, func(context.Context, *mcp.CallToolRequest, none) (*mcp.CallToolResult, none, error) {
+		return nil, none{}, nil
+	})
+	cs := hostRegistry(t, r)
+
+	_, msg := run(t, cs, "zzyzx_panic", map[string]any{})
+	if !strings.Contains(msg, "internal error in zzyzx_panic") || !strings.Contains(msg, "nil pointer") {
+		t.Errorf("the refusal = %q, want the tool and the panic named", msg)
 	}
+	mu.Lock()
+	log := logged.String()
+	mu.Unlock()
+	if !strings.Contains(log, "internal error in zzyzx_panic") || !strings.Contains(log, "goroutine") {
+		t.Errorf("the log = %q, want the panic and its stack", log)
+	}
+	mustCall(t, cs, "zzyzx_fine", map[string]any{})
 }
 
-// A nil slice in a result must serialise as [], so a client can tell "none"
-// from "not fetched".
-func TestEmptyNilSlices(t *testing.T) {
-	t.Parallel()
-
-	type inner struct{ Tags []string }
-	type out struct {
-		Items  []inner
-		Ptr    *inner
-		Names  []string
-		Nested [][]string
-		Keep   []string
-	}
-	v := out{Items: []inner{{}}, Ptr: &inner{}, Keep: []string{"x"}}
-	emptyNilSlices(reflect.ValueOf(&v).Elem())
-
-	if v.Names == nil || v.Nested == nil || v.Items[0].Tags == nil || v.Ptr.Tags == nil {
-		t.Errorf("nil slices survived: %+v", v)
-	}
-	if len(v.Keep) != 1 {
-		t.Error("a populated slice was touched")
-	}
-}
-
-// the films the pure checks below are run against
 func film(id int, title string, year int) radarr.MovieResource {
 	return radarr.MovieResource{Id: id, Title: title, Year: year, TmdbId: id * 10, Monitored: new(true), Path: "/m/" + titleYear(title, year)}
 }

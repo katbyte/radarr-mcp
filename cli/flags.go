@@ -6,7 +6,8 @@ import (
 	"os"
 
 	"github.com/katbyte/go-kt/clog"
-	"github.com/katbyte/radarr-mcp/lib/radarr"
+	"github.com/katbyte/pandorest/client"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/katbyte/radarr-mcp/tools"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -33,8 +34,8 @@ func configureFlags(root *cobra.Command) error {
 	pflags.Bool("read-only", false, "register only tools that never change server state")
 	pflags.Bool("enable-delete", false, "register the tools that delete films and their files")
 	pflags.StringSlice("toolsets", nil, "groups of tools to register: all, core (default), curation, acquire, organise, admin, or a resource family like movie (core is always included)")
-	pflags.StringSlice("allow-tools", nil, "only register these tools: names, prefix globs like movie_*, or the essential preset")
-	pflags.StringSlice("deny-tools", nil, "never register these tools: names or prefix globs like *_delete")
+	pflags.StringSlice("allow-tools", nil, "register these tools as well as the toolsets asked for, or only these when no toolset is: names, prefix globs like movie_*, or the essential preset")
+	pflags.StringSlice("deny-tools", nil, "never register these tools, whatever asked for them: names or prefix globs like *_delete")
 	pflags.String("listen", "", "serve MCP over HTTP on this address (e.g. :8080) instead of stdio")
 	pflags.String("auth-token", "", "bearer token required on the HTTP endpoint (consider exporting to RADARR_AUTH_TOKEN instead)")
 	pflags.Bool("allow-no-auth", false, "serve HTTP with no bearer token: anyone who can reach the port can use every tool")
@@ -96,21 +97,27 @@ func GetFlags() *FlagData {
 	return &f
 }
 
+// NewClient is a client for the configured server, which says what it sends
+// and is sent to the process's log at the level RADARR_LOG sets, with the API
+// key hidden.
 func (f *FlagData) NewClient() (*radarr.Client, error) {
-	return radarr.New(f.Server, f.Token)
+	return radarr.New(f.Server, f.Token, client.WithLog(clog.Log))
 }
 
-// DefaultToolsets is what the binary registers when --toolsets is not given:
-// enough to find things and read them, and nothing that writes. The whole
-// surface is thousands of tokens of tool definitions before a question is
-// asked, which is a poor thing to spend a client's context on by default.
-// Ask for more with --toolsets, or --toolsets all for everything.
+// DefaultToolsets is what the binary registers when neither --toolsets nor
+// --allow-tools is given: enough to find things and read them, and nothing
+// that writes. The whole surface is thousands of tokens of tool definitions
+// before a question is asked, which is a poor thing to spend a client's
+// context on by default. Ask for more with --toolsets, or --toolsets all for
+// everything.
 var DefaultToolsets = []string{"core"}
 
-// ToolOptions maps the flags onto the tool registration options.
+// ToolOptions maps the flags onto the tool registration options. The default
+// toolsets are for a binary told nothing about which tools it is to serve:
+// an allow list with no toolsets beside it is only the tools it names.
 func (f *FlagData) ToolOptions() tools.Options {
 	sets := f.Toolsets
-	if len(sets) == 0 {
+	if len(sets) == 0 && len(f.AllowTools) == 0 {
 		sets = DefaultToolsets
 	}
 

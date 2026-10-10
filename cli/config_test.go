@@ -13,6 +13,11 @@ import (
 const (
 	testServer = "http://nas:7878"
 	testTool   = "movie_get"
+	coreSet    = "core"
+	listTool   = "tag_list"
+	rescanTool = "movie_rescan"
+	deleteTool = "movie_delete"
+	binary     = "radarr-mcp"
 )
 
 // load drives the real flag wiring against a temporary home and working
@@ -25,7 +30,7 @@ func load(t *testing.T, home, wd string) *FlagData {
 	t.Setenv("HOME", home)
 	t.Chdir(wd)
 
-	if err := configureFlags(&cobra.Command{Use: "radarr-mcp"}); err != nil {
+	if err := configureFlags(&cobra.Command{Use: binary}); err != nil {
 		t.Fatalf("configureFlags: %v", err)
 	}
 
