@@ -44,7 +44,7 @@ func queueOf(q *radarr.QueueResource) queueRow {
 		Status:              string(q.Status),
 		State:               string(q.TrackedDownloadState),
 		Health:              string(q.TrackedDownloadStatus),
-		ErrorMessage:        radarrSays(q.ErrorMessage),
+		ErrorMessage:        outsideProse(q.ErrorMessage),
 		Quality:             qualityName(q.Quality),
 		Size:                int64(q.Size),
 		SizeLeft:            int64(q.Sizeleft),
@@ -66,7 +66,7 @@ func queueOf(q *radarr.QueueResource) queueRow {
 			if sm.Title != "" && sm.Title != q.Title {
 				line = sm.Title + ": " + msg
 			}
-			if line = radarrSays(line); !slices.Contains(row.Messages, line) {
+			if line = outsideProse(line); !slices.Contains(row.Messages, line) {
 				row.Messages = append(row.Messages, line)
 			}
 		}

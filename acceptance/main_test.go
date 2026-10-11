@@ -12,9 +12,9 @@
 //
 //	make testacc-acceptance                        # container started and torn down
 //
-//	eval "$(scripts/testenv.sh up)"                # or drive it by hand
+//	eval "$(.scripts/testenv.sh up)"                # or drive it by hand
 //	go test -tags integration ./acceptance/...
-//	scripts/testenv.sh down
+//	.scripts/testenv.sh down
 package acceptance
 
 import (

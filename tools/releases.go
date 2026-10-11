@@ -154,7 +154,7 @@ func registerReleaseTools(r *registry) {
 	add(r, readTool, &mcp.Tool{
 		Name: "release_parse",
 		Description: "Parse a release or file name the way Radarr does: the title and year it reads, quality, edition, release group, languages, the custom formats it would match and their score, and the film in the library it maps to. " +
-			"How to tell why Radarr grabbed, rejected or mis-matched something.",
+			"How to tell why Radarr grabbed, rejected or mismatched something.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in parseIn) (*mcp.CallToolResult, parsedRow, error) {
 		if strings.TrimSpace(in.Title) == "" {
 			return nil, parsedRow{}, errors.New("no title to parse")

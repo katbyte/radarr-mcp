@@ -1,5 +1,5 @@
 // Package testenv is what the two live suites share that is this
-// application's own: the environment scripts/testenv.sh hands them, and how
+// application's own: the environment .scripts/testenv.sh hands them, and how
 // the record/replay proxy Radarr's calls to its metadata service go through
 // is set up. The machinery is go-kt's (test/env and test/replayproxy).
 //
@@ -23,7 +23,7 @@ import (
 const (
 	// DefaultProxyPort and DefaultIndexerPort are where the proxy and the
 	// fake indexer listen when the environment names no port: the ports
-	// scripts/testenv.sh starts a container pointed at when it is told none.
+	// .scripts/testenv.sh starts a container pointed at when it is told none.
 	DefaultProxyPort   = 17880
 	DefaultIndexerPort = 17881
 
@@ -31,7 +31,7 @@ const (
 	mediaMount = "/media/"
 )
 
-// environment is what scripts/testenv.sh writes, every variable of which
+// environment is what .scripts/testenv.sh writes, every variable of which
 // begins RADARR_.
 var environment = env.New("RADARR")
 
@@ -120,7 +120,7 @@ const servicesHost = "radarr.servarr.com"
 var Services = arrserver.New()
 
 // StartProxy brings up the record/replay proxy the container's HTTPS_PROXY
-// already points at, signing with the CA scripts/testenv.sh minted and
+// already points at, signing with the CA .scripts/testenv.sh minted and
 // mounted into the container, with its cassettes under cassetteDir, and
 // proves the container can reach it, saying on stderr what the container
 // sees of the network.

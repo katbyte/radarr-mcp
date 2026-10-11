@@ -9,7 +9,7 @@ import (
 	"github.com/katbyte/go-kt/test/replayproxy"
 )
 
-// The environment is read as scripts/testenv.sh writes it, under this
+// The environment is read as .scripts/testenv.sh writes it, under this
 // application's own names: a data dir that is not set is "", not ./media, so
 // a suite with none skips rather than writing into the checkout, and the
 // data dir is part of being configured.

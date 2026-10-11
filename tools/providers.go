@@ -71,7 +71,7 @@ func toResults(tests []radarr.ProviderTestAllResult, names map[int]string) []tes
 		row := testResult{ID: t.Id, Name: names[t.Id], Valid: isTrue(t.IsValid)}
 		failed := false
 		for i := range t.ValidationFailures {
-			msg := radarrSays(t.ValidationFailures[i].ErrorMessage)
+			msg := outsideProse(t.ValidationFailures[i].ErrorMessage)
 			if isWarning(&t.ValidationFailures[i]) {
 				msg = "warning: " + msg
 			} else {

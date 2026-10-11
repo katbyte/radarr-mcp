@@ -146,6 +146,21 @@ func secretSetting(name string) bool {
 	return lower == "apikey" || strings.Contains(lower, "password")
 }
 
+// secretSettings are the credentials among Radarr's own settings, by name, for the line logged for a write to blank. That line's own rule reads how a
+// name ends, and passwordConfirmation ends as no credential's does.
+func (r *registry) secretSettings() []string {
+	var names []string
+	for _, section := range r.settingsSections() {
+		for _, name := range section.names {
+			if secretSetting(name) {
+				names = append(names, name)
+			}
+		}
+	}
+
+	return names
+}
+
 // reachSettings are the settings that decide how Radarr is reached and who
 // may sign in. Changing one can cut radarr-mcp off from it, or lock its
 // owner out, and this tool cannot put that back: they take confirm.

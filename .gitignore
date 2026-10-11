@@ -5,6 +5,7 @@ dist/
 radarr-mcp
 .tools/bin/
 .tools/venv/
+.tools/npm/
 .env
 .radarr-mcp
 .testenv*.sh

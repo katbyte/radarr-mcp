@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/katbyte/go-kt/outside"
 	"github.com/katbyte/radarr-mcp/sdk/radarr"
 )
 
@@ -31,8 +32,9 @@ func field(fields []radarr.Field, name string) *radarr.Field {
 }
 
 // secretNames are the settings that hold a credential and are not named for
-// what they are: a webhook's address is itself the key.
-var secretNames = []string{"pass", "signinurl", "webhookurl"}
+// what they are: a webhook's address is itself the key, and so are the
+// addresses Apprise is told to send to, which carry each service's token.
+var secretNames = []string{"pass", "signinurl", "webhookurl", "statelessurls"}
 
 // secretName reports whether a setting's name says it holds a credential.
 // Radarr does not mark every one that does: its list that reads another
@@ -55,7 +57,8 @@ func secret(f *radarr.Field) bool {
 		return true
 	}
 
-	return strings.EqualFold(f.Type, "password") || secretName(f.Name)
+	// a list of names and values is a webhook's own headers, which is where its token goes, and Radarr marks it as nothing in particular
+	return strings.EqualFold(f.Type, "password") || strings.EqualFold(f.Type, "keyValueList") || secretName(f.Name)
 }
 
 // shownFields are fields as a map by name, without the credentials and
@@ -83,9 +86,9 @@ func shownFields(fields []radarr.Field) (shown map[string]any, credentials []str
 // outsideValue is a setting's value made safe to show: text is whatever
 // someone typed or a site answered, so it is cleaned as any other is.
 func outsideValue(v any) any {
-	// an address among a thing's settings is shown as any other is: a webhook's or a tracker's can carry a key after its "?"
+	// an address among a thing's settings is shown without what it may carry a credential in: a webhook's or a tracker's can have a key after its "?"
 	if s, ok := v.(string); ok {
-		return radarrSays(s)
+		return outside.BlankAddresses(outsideProse(s))
 	}
 
 	return v

@@ -5,6 +5,7 @@ package radarr
 import (
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/katbyte/pandorest/client"
@@ -32,6 +33,9 @@ func TestOperationGetFeedV3CalendarRadarrIcs(t *testing.T) {
 	expectQuery(t, r, "tags", "v-Tags")
 	expectQuery(t, r, "unmonitored", "true")
 	expectQuery(t, r, "releaseTypes", "cinemaRelease", "physicalRelease")
+	if got := r.Header.Get("Accept"); !strings.HasPrefix(got, "text/calendar") {
+		t.Errorf("Accept = %q, want text/calendar asked for first", got)
+	}
 	if result.HttpResponse == nil || result.HttpResponse.StatusCode != 200 {
 		t.Fatalf("HttpResponse = %+v", result.HttpResponse)
 	}

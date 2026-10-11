@@ -57,6 +57,7 @@ func (o GetFeedV3CalendarRadarrIcsOperationOptions) ToQuery() *client.QueryParam
 // GetFeedV3CalendarRadarrIcs calls GET /feed/v3/calendar/radarr.ics.
 func (c Client) GetFeedV3CalendarRadarrIcs(ctx context.Context, options GetFeedV3CalendarRadarrIcsOperationOptions) (result GetFeedV3CalendarRadarrIcsOperationResponse, err error) {
 	opts := client.RequestOptions{
+		Accept: "text/calendar",
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},

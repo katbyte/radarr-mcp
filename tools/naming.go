@@ -92,6 +92,10 @@ func registerNamingTools(r *registry) {
 		if err != nil {
 			return nil, namingOut{}, err
 		}
+		if res.Model == nil {
+			return nil, namingOut{}, errors.New("no answer from Radarr when asked for its naming settings")
+		}
+
 		edit := *res.Model
 		if in.RenameMovies != nil {
 			edit.RenameMovies = in.RenameMovies

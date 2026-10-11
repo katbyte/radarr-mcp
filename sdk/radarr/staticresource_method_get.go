@@ -20,6 +20,7 @@ type GetOperationResponse struct {
 // Get calls GET /.
 func (c Client) Get(ctx context.Context) (result GetOperationResponse, err error) {
 	opts := client.RequestOptions{
+		Accept: "text/html",
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},

@@ -1,6 +1,6 @@
 //go:build integration
 
-// The harness: scripts/testenv.sh brings the container up and exports
+// The harness: .scripts/testenv.sh brings the container up and exports
 // RADARR_SERVER, RADARR_TOKEN and RADARR_TEST_*; runSuite builds the SDK
 // client, starts the provider proxy the container's HTTPS_PROXY points at,
 // the fake indexer and the webhook receiver, runs the suite, removes what the
@@ -66,7 +66,7 @@ const (
 	hd1080 = 4
 )
 
-// filmFixture is a film the suite adds, from the catalogue scripts/testenv.sh
+// filmFixture is a film the suite adds, from the catalogue .scripts/testenv.sh
 // lays out.
 type filmFixture struct {
 	Title  string
@@ -411,7 +411,7 @@ func skipUnlessUp(t *testing.T) context.Context {
 	t.Helper()
 
 	if sdk == nil {
-		t.Skip("RADARR_SERVER, RADARR_TOKEN and RADARR_TEST_DATA are not set; run: eval \"$(scripts/testenv.sh up)\"")
+		t.Skip("RADARR_SERVER, RADARR_TOKEN and RADARR_TEST_DATA are not set; run: eval \"$(.scripts/testenv.sh up)\"")
 	}
 
 	return t.Context()

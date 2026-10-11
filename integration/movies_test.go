@@ -17,7 +17,7 @@ import (
 )
 
 // The films the write tests add of their own, from the catalogue
-// scripts/testenv.sh lays out, so the fixtures the other tests read are left
+// .scripts/testenv.sh lays out, so the fixtures the other tests read are left
 // alone.
 var (
 	// arrival is added, edited and deleted, with a copy of the catalogue's

@@ -13,11 +13,8 @@
 package workarounds
 
 import (
-	"fmt"
-
 	"github.com/katbyte/pandorest/config"
 	pandorest "github.com/katbyte/pandorest/importer/workarounds"
-	"github.com/katbyte/pandorest/openapi"
 )
 
 // Service is the name the document, its definitions and every workaround
@@ -105,40 +102,16 @@ var radarrWords = map[string]string{
 
 // All is every workaround, in the order they are applied.
 var All = []pandorest.Workaround{
-	radarrUndeclaredResponses{},
-	radarrAuthRedirects{},
+	radarrUndeclaredResponses,
+	radarrAuthRedirects,
 	radarrRootPathParameter{},
 	radarrCommandBody{},
-	radarrStatuses{},
-	radarrUndeclaredFields{},
+	radarrStatuses,
+	radarrUndeclaredFields,
 	radarrCommandResourceBody{},
 	radarrRequiredParameters{},
 	radarrWriteResponses{},
-	radarrBulkResponses{},
+	radarrBulkResponses,
 	radarrHostRequired{},
 	radarrPutIDs{},
-}
-
-// operation finds an operation a workaround targets.
-func operation(spec *openapi.Spec, method, path string) (*openapi.Operation, error) {
-	op := spec.Operation(method, path)
-	if op == nil {
-		return nil, fmt.Errorf("%s %s is not in the document", method, path)
-	}
-
-	return op, nil
-}
-
-// property finds a component schema's property.
-func property(spec *openapi.Spec, schema, name string) (*openapi.Schema, error) {
-	s := spec.Components.Schemas[schema]
-	if s == nil {
-		return nil, fmt.Errorf("no schema %s", schema)
-	}
-	p := s.Properties[name]
-	if p == nil {
-		return nil, fmt.Errorf("schema %s has no property %s", schema, name)
-	}
-
-	return p, nil
 }

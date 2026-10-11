@@ -337,14 +337,14 @@ func TestProviderOptions(t *testing.T) {
 func TestASettingIsACredentialByItsName(t *testing.T) {
 	t.Parallel()
 
-	for name, want := range map[string]bool{"apiKey": true, "rssPasskey": true, "userKey": true, "accessTokenSecret": true, "botToken": true, "Password": true, "passwordConfirmation": true, "cookie": true, "webHookUrl": true, "passphrase": true, "baseUrl": false, "username": false, "categories": false, "host": false, "keywords": false} {
+	for name, want := range map[string]bool{"apiKey": true, "rssPasskey": true, "userKey": true, "accessTokenSecret": true, "botToken": true, "Password": true, "passwordConfirmation": true, "cookie": true, "webHookUrl": true, "statelessUrls": true, "passphrase": true, "baseUrl": false, "username": false, "categories": false, "host": false, "keywords": false} {
 		if got := secret(&radarr.Field{Name: name}); got != want {
 			t.Errorf("%s is a credential: %v, want %v", name, got, want)
 		}
 	}
 	// and by Radarr's mark whatever it is called, but for a user name
-	if !secret(&radarr.Field{Name: "x", Privacy: radarr.PrivacyLevelApiKey}) || !secret(&radarr.Field{Name: "x", Type: "password"}) || secret(&radarr.Field{Name: "x", Privacy: radarr.PrivacyLevelUserName}) {
-		t.Error("a setting Radarr marks as a key or a password is a credential, and one it marks as a user name is not")
+	if !secret(&radarr.Field{Name: "x", Privacy: radarr.PrivacyLevelApiKey}) || !secret(&radarr.Field{Name: "x", Type: "password"}) || !secret(&radarr.Field{Name: "x", Type: "keyValueList"}) || secret(&radarr.Field{Name: "x", Privacy: radarr.PrivacyLevelUserName}) {
+		t.Error("a setting Radarr marks as a key or a password, or one that is a list of names and values, is a credential, and one it marks as a user name is not")
 	}
 }
 
@@ -531,6 +531,50 @@ func TestServerSettings(t *testing.T) {
 	lines := strings.Join(logged(), "\n")
 	if strings.Contains(lines, "new-key") || !strings.Contains(lines, `"port":9000`) || !strings.Contains(lines, `"apiKey":"REDACTED"`) {
 		t.Errorf("the write log of Radarr's own settings shows a credential, or hides what a port was changed to:\n%s", lines)
+	}
+}
+
+// The line logged for a change to Radarr's own settings carries no credential, whatever the setting is called. Every credential of every section is
+// set through the tool, once answered and once refused: the shared rule for that line reads how a name ends, and passwordConfirmation ends as no
+// credential's does.
+func TestNoCredentialOfRadarrsOwnIsLogged(t *testing.T) {
+	t.Parallel()
+
+	f := newFakeRadarr(t)
+	f.mux.HandleFunc("GET /api/v3/config/{section}", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": 1})
+	})
+	f.mux.HandleFunc("PUT /api/v3/config/{section}/{id}", func(w http.ResponseWriter, r *http.Request) {
+		sent := map[string]any{}
+		_ = json.NewDecoder(r.Body).Decode(&sent)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_ = json.NewEncoder(w).Encode(sent)
+	})
+	cs, logged := setupSession(t, f)
+
+	set := 0
+	for _, section := range (&registry{}).settingsSections() {
+		for _, name := range section.names {
+			if !secretSetting(name) {
+				continue
+			}
+			set++
+
+			answer := mustCall(t, cs, "server_settings_edit", map[string]any{"section": section.name, "settings": map[string]any{name: "value-of-" + name}, "confirm": true})
+			if strings.Contains(fmt.Sprint(answer), "value-of-") {
+				t.Errorf("the answer to setting %s shows what it was set to: %v", name, answer)
+			}
+			mustFail(t, cs, "server_settings_edit", map[string]any{"section": section.name, "settings": map[string]any{name: "value-of-" + name, "noSuchSetting": 1}}, "no setting")
+		}
+	}
+	if set < 5 {
+		t.Fatalf("%d credentials among Radarr's own settings, want the host's five at least", set)
+	}
+
+	if lines := strings.Join(logged(), "\n"); strings.Contains(lines, "value-of-") || strings.Count(lines, `:"REDACTED"`) < 2*set {
+		t.Errorf("the write log carries what a credential was set to, or does not name each one set:\n%s", lines)
 	}
 }
 

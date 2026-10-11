@@ -155,7 +155,7 @@ func registerServerTools(r *registry) {
 		for _, h := range health.Model {
 			out.HealthProblems++
 			if h.Type == radarr.HealthCheckResultError {
-				out.HealthErrorOnly = append(out.HealthErrorOnly, h.Source+": "+addressesHidden(h.Message))
+				out.HealthErrorOnly = append(out.HealthErrorOnly, h.Source+": "+h.Message)
 			}
 		}
 
@@ -175,7 +175,7 @@ func registerServerTools(r *registry) {
 		}
 		out := healthOut{}
 		for _, h := range res.Model {
-			out.Checks = append(out.Checks, healthRow{Source: h.Source, Type: string(h.Type), Message: addressesHidden(h.Message), WikiURL: h.WikiUrl})
+			out.Checks = append(out.Checks, healthRow{Source: h.Source, Type: string(h.Type), Message: h.Message, WikiURL: h.WikiUrl})
 		}
 		// errors first: they are what stops Radarr working
 		slices.SortStableFunc(out.Checks, func(a, b healthRow) int {
@@ -236,7 +236,7 @@ func registerServerTools(r *registry) {
 		}
 		out := logsOut{Entries: make([]logRow, 0, len(records)), pageOut: paged}
 		for _, l := range records {
-			out.Entries = append(out.Entries, logRow{Time: l.Time, Level: l.Level, Logger: l.Logger, Message: radarrSays(l.Message), Exception: addressesHidden(firstLines(l.Exception, 5))})
+			out.Entries = append(out.Entries, logRow{Time: l.Time, Level: l.Level, Logger: l.Logger, Message: outsideProse(l.Message), Exception: firstLines(l.Exception, 5)})
 		}
 
 		return nil, out, nil
@@ -388,7 +388,7 @@ func firstLines(s string, n int) string {
 		lines = append(lines[:n], "...")
 	}
 	for i, line := range lines {
-		lines[i] = radarrSays(line)
+		lines[i] = outsideProse(line)
 	}
 
 	return strings.Join(lines, "\n")
@@ -401,7 +401,7 @@ func lastLines(s string, n int) []string {
 		lines = lines[len(lines)-n:]
 	}
 	for i, line := range lines {
-		lines[i] = radarrSays(line)
+		lines[i] = outsideProse(line)
 	}
 
 	return lines

@@ -1,6 +1,6 @@
 //go:build integration
 
-// The harness: scripts/testenv.sh brings the container up and exports
+// The harness: .scripts/testenv.sh brings the container up and exports
 // RADARR_SERVER, RADARR_TOKEN and RADARR_TEST_*, and everything here drives
 // it through the MCP tools rather than the HTTP API, so building the
 // fixtures is itself a test of rootfolder_add and movie_add.
@@ -8,15 +8,12 @@ package acceptance
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
 	"strconv"
-	"strings"
-	"sync"
 	"testing"
 
 	acc "github.com/katbyte/go-kt/mcp/acctest"
@@ -76,7 +73,7 @@ var clean = []movieFixture{
 	{"The Thirteenth Floor", 1999, 1090, moviesRoot, "The Thirteenth Floor (1999)", profileHD, true, "Bluray-1080p", 100},
 }
 
-// The messy films, by title, and the defect each carries (scripts/testenv.sh
+// The messy films, by title, and the defect each carries (.scripts/testenv.sh
 // lays their files out).
 const (
 	messyDune         = "Dune (1984)"       // in "Dune (2021)": year mismatch, and not named for 1984
@@ -125,7 +122,7 @@ var (
 	indexer  *newznab.Indexer
 	// suite drives the tools through a client session; until start connects
 	// it, every call skips
-	suite = &acc.Suite{NotReady: "RADARR_SERVER, RADARR_TOKEN and RADARR_TEST_DATA are not set; run: eval \"$(scripts/testenv.sh up)\""}
+	suite = &acc.Suite{NotReady: "RADARR_SERVER, RADARR_TOKEN and RADARR_TEST_DATA are not set; run: eval \"$(.scripts/testenv.sh up)\""}
 )
 
 // testMain connects, starts the provider proxy and the fake indexer, seeds
@@ -170,8 +167,8 @@ func testMain(m *testing.M) {
 
 	// a key in an answer is said whichever tests ran: it takes no test to
 	// think of the tool that shows one
-	if shown := leaks(); len(shown) > 0 {
-		fmt.Fprintf(os.Stderr, "\n%d answer(s) carried a key the suite gave Radarr, or Radarr's own; no tool may show one:\n  %s\n", len(shown), strings.Join(shown, "\n  "))
+	if shown := suite.LeakReport(); shown != "" {
+		fmt.Fprint(os.Stderr, "\n"+shown)
 		code = 1
 	}
 
@@ -212,15 +209,15 @@ func start() error {
 	if _, err := tools.RegisterAll(srv, sdk, tools.Options{EnableDelete: true}); err != nil {
 		return err
 	}
-	// added last, so it is outermost, and reads what a caller is sent
-	watched = []string{indexerKey, testenv.Token()}
-	srv.AddReceivingMiddleware(watchAnswers)
 	connected, err := acc.Connect(ctx, srv)
 	if err != nil {
 		return err
 	}
 	connected.NotReady = suite.NotReady
 	suite = connected
+	// everything a tool answers or refuses with, all run long, is read for the keys the suite gives Radarr and for Radarr's own
+	suite.Secret(indexerKey)
+	suite.Secret(testenv.Token())
 
 	return seed()
 }
@@ -311,62 +308,6 @@ func addDownloading() error {
 	return nil
 }
 
-// Every key the suite gives Radarr - an indexer's, a notification's
-// password, a token in an address - and Radarr's own API key are looked for
-// in everything a tool answers or refuses with, all run long. Radarr hands
-// such a key back in places nobody thinks to test: in the words of a test
-// that failed, in a field it does not mark as one.
-var (
-	watching sync.Mutex
-	watched  []string
-	leaked   []string
-)
-
-// secretFor has every answer of the run looked through for a key a test is
-// about to give Radarr, and returns the key.
-func secretFor(key string) string {
-	watching.Lock()
-	defer watching.Unlock()
-	watched = append(watched, key)
-
-	return key
-}
-
-// leaks are the answers that carried a key, each with the tool that gave it.
-func leaks() []string {
-	watching.Lock()
-	defer watching.Unlock()
-
-	return slices.Clone(leaked)
-}
-
-// watchAnswers reads what every call of a tool answers, or refuses with, for
-// the keys the suite gave Radarr.
-func watchAnswers(next mcp.MethodHandler) mcp.MethodHandler {
-	return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
-		res, err := next(ctx, method, req)
-		call, ok := req.(*mcp.CallToolRequest)
-		if method != "tools/call" || !ok || call.Params == nil {
-			return res, err
-		}
-		said, _ := json.Marshal(res)
-		text := string(said)
-		if err != nil {
-			text += " " + err.Error()
-		}
-
-		watching.Lock()
-		defer watching.Unlock()
-		for _, key := range watched {
-			if at := strings.Index(text, key); at >= 0 {
-				leaked = append(leaked, call.Params.Name+": ..."+text[max(0, at-200):min(len(text), at+len(key)+40)]+"...")
-			}
-		}
-
-		return res, err
-	}
-}
-
 // skipUnlessReady skips a test when the container is not configured, for
 // one that does something else before its first call.
 func skipUnlessReady(t *testing.T) {
@@ -429,7 +370,7 @@ func copyFixture(t *testing.T, from, to string) {
 }
 
 // makeVideo writes a new film file of a runtime and size with ffmpeg, the way
-// scripts/testenv.sh does, for a test that needs a file of its own.
+// .scripts/testenv.sh does, for a test that needs a file of its own.
 func makeVideo(t *testing.T, containerPath string, minutes int, size string) {
 	t.Helper()
 

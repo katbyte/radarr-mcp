@@ -3,9 +3,9 @@
 # Bring up a throwaway Radarr in Docker, lay out a known catalogue of tiny
 # films for it, and print the environment the live test suites need.
 #
-#   eval "$(scripts/testenv.sh up)"   # start, export RADARR_*
-#   scripts/testenv.sh down           # stop and remove everything
-#   scripts/testenv.sh fixtures       # write the media tree only
+#   eval "$(.scripts/testenv.sh up)"   # start, export RADARR_*
+#   .scripts/testenv.sh down           # stop and remove everything
+#   .scripts/testenv.sh fixtures       # write the media tree only
 #
 # This script only does what radarr-mcp cannot: lay the films out on disk,
 # write the config Radarr reads its API key from, and run the container. The
@@ -309,7 +309,7 @@ up() {
 
   wait_for "Radarr to answer /api/v3/system/status" 90 "curl -fsS -H 'X-Api-Key: ${API_KEY}' ${URL}/api/v3/system/status"
 
-  # consumed with eval "$(scripts/testenv.sh up)"
+  # consumed with eval "$(.scripts/testenv.sh up)"
   echo "export RADARR_SERVER='${URL}'"
   echo "export RADARR_TOKEN='${API_KEY}'"
   # the tests add the root folders and films themselves over these

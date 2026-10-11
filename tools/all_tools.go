@@ -12,7 +12,6 @@
 package tools
 
 import (
-	"context"
 	"sync"
 
 	"github.com/katbyte/go-kt/lock"
@@ -289,6 +288,37 @@ var toolHints = map[string]mcpregistry.Hints{
 	"delayprofile_reorder": {Idempotent: true},
 }
 
+// radarrSaid are the values in an answer that are Radarr's own words for
+// what went wrong: why a test failed, why a download is stuck, what a health
+// check found, a line of its log. Radarr quotes an address back in such
+// words with whatever the address carried still on it - an indexer that
+// answers an error is reported as "HTTP request failed:
+// [500:InternalServerError] [GET] at [http://indexer/api?t=movie&apikey=...]",
+// the indexer's stored API key and all. So each address under one of these
+// names is answered without who it signs in as, the value of any parameter,
+// or what follows its "#". A failure's words get the same from go-kt around
+// every tool. TestRadarrSaidIsAnswered holds each name to a tool that
+// answers under it.
+var radarrSaid = []string{"failures", "message", "messages", "error_message", "error", "details", "lines", "exception", "health_errors", "unavailable"}
+
+// shownArguments are the free-form arguments that hold no credential, by
+// tool, which the line written for a write shows as they were sent: a
+// thing's switches, a record's values, and Radarr's own settings, where what
+// a port was changed to is the point of the line. Everything under a
+// provider's settings stays blanked, names kept: an indexer's cookie or
+// passkey is there under a name of its kind's own choosing.
+var shownArguments = func() map[string][]string {
+	shown := map[string][]string{"server_settings_edit": {"settings"}, "metadata_edit": {"options"}}
+	for _, family := range []string{"indexer", "downloadclient", "importlist", "notification"} {
+		shown[family+"_add"], shown[family+"_edit"] = []string{"options"}, []string{"options"}
+	}
+	for _, family := range []string{"delayprofile", "releaseprofile", "autotagging", "remotepathmapping", "customfilter", "customformat"} {
+		shown[family+"_add"], shown[family+"_edit"] = []string{"values"}, []string{"values"}
+	}
+
+	return shown
+}()
+
 // queued is every tool queued so far, in go-kt's registry, which is made
 // when the first tool is.
 func (r *registry) queued() *mcpregistry.Registry {
@@ -298,7 +328,12 @@ func (r *registry) queued() *mcpregistry.Registry {
 			Essential: EssentialTools,
 			Hints:     toolHints,
 			LogError:  r.errorLog,
-			LogWrite:  r.logWrite,
+			LogWrite:  r.writeLog,
+			// the line written for a write shows a thing's switches, a record's values and Radarr's own settings as they were sent, and blanks everything under a provider's settings
+			ShownArguments: shownArguments,
+			// and never a credential of Radarr's own, by the rule the settings tools hide one by: the registry's own rule reads how a name ends
+			SecretArguments: r.secretSettings(),
+			BlankAddresses:  radarrSaid,
 		})
 	}
 
@@ -312,11 +347,7 @@ func (r *registry) queued() *mcpregistry.Registry {
 // rather than null: an AI client reading "films": null cannot tell "none"
 // from "not fetched", and Go leaves un-appended slices nil.
 func add[In, Out any](r *registry, kind mcpregistry.Kind, t *mcp.Tool, h mcp.ToolHandlerFor[In, Out]) {
-	mcpregistry.Add(r.queued(), kind, t, func(ctx context.Context, req *mcp.CallToolRequest, in In) (*mcp.CallToolResult, Out, error) {
-		res, out, err := h(ctx, req, in)
-
-		return res, out, failureShown(err)
-	})
+	mcpregistry.Add(r.queued(), kind, t, h)
 }
 
 // queuedFor is every tool queued for these options: registration never calls

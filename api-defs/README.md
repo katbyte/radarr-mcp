@@ -8,7 +8,7 @@ Radarr publishes an OpenAPI document of its v3 API, vendored here as the referen
 |---|---|---|
 | `radarr-openapi-6.4.4.10685.json` | Radarr's own repository, `src/Radarr.Api.V3/openapi.json` at the tag `v6.4.4.10685` - 164 paths, 237 operations | `radarr-6.4.4.10685/` |
 
-The document is named by the Radarr release it was taken from, not by its own version: that says "3.0.0" for every release, since it names the API. The generated package carries both, as `APIVersion` and `DocumentVersion`. The live suites run against the same release, the image `scripts/testenv.sh` pins (`lscr.io/linuxserver/radarr:version-6.4.4.10685`).
+The document is named by the Radarr release it was taken from, not by its own version: that says "3.0.0" for every release, since it names the API. The generated package carries both, as `APIVersion` and `DocumentVersion`. The live suites run against the same release, the image `.scripts/testenv.sh` pins (`lscr.io/linuxserver/radarr:version-6.4.4.10685`).
 
 To move to a newer release, `make spec-update RELEASE=<release>` vendors its document beside this one and `make generate` imports it into a definitions directory of its own and writes the client from it, the highest release present being the one used. `go run ./sdk/pandorest diff -old api-defs/radarr-<old> -new api-defs/radarr-<new>` shows what changed in API terms, breaking changes marked; review it, then delete the old document and its definitions. A workaround whose bug the new document fixes fails the import and names itself: delete it.
 

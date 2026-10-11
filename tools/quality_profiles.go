@@ -137,6 +137,10 @@ func registerQualityProfileTools(r *registry) {
 			if err != nil {
 				return nil, profileRow{}, err
 			}
+			if blank.Model == nil {
+				return nil, profileRow{}, errors.New("no answer from Radarr when asked for a blank quality profile")
+			}
+
 			p = *blank.Model
 		}
 		p.Id, p.Name = 0, name

@@ -22,6 +22,7 @@ type GetByPathOperationResponse struct {
 // GetByPath calls GET /{path}.
 func (c Client) GetByPath(ctx context.Context, path string) (result GetByPathOperationResponse, err error) {
 	opts := client.RequestOptions{
+		Accept: "application/octet-stream",
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},

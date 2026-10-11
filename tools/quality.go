@@ -157,6 +157,9 @@ func registerQualityTools(r *registry) {
 		if err != nil {
 			return nil, profileRow{}, err
 		}
+		if held.Model == nil {
+			return nil, profileRow{}, fmt.Errorf("no answer from Radarr when asked for quality profile %d", p.Id)
+		}
 		p = held.Model
 
 		edit := *p
@@ -238,6 +241,10 @@ func registerQualityTools(r *registry) {
 		if err != nil {
 			return nil, definitionRow{}, err
 		}
+		if current.Model == nil {
+			return nil, definitionRow{}, fmt.Errorf("no answer from Radarr when asked for quality definition %d", d.ID)
+		}
+
 		// a nil maximum or preference is Radarr's unlimited and none: the
 		// generated model leaves it out, which Radarr reads as null
 		edit := *current.Model

@@ -63,6 +63,43 @@ func deleted(t *testing.T, tool string, args map[string]any, want string, still 
 	}
 }
 
+// lookedAt are the settings of text the tools show, each read against what its kind keeps there and found to be no credential: an address, a folder,
+// a name, who a thing signs in as. One Radarr adds later is in none of the tools' rules for a credential and not here either, so the test below
+// fails on it until someone has looked.
+var lookedAt = []string{"accountId", "additionalParameters", "apiPath", "apiUrl", "aPIUser", "appId", "arguments", "author", "authorizeNotification", "authUser", "authUsername", "avatar", "baseUrl", "bcc", "category", "cc", "certification", "channel", "channelTags", "chatId", "clickUrl", "companyId", "completedDirectory", "destination", "destinationDirectory", "deviceIds", "deviceNames", "devices", "directory", "displayTime", "downloadDirectory", "event", "expire", "expires", "filterCriteria.certification", "filterCriteria.excludeCompanyIds", "filterCriteria.excludeGenreIds", "filterCriteria.includeCompanyIds", "filterCriteria.includeGenreIds", "filterCriteria.minVoteAverage", "filterCriteria.minVotes", "from", "genres", "host", "icon", "iconColor", "keywordId", "limit", "link", "listId", "listname", "magnetFileExtension", "mapFrom", "mapTo", "mention", "minimumSeeders", "movieCategory", "movieDirectory", "movieImportedCategory", "notificationName", "nzbFolder", "path", "personId", "port", "postImportTags", "rating", "receiverId", "recipients", "retry", "rpcPath", "senderDomain", "senderId", "server", "serverUrl", "signIn", "sound", "strmFolder", "tags", "to", "topicId", "topics", "torrentFolder", "traktAdditionalParameters", "ttl", "tvCategory", "tvDirectory", "url", "urlBase", "user", "userName", "username", "vibration", "watchFolder", "years"}
+
+// Every setting of every kind of indexer, download client, import list, notification and metadata consumer this Radarr has is a credential, which is
+// never shown, or a switch, a number or a choice, or text that has been looked at. A webhook's headers and the addresses Apprise sends to were both
+// shown until this asked.
+func TestEverySettingShownHasBeenLookedAt(t *testing.T) {
+	skipUnlessReady(t)
+
+	kinds, settings := 0, 0
+	for _, provider := range []string{"indexer", "downloadclient", "importlist", "notification", "metadata"} {
+		for _, kind := range acc.Strs(t, suite.Call(t, "provider_kinds", map[string]any{"provider": provider})["kinds"], "kinds") {
+			kinds++
+
+			for _, setting := range acc.Rows(t, suite.Call(t, "provider_kinds", map[string]any{"provider": provider, "kind": kind})["settings"], "settings") {
+				settings++
+
+				name, holds := acc.Str(setting["name"]), acc.Str(setting["type"])
+				if setting["secret"] != true && !slices.Contains([]string{"checkbox", "number", "select"}, holds) && !slices.Contains(lookedAt, name) {
+					t.Errorf("the %s %s shows its setting %s (%s), which nobody has looked at: make it a credential in the tools, or add it to lookedAt", provider, kind, name, holds)
+				}
+			}
+		}
+	}
+	if kinds < 70 || settings < 400 {
+		t.Errorf("%d kinds with %d settings were looked through, want every kind this Radarr has", kinds, settings)
+	}
+
+	for kind, name := range map[string]string{"Webhook": "headers", "Apprise": "statelessUrls"} {
+		if setting := named(acc.Rows(t, suite.Call(t, "provider_kinds", map[string]any{"provider": "notification", "kind": kind})["settings"], "settings"), "name", name); setting == nil || setting["secret"] != true {
+			t.Errorf("a %s notification's %s = %v, want it a credential", kind, name, setting)
+		}
+	}
+}
+
 // provider_kinds says what there is to add and what each kind takes, for
 // every family that is added by kind.
 func TestProviderKinds(t *testing.T) {
@@ -118,7 +155,7 @@ func TestIndexerLifecycle(t *testing.T) {
 	listed := func() map[string]any { return named(rowsOf(t, "indexer_list", "indexers"), "name", "Second Indexer") }
 
 	// left alone, a new indexer is switched on, as in Radarr's own form; Radarr tests it before saving it, and an API key the indexer turns away fails that test
-	wrong := map[string]any{"kind": "Newznab", "name": "Wrong Key", "settings": map[string]any{"baseUrl": indexer.URL(), "apiPath": "/api", "apiKey": secretFor("a-wrong-key-nobody-should-be-shown"), "categories": []any{2000, 2040}}}
+	wrong := map[string]any{"kind": "Newznab", "name": "Wrong Key", "settings": map[string]any{"baseUrl": indexer.URL(), "apiPath": "/api", "apiKey": suite.Secret("a-wrong-key-nobody-should-be-shown"), "categories": []any{2000, 2040}}}
 	t.Cleanup(func() { _, _ = suite.Invoke("indexer_delete", map[string]any{"name": "Wrong Key", "confirm": true}) })
 	if msg := suite.CallErr(t, "indexer_add", wrong); !strings.Contains(msg, "force=true") || named(rowsOf(t, "indexer_list", "indexers"), "name", "Wrong Key") != nil {
 		t.Errorf("an indexer whose key is wrong = %q, want it refused with the way round it", msg)
@@ -175,7 +212,7 @@ func TestAFailingIndexerDoesNotGiveItsKeyAway(t *testing.T) {
 	skipUnlessReady(t)
 
 	// an indexer of its own, so the one every other test searches is never the one that is down
-	key := secretFor("a-key-nobody-should-be-shown")
+	key := suite.Secret("a-key-nobody-should-be-shown")
 	down, err := indexers.Add(newznab.Site{Name: "down", APIKey: key})
 	if err != nil {
 		t.Fatal(err)
@@ -316,7 +353,9 @@ func TestNotificationLifecycle(t *testing.T) {
 	skipUnlessReady(t)
 	t.Cleanup(func() { _, _ = suite.Invoke("notification_delete", map[string]any{"name": "Nowhere", "confirm": true}) })
 	listed := func() map[string]any { return named(rowsOf(t, "notification_list", "items"), "name", "Nowhere") }
-	nowhere := map[string]any{"url": "http://127.0.0.1:9/hook", "method": "POST", "username": "radarr", "password": secretFor("a-password-nobody-should-be-shown")}
+	// a webhook's own headers are where a token goes, and Radarr marks them as nothing in particular
+	headers := []any{map[string]any{"key": "Authorization", "value": "Bearer " + suite.Secret("a-token-nobody-should-be-shown")}}
+	nowhere := map[string]any{"url": "http://127.0.0.1:9/hook", "method": "POST", "username": "radarr", "password": suite.Secret("a-password-nobody-should-be-shown"), "headers": headers}
 
 	// left alone, a new notification is sent for what its kind can tell of, so Radarr tests it before saving, and nothing answers there
 	msg := suite.CallErr(t, "notification_add", map[string]any{"kind": "Webhook", "name": "Nowhere", "settings": nowhere})
@@ -326,8 +365,8 @@ func TestNotificationLifecycle(t *testing.T) {
 
 	// added off, it is saved untested
 	added := suite.Call(t, "notification_add", map[string]any{"kind": "Webhook", "name": "Nowhere", "settings": nowhere, "off": true})
-	if settings := acc.Object(t, added["settings"], "settings"); acc.Str(settings["url"]) != "http://127.0.0.1:9/hook" || settings["password"] != nil || acc.Str(settings["username"]) != "radarr" || !slices.Equal(acc.Strs(t, added["credentials"], "credentials"), []string{"password"}) {
-		t.Errorf("the notification added = %v, want its address and who it signs in as shown, and its password only named", added)
+	if settings := acc.Object(t, added["settings"], "settings"); acc.Str(settings["url"]) != "http://127.0.0.1:9/hook" || settings["password"] != nil || acc.Str(settings["username"]) != "radarr" || settings["headers"] != nil || !slices.Equal(acc.Strs(t, added["credentials"], "credentials"), []string{"headers", "password"}) {
+		t.Errorf("the notification added = %v, want its address and who it signs in as shown, and its password and its headers only named", added)
 	}
 	if options := acc.Object(t, added["options"], "options"); options["onGrab"] != false || options["onDownload"] != false || options["onHealthIssue"] != false {
 		t.Errorf("a notification added off = %v, want it sent for nothing", options)
@@ -906,7 +945,7 @@ func TestQueueGrab(t *testing.T) {
 func TestNoAnswerCarriesAKey(t *testing.T) {
 	skipUnlessReady(t)
 
-	key, token, password := secretFor("a-second-key-nobody-should-be-shown"), secretFor("a-token-in-an-address"), secretFor("a-password-for-the-hook")
+	key, token, password := suite.Secret("a-second-key-nobody-should-be-shown"), suite.Secret("a-token-in-an-address"), suite.Secret("a-password-for-the-hook")
 	leaky, err := indexers.Add(newznab.Site{Name: "leaky", APIKey: key})
 	if err != nil {
 		t.Fatal(err)

@@ -639,8 +639,8 @@ func TestFileChecks(t *testing.T) {
 	t.Parallel()
 
 	e := newAuditEnv(nil)
-	hd := radarr.MediaInfoResource{Resolution: "1920x1080", RunTime: "1:57:00", VideoCodec: "x264", AudioLanguages: "eng", AudioStreamCount: 1}
-	alien := withMedia(new(film(1, "Alien", 1979)), "Alien (1979) Bluray-1080p.mkv", "Bluray-1080p", 1080, hd, 30000)
+	alien := new(film(1, "Alien", 1979))
+	withMedia(alien, "Alien (1979) Bluray-1080p.mkv", "Bluray-1080p", 1080, radarr.MediaInfoResource{Resolution: "1920x1080", RunTime: "1:57:00", VideoCodec: "x264", AudioLanguages: "eng", AudioStreamCount: 1}, 30000)
 	alien.Runtime = 117
 	alien.OriginalLanguage = &radarr.Language{Name: "English"}
 
@@ -721,7 +721,8 @@ func TestFileChecks(t *testing.T) {
 		if _, bad := check(t, languageCheck(nil), e, alien); bad {
 			t.Error("an English film with English audio flagged")
 		}
-		dub := withMedia(new(film(7, "Akira", 1988)), "Akira (1988) Bluray-1080p.mkv", "Bluray-1080p", 1080, radarr.MediaInfoResource{AudioLanguages: "eng", AudioStreamCount: 1}, 1)
+		dub := new(film(7, "Akira", 1988))
+		withMedia(dub, "Akira (1988) Bluray-1080p.mkv", "Bluray-1080p", 1080, radarr.MediaInfoResource{AudioLanguages: "eng", AudioStreamCount: 1}, 1)
 		dub.OriginalLanguage = &radarr.Language{Name: "Japanese"}
 		detail, bad := check(t, languageCheck(nil), e, dub)
 		if !bad || !strings.Contains(detail, "audio is eng, none in Japanese (the film's original language)") {

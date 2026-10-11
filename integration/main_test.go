@@ -18,7 +18,7 @@
 //	make testacc-integration                       # container started and torn down
 //
 //	eval "$(RADARR_TEST_CONTAINER=radarr-mcp-integration RADARR_TEST_PORT=17978 \
-//	  RADARR_TEST_PROXY_PORT=17980 RADARR_TEST_INDEXER_PORT=17981 scripts/testenv.sh up)"
+//	  RADARR_TEST_PROXY_PORT=17980 RADARR_TEST_INDEXER_PORT=17981 .scripts/testenv.sh up)"
 //	go test -tags integration ./integration/...    # or drive it by hand
 package integration
 

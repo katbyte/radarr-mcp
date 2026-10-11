@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- one journey from nothing to nothing in the live tool suite: a Radarr set up with the tools alone - a tag, a profile, a custom format, delay and release profiles, an indexer, a download client, a root folder - then used: a folder already on disk is found by the audits and taken in, a film with no file is searched for, grabbed through the new indexer into the new client and imported, what came in is found misnamed and renamed, and the collection it belongs to is found held in part and the rest excluded; then every piece is deleted and Radarr is checked against a recording taken before, every audit's count included. The audits found a real gap in the journey's own setup on its first run
+
+### Changed
+
+- the address rule, the write line's blanking and the live suite's watch for a shown key are go-kt's (v0.6.2), shared with the other servers, where each was radarr's own: what Radarr says went wrong is answered with every address in it stripped of who it signs in as, the value of any parameter and what follows its #, and a tool's failure the same, around every tool. A failure's body from Radarr has its credentials blanked too
+- the generator is pandorest v0.6.0, and eight of the twelve fixes for what Radarr's document gets wrong are its ready-made ones, named and ordered as before: the definitions and the client do not change
+- a method whose answer is not JSON asks for it by content type, so a server that answers two ways gives the documented one (pandorest v0.4.0)
+- the helper scripts live in `.scripts/` where they were in `scripts/`, as in the other servers
+- spelling and markdown are checked (`make typos`, `make markdownlint`, and a workflow each), lint runs only the linters `.golangci.yml` lists, a `//nolint` must name its linter, and the workflow checker builds from the one tools module
+
+### Fixed
+
+- a webhook notification's own headers were shown, values and all, by `notification_list` and by what an add or an edit answers: a header is where a webhook's token goes, and Radarr marks the setting as nothing in particular. So were the addresses an Apprise notification sends to, each of which carries its service's token. Both are now credentials like any other, named under `credentials` when set and never shown. 0.2.0 is affected. Found by reading all 493 settings of the 78 kinds of indexer, download client, import list, notification and metadata consumer Radarr 6.4.4 has, and the live suite now does the same: a setting of text the tools show must be one that has been looked at, so one Radarr adds later fails the suite until someone has
+- a trace of what is sent to Radarr (`RADARR_LOG=TRACE`) showed the key or password of an indexer, download client, import list or notification being added or changed, and the confirmation of a new sign-in password: Radarr's API carries the first as the value of a setting, under no name of its own, and the second under a name that does not end as a credential's does. A trace now hides every setting's value and the confirmation. 0.2.0 is affected, for whoever ran it at that log level
+- the line logged for a change to Radarr's own settings blanks the confirmation of a new password as it does the password: go-kt's rule for that line reads how a name ends, where radarr's own, which it replaced here, did not. Never released
+- an empty answer from Radarr is an error where it stopped the tool: looking a film up by `tmdb:` or `imdb:` id, and reading the naming settings, a quality profile, a quality definition or the blank profile before changing one
+
 ## 0.2.0 (2026-10-10)
 
 ### Breaking

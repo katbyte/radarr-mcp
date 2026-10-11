@@ -215,7 +215,7 @@ func registerAdminTools(r *registry) {
 		if err != nil {
 			// Radarr asks its update service on every read, and answers a 500 carrying the reason when it cannot reach it
 			if se, ok := errors.AsType[*client.StatusError](err); ok && se.StatusCode >= http.StatusInternalServerError {
-				out.Unavailable = "Radarr could not reach its update service: " + radarrSays(strings.Join(se.Messages, "; "))
+				out.Unavailable = "Radarr could not reach its update service: " + outsideProse(strings.Join(se.Messages, "; "))
 				return nil, out, nil
 			}
 			return nil, updatesOut{}, err

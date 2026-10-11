@@ -463,12 +463,20 @@ func lookupMovies(ctx context.Context, c *radarr.Client, term string) ([]radarr.
 		if err != nil {
 			return nil, fmt.Errorf("looking up tmdb:%d: %w", id, err)
 		}
+		if res.Model == nil {
+			return nil, fmt.Errorf("looking up %s: no answer from Radarr", term)
+		}
+
 		return []radarr.MovieResource{*res.Model}, nil
 	case strings.HasPrefix(lower, "imdb:"):
 		res, err := c.GetMovieLookupImdb(ctx, radarr.GetMovieLookupImdbOperationOptions{ImdbId: strings.TrimSpace(term[5:])})
 		if err != nil {
 			return nil, fmt.Errorf("looking up %s: %w", term, err)
 		}
+		if res.Model == nil {
+			return nil, fmt.Errorf("looking up %s: no answer from Radarr", term)
+		}
+
 		return []radarr.MovieResource{*res.Model}, nil
 	default:
 		res, err := c.GetMovieLookup(ctx, radarr.GetMovieLookupOperationOptions{Term: term})

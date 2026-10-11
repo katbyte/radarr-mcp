@@ -9,8 +9,7 @@ empty:=
 space:=$(empty) $(empty)
 
 # dev tool binaries are built into .tools/bin (gitignored) from the versions pinned in
-# .tools/go.mod (and .tools/actionlint/go.mod) - the single source of truth for make and CI;
-# dependabot keeps them updated.
+# .tools/go.mod - the single source of truth for make and CI; dependabot keeps them updated.
 # overridable because binaries cannot execute from a noexec mount (e.g. an smb checkout):
 # make TOOLS_BIN=~/.cache/radarr-mcp/bin lint
 TOOLS_BIN?=.tools/bin
@@ -19,12 +18,17 @@ GOFUMPT=$(TOOLS_BIN)/gofumpt
 GOLANGCI_LINT=$(TOOLS_BIN)/golangci-lint
 
 # non-Go tools also live in .tools/bin at pinned versions, but the pins are here (dependabot
-# cannot bump them): shellcheck is a static haskell binary downloaded from its github release,
-# yamllint is python installed into a repo-local venv. both rebuild when this makefile changes.
+# cannot bump them): shellcheck, typos and zizmor are static binaries downloaded from their github
+# releases, yamllint is pip installed into a repo-local venv and markdownlint-cli2 is npm installed
+# into a repo-local prefix. all rebuild when this makefile changes.
+MARKDOWNLINT_CLI2_VERSION=0.23.2
 SHELLCHECK_VERSION=v0.11.0
+TYPOS_VERSION=v1.50.1
 YAMLLINT_VERSION=1.38.0
 ZIZMOR_VERSION=v1.30.1
+MARKDOWNLINT=$(TOOLS_BIN)/markdownlint-cli2
 SHELLCHECK=$(TOOLS_BIN)/shellcheck
+TYPOS=$(TOOLS_BIN)/typos
 YAMLLINT=$(TOOLS_BIN)/yamllint
 ZIZMOR=$(TOOLS_BIN)/zizmor
 
@@ -39,14 +43,7 @@ $(TOOLS_BIN)/%: .tools/go.mod .tools/go.sum
 	@mkdir -p $(TOOLS_BIN)
 	@cd .tools && go build -o $(abspath $@) $$(go list tool | grep "/$*$$")
 
-# actionlint lives in its own module (.tools/actionlint/go.mod): it pins an older go.yaml.in/yaml/v4
-# release candidate than golangci-lint's dependencies and does not compile against the newer one
-$(ACTIONLINT): .tools/actionlint/go.mod .tools/actionlint/go.sum
-	@echo "==> building actionlint (version pinned in .tools/actionlint/go.mod)..."
-	@mkdir -p $(TOOLS_BIN)
-	@cd .tools/actionlint && go build -o $(abspath $@) $$(go list tool)
-
-# explicit rules take precedence over the pattern rule above for the non-Go tools and actionlint.
+# explicit rules take precedence over the pattern rule above for the non-Go tools.
 # `golangci-lint custom` always writes to .tools/bin (destination in .custom-gcl.yml), so move
 # the result when TOOLS_BIN points elsewhere (e.g. a local dir because the checkout is noexec)
 $(GOLANGCI_LINT_MODULES): .tools/.custom-gcl.yml $(GOLANGCI_LINT)
@@ -75,6 +72,20 @@ $(ZIZMOR): makefile
 		curl -sSfL "https://github.com/zizmorcore/zizmor/releases/download/$(ZIZMOR_VERSION)/zizmor-$$arch-$$target.tar.gz" \
 		| tar -xz -O zizmor > $@ && chmod +x $@
 
+$(TYPOS): makefile
+	@echo "==> downloading typos $(TYPOS_VERSION)..."
+	@mkdir -p $(TOOLS_BIN)
+	@case "$$(uname)" in Darwin) target=apple-darwin;; *) target=unknown-linux-musl;; esac; \
+		arch=$$(uname -m); [ "$$arch" = "arm64" ] && arch=aarch64; \
+		curl -sSfL "https://github.com/crate-ci/typos/releases/download/$(TYPOS_VERSION)/typos-$(TYPOS_VERSION)-$$arch-$$target.tar.gz" \
+		| tar -xz -O ./typos > $@ && chmod +x $@
+
+$(MARKDOWNLINT): makefile
+	@command -v npm >/dev/null || (echo "npm is required to install markdownlint-cli2 (macOS: brew install node; Debian/Ubuntu: apt install npm)" && exit 1)
+	@echo "==> installing markdownlint-cli2 $(MARKDOWNLINT_CLI2_VERSION) into $(TOOLS_BIN)/../npm..."
+	@mkdir -p $(TOOLS_BIN)
+	@npm install --silent --no-audit --no-fund --prefix $(TOOLS_BIN)/../npm markdownlint-cli2@$(MARKDOWNLINT_CLI2_VERSION) && ln -sf ../npm/node_modules/.bin/markdownlint-cli2 $@
+
 default: fmt build
 
 all: fmt build
@@ -95,7 +106,7 @@ docker: ## Build the radarr-mcp container image with version info from git
 	@echo "==> building docker image..."
 	docker build --build-arg VERSION=${GIT_VERSION} --build-arg COMMIT=${GIT_COMMIT} -t radarr-mcp .
 
-tools: $(ACTIONLINT) $(GOFUMPT) $(GOLANGCI_LINT) $(GOLANGCI_LINT_MODULES) $(SHELLCHECK) $(YAMLLINT) $(ZIZMOR) ## Install all pinned dev tools into .tools/bin
+tools: $(ACTIONLINT) $(GOFUMPT) $(GOLANGCI_LINT) $(GOLANGCI_LINT_MODULES) $(MARKDOWNLINT) $(SHELLCHECK) $(TYPOS) $(YAMLLINT) $(ZIZMOR) ## Install all pinned dev tools into .tools/bin
 
 ##@ SDK generation (sdk/pandorest)
 generate: pandorest-import pandorest-generate ## Import the highest-versioned spec into api-defs/radarr-<release>/, then generate sdk/radarr
@@ -130,6 +141,9 @@ goimports: $(GOLANGCI_LINT) ## Fix imports with golangci-lint (goimports)
 	$(GOLANGCI_LINT) fmt -E goimports ./...
 
 ##@ Linting & Dependencies
+# markdown checked by markdownlint: every .md the repo owns
+MARKDOWN_INPUTS='*.md' 'api-defs/**/*.md' 'docs/**/*.md' '.github/**/*.md'
+
 lint: $(GOLANGCI_LINT_MODULES) ## Check source code with the golangci linters (incl. azproviderlint)
 	@echo "==> Checking source code against linters..."
 	$(GOLANGCI_LINT_MODULES) run ./...
@@ -148,7 +162,7 @@ yamllint: $(YAMLLINT) ## Check YAML files with yamllint (config in .yamllint.yml
 
 shellcheck: $(SHELLCHECK) ## Check shell scripts with shellcheck
 	@echo "==> Checking shell scripts with shellcheck..."
-	@$(SHELLCHECK) scripts/*.sh
+	@$(SHELLCHECK) .scripts/*.sh
 
 zizmor: $(ZIZMOR) ## Audit GitHub workflows for security issues with zizmor
 	@echo "==> Auditing workflows with zizmor..."
@@ -163,6 +177,18 @@ apicheck: ## Check that the definitions match the spec and every operation has a
 	@echo "==> Checking API coverage of sdk/radarr..."
 	@go run ./sdk/pandorest check -quiet
 
+typos: $(TYPOS) ## Check spelling in code and docs with typos (config in .typos.toml)
+	@echo "==> Checking spelling with typos..."
+	@$(TYPOS) || \
+		(echo; echo "Spelling errors found. Fix them with 'make typos-fix', or add false positives (names, API words) to .typos.toml."; exit 1)
+
+typos-fix: $(TYPOS) ## Fix spelling errors found by typos
+	@$(TYPOS) --write-changes
+
+markdownlint: $(MARKDOWNLINT) ## Check the repo's markdown with markdownlint (config in .markdownlint.yml)
+	@echo "==> Checking markdown with markdownlint..."
+	@$(MARKDOWNLINT) $(MARKDOWN_INPUTS)
+
 depscheck: ## Check that go.mod/go.sum and vendor/ are in sync
 	@echo "==> Checking source code with go mod tidy..."
 	@go mod tidy
@@ -176,10 +202,6 @@ depscheck: ## Check that go.mod/go.sum and vendor/ are in sync
 	@cd .tools && go mod tidy
 	@git diff --exit-code -- .tools/go.mod .tools/go.sum || \
 		(echo; echo "Unexpected difference in .tools/go.mod/go.sum. Run 'cd .tools && go mod tidy' and commit."; exit 1)
-	@echo "==> Checking .tools/actionlint/go.mod with go mod tidy..."
-	@cd .tools/actionlint && go mod tidy
-	@git diff --exit-code -- .tools/actionlint/go.mod .tools/actionlint/go.sum || \
-		(echo; echo "Unexpected difference in .tools/actionlint/go.mod/go.sum. Run 'cd .tools/actionlint && go mod tidy' and commit."; exit 1)
 	@echo "==> Checking .tools/.custom-gcl.yml golangci-lint version matches .tools/go.mod..."
 	@modv=$$(cd .tools && go list -m -f '{{.Version}}' github.com/golangci/golangci-lint/v2); \
 		gclv=$$(grep '^version:' .tools/.custom-gcl.yml | awk '{print $$2}'); \
@@ -190,12 +212,12 @@ depscheck: ## Check that go.mod/go.sum and vendor/ are in sync
 test: build ## Run tests
 	go test ./... -timeout ${TEST_TIMEOUT}
 
-test-integration: ## Run the SDK tests (sdk/radarr) against a Radarr scripts/testenv.sh started
+test-integration: ## Run the SDK tests (sdk/radarr) against a Radarr .scripts/testenv.sh started
 	@[ -n "${RADARR_SERVER}" ] && [ -n "${RADARR_TOKEN}" ] && [ -n "${RADARR_TEST_DATA}" ] || \
 		(echo 'RADARR_SERVER, RADARR_TOKEN and RADARR_TEST_DATA must be set (eval "$$(make testenv-up)"); or use "make testacc"'; exit 1)
 	go test -tags integration -count=1 ./integration/... -timeout ${TEST_TIMEOUT} -v
 
-test-acceptance: ## Run the tool tests (behaviour, audits, journeys) against a Radarr scripts/testenv.sh started
+test-acceptance: ## Run the tool tests (behaviour, audits, journeys) against a Radarr .scripts/testenv.sh started
 	@[ -n "${RADARR_SERVER}" ] && [ -n "${RADARR_TOKEN}" ] && [ -n "${RADARR_TEST_DATA}" ] || \
 		(echo 'RADARR_SERVER, RADARR_TOKEN and RADARR_TEST_DATA must be set (eval "$$(make testenv-up)"); or use "make testacc"'; exit 1)
 	go test -tags integration -count=1 ./acceptance/... -timeout ${TEST_TIMEOUT} -v
@@ -213,9 +235,9 @@ define live
 		export RADARR_TEST_CONTAINER=radarr-mcp-$(1) \
 			RADARR_TEST_DATA=$${HOME}/.cache/radarr-mcp/testenv/$(1) \
 			RADARR_TEST_PORT=$$((17878 + offset)) RADARR_TEST_PROXY_PORT=$$((17880 + offset)) RADARR_TEST_INDEXER_PORT=$$((17881 + offset)) $(2); \
-		scripts/testenv.sh up | grep '^export' > "$$env"; \
-		trap 'st=$$?; [ $$st -eq 0 ] || scripts/testenv.sh logs; \
-			scripts/testenv.sh down; rm -f '"$$env"'; exit $$st' EXIT; \
+		.scripts/testenv.sh up | grep '^export' > "$$env"; \
+		trap 'st=$$?; [ $$st -eq 0 ] || .scripts/testenv.sh logs; \
+			.scripts/testenv.sh down; rm -f '"$$env"'; exit $$st' EXIT; \
 		. ./"$$env"; \
 		go test -tags integration -count=1 ./$(1)/... -timeout ${TEST_TIMEOUT} -v $(3)
 endef
@@ -280,11 +302,11 @@ record-check: ## Check the cassettes still match the real metadata service, with
 	$(call live,acceptance,RADARR_TEST_VERIFY=1)
 
 testenv-up: ## Start a throwaway Radarr with the fixtures laid out (eval "$$(make testenv-up)")
-	@scripts/testenv.sh up
+	@.scripts/testenv.sh up
 
 testenv-down: ## Remove the throwaway Radarr
-	@scripts/testenv.sh down
+	@.scripts/testenv.sh down
 
-check-all: build test testacc lint actionlint yamllint shellcheck depscheck gencheck apicheck ## Run build + tests (incl. live) + all linters + depscheck
+check-all: build test testacc lint actionlint yamllint shellcheck typos markdownlint depscheck gencheck apicheck ## Run build + tests (incl. live) + all linters + depscheck
 
-.PHONY: default all help fmt goimports build docker generate pandorest-import pandorest-generate pandorest-diff spec-update lint lint-fix actionlint yamllint shellcheck zizmor gencheck apicheck depscheck check-all install tools test test-integration test-acceptance testacc testacc-integration testacc-acceptance cover cover-html record record-check testenv-up testenv-down
+.PHONY: default all help fmt goimports build docker generate pandorest-import pandorest-generate pandorest-diff spec-update lint lint-fix actionlint yamllint shellcheck zizmor typos typos-fix markdownlint gencheck apicheck depscheck check-all install tools test test-integration test-acceptance testacc testacc-integration testacc-acceptance cover cover-html record record-check testenv-up testenv-down

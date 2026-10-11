@@ -20,6 +20,7 @@ type GetLoginOperationResponse struct {
 // GetLogin calls GET /login.
 func (c Client) GetLogin(ctx context.Context) (result GetLoginOperationResponse, err error) {
 	opts := client.RequestOptions{
+		Accept: "text/html",
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
