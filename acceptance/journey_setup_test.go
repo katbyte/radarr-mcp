@@ -299,8 +299,9 @@ func TestJourneyFromNothingToNothing(t *testing.T) {
 				t.Errorf("%s deleted = %v", film, gone)
 			}
 		}
-		if _, err := os.Stat(testenv.HostPath(journeyFolder)); !os.IsNotExist(err) {
-			t.Errorf("Primer's folder after the film was deleted with its files: %v", err)
+		// Radarr removes a deleted film's folder after it has answered
+		if !acc.EventuallyWithin(time.Minute, func() bool { _, err := os.Stat(testenv.HostPath(journeyFolder)); return os.IsNotExist(err) }) {
+			t.Error("Primer's folder is still there a minute after the film was deleted with its files")
 		}
 		if gone := suite.Call(t, "rootfolder_delete", map[string]any{"root_folder": journeyRoot}); gone["deleted"] == nil && gone["path"] == nil {
 			t.Errorf("the root folder deleted = %v", gone)
