@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	acc "github.com/katbyte/go-kt/mcp/acctest"
+	"github.com/katbyte/go-kt/mcp/acctest"
 	"github.com/katbyte/radarr-mcp/lib/testenv"
 )
 
@@ -41,7 +41,7 @@ func snapshot(t *testing.T) string {
 		}
 		out := suite.Call(t, name, args)
 		if name == "rootfolder_list" {
-			for _, f := range acc.Rows(t, out["root_folders"], "root_folders") {
+			for _, f := range acctest.Rows(t, out["root_folders"], "root_folders") {
 				delete(f, "free_space")
 			}
 		}
@@ -145,7 +145,7 @@ func TestJourneyEveryFixableAudit(t *testing.T) {
 	t.Run("unmapped folder: add the film for it", func(t *testing.T) {
 		added := suite.Call(t, "movie_add", map[string]any{"movie": "tmdb:8195", "quality_profile": profileHD, "root_folder": moviesRoot, "folder": "Ronin (1998)"})
 		t.Cleanup(func() { _, _ = suite.Invoke("movie_delete", map[string]any{"movie": "tmdb:8195", "confirm": true}) })
-		if acc.Str(added["path"]) != unmappedRonin || added["has_file"] != true {
+		if acctest.Str(added["path"]) != unmappedRonin || added["has_file"] != true {
 			t.Errorf("Ronin added = %v", added)
 		}
 		cleared(t, "audit_unmapped_folders", nil, "Ronin (1998)")
@@ -160,12 +160,12 @@ func TestJourneyEveryFixableAudit(t *testing.T) {
 			_, _ = suite.Invoke("movie_delete", map[string]any{"movie": "tmdb:604", "delete_files": true, "confirm": true})
 		})
 		gap := finding(t, suite.Call(t, "audit_collection_gaps", nil), "The Matrix Collection")
-		for _, m := range acc.Rows(t, gap["missing"], "missing") {
-			if acc.Num(t, m["tmdb_id"], "tmdb_id") == 604 {
+		for _, m := range acctest.Rows(t, gap["missing"], "missing") {
+			if acctest.Num(t, m["tmdb_id"], "tmdb_id") == 604 {
 				t.Errorf("the film added is still a gap: %v", gap)
 			}
 		}
-		if !strings.Contains(acc.Str(gap["detail"]), "holds 2 of 4") {
+		if !strings.Contains(acctest.Str(gap["detail"]), "holds 2 of 4") {
 			t.Errorf("the collection now = %v", gap["detail"])
 		}
 
@@ -175,8 +175,8 @@ func TestJourneyEveryFixableAudit(t *testing.T) {
 			ids = append(ids, out["id"])
 		}
 		t.Cleanup(func() { _, _ = suite.Invoke("exclusion_remove", map[string]any{"ids": ids}) })
-		for _, f := range acc.Rows(t, suite.Call(t, "audit_collection_gaps", nil)["findings"], "findings") {
-			if acc.Str(f["title"]) == "The Matrix Collection" {
+		for _, f := range acctest.Rows(t, suite.Call(t, "audit_collection_gaps", nil)["findings"], "findings") {
+			if acctest.Str(f["title"]) == "The Matrix Collection" {
 				t.Errorf("the excluded films are still gaps: %v", f)
 			}
 		}
@@ -189,7 +189,7 @@ func TestJourneyEveryFixableAudit(t *testing.T) {
 		// a move to the root folder the film is already in rebuilds its
 		// folder's name from the naming scheme
 		out := suite.Call(t, "movie_edit", map[string]any{"movie": messyDune, "root_folder": messyRoot})
-		if moved := acc.Rows(t, out["movies"], "movies"); len(moved) != 1 || acc.Str(moved[0]["path"]) != right {
+		if moved := acctest.Rows(t, out["movies"], "movies"); len(moved) != 1 || acctest.Str(moved[0]["path"]) != right {
 			t.Fatalf("movie_edit into its own root folder = %v", out)
 		}
 		if _, err := os.Stat(testenv.HostPath(right)); err != nil {
@@ -205,7 +205,7 @@ func TestJourneyEveryFixableAudit(t *testing.T) {
 		makeVideo(t, scratchFile, 40, "1920x1080")
 		suite.Call(t, "movie_rescan", map[string]any{"movies": []any{"Moon"}})
 		f := finding(t, suite.Call(t, "audit_runtime", nil), "Moon (2009)")
-		if !strings.Contains(acc.Str(f["detail"]), "40 minutes") {
+		if !strings.Contains(acctest.Str(f["detail"]), "40 minutes") {
 			t.Fatalf("the short file = %v", f)
 		}
 		suite.Call(t, "moviefile_delete", map[string]any{"movie": "Moon", "confirm": true})
@@ -221,14 +221,14 @@ func TestJourneyEveryFixableAudit(t *testing.T) {
 		extra := scratchFolder + "/Moon.2009.720p.WEBDL.x264-GRP.mkv"
 		makeVideo(t, extra, 97, "1280x720")
 		f := finding(t, suite.Call(t, "audit_untracked_files", nil), "Moon (2009)")
-		if acc.Str(f["file"]) != "Moon.2009.720p.WEBDL.x264-GRP.mkv" {
+		if acctest.Str(f["file"]) != "Moon.2009.720p.WEBDL.x264-GRP.mkv" {
 			t.Fatalf("the untracked file = %v", f)
 		}
 		suite.Call(t, "import_apply", map[string]any{"files": []any{map[string]any{"path": extra, "movie": "Moon"}}})
 		cleared(t, "audit_untracked_files", nil, "Moon (2009)")
 		// and the film now has the file that was untracked
-		file := acc.Object(t, suite.Call(t, "movie_get", map[string]any{"movie": "Moon"})["file"], "file")
-		if acc.Str(file["quality"]) != "WEBDL-720p" {
+		file := acctest.Object(t, suite.Call(t, "movie_get", map[string]any{"movie": "Moon"})["file"], "file")
+		if acctest.Str(file["quality"]) != "WEBDL-720p" {
 			t.Errorf("the film's file after the import = %v", file)
 		}
 	})
@@ -307,7 +307,7 @@ func moveTo(t *testing.T, id int, folder string) {
 	}
 	send(http.MethodPut, url+"?moveFiles=true", bytes.NewReader(body))
 	// Radarr moves the folder in a command of its own, after the edit answers
-	if !acc.EventuallyWithin(time.Minute, func() bool {
+	if !acctest.EventuallyWithin(time.Minute, func() bool {
 		_, err := os.Stat(testenv.HostPath(folder))
 		return err == nil
 	}) {
@@ -327,7 +327,7 @@ func TestJourneyWritesDoneTwice(t *testing.T) {
 		_, _ = suite.Invoke("tag_delete", map[string]any{"tag": "twice"})
 	})
 	got := suite.Call(t, "movie_get", map[string]any{"movie": "Arrival"})
-	if got["monitored"] != false || !slices.Equal(acc.Strs(t, acc.OrEmptyList(got["tags"]), "tags"), []string{"twice"}) {
+	if got["monitored"] != false || !slices.Equal(acctest.Strs(t, acctest.OrEmptyList(got["tags"]), "tags"), []string{"twice"}) {
 		t.Errorf("after two edits = monitored %v, tags %v", got["monitored"], got["tags"])
 	}
 
@@ -372,8 +372,8 @@ func TestJourneyCallsAtOnce(t *testing.T) {
 				errs <- err.Error()
 			case name == "audit_year_mismatch":
 				var got []string
-				for _, f := range acc.RowsOf(out["findings"]) {
-					got = append(got, titleYear(acc.Str(f["title"]), acc.NumOr0(f["year"])))
+				for _, f := range acctest.RowsOf(out["findings"]) {
+					got = append(got, titleYear(acctest.Str(f["title"]), acctest.NumOr0(f["year"])))
 				}
 				if !slices.Equal(got, want) {
 					errs <- "audit_year_mismatch at once = " + strings.Join(got, ",")
@@ -390,7 +390,7 @@ func TestJourneyCallsAtOnce(t *testing.T) {
 	for e := range errs {
 		t.Error(e)
 	}
-	if tags := acc.Strs(t, acc.OrEmptyList(suite.Call(t, "movie_get", map[string]any{"movie": "Arrival"})["tags"]), "tags"); !slices.Equal(tags, []string{"at-once"}) {
+	if tags := acctest.Strs(t, acctest.OrEmptyList(suite.Call(t, "movie_get", map[string]any{"movie": "Arrival"})["tags"]), "tags"); !slices.Equal(tags, []string{"at-once"}) {
 		t.Errorf("six concurrent tag adds left %v", tags)
 	}
 }
@@ -401,16 +401,16 @@ func TestJourneyADeletedFilmLeavesNothingBehind(t *testing.T) {
 	addScratch(t)
 	folders := func() map[string]int {
 		out := map[string]int{}
-		for _, f := range acc.Rows(t, suite.Call(t, "rootfolder_list", nil)["root_folders"], "root_folders") {
-			out[acc.Str(f["path"])] = acc.NumOr0(f["movies"])
+		for _, f := range acctest.Rows(t, suite.Call(t, "rootfolder_list", nil)["root_folders"], "root_folders") {
+			out[acctest.Str(f["path"])] = acctest.NumOr0(f["movies"])
 		}
 		return out
 	}
 	with := folders()
 	tagFilms := func() int {
-		for _, tag := range acc.Rows(t, suite.Call(t, "tag_list", nil)["tags"], "tags") {
-			if acc.Str(tag["label"]) == "scratch" {
-				return acc.NumOr0(tag["movies"])
+		for _, tag := range acctest.Rows(t, suite.Call(t, "tag_list", nil)["tags"], "tags") {
+			if acctest.Str(tag["label"]) == "scratch" {
+				return acctest.NumOr0(tag["movies"])
 			}
 		}
 		return -1
@@ -427,18 +427,18 @@ func TestJourneyADeletedFilmLeavesNothingBehind(t *testing.T) {
 		t.Errorf("the tag still carries %v films", n)
 	}
 	// the folder goes in the background, a moment after the delete answers
-	if !acc.EventuallyWithin(time.Minute, func() bool {
+	if !acctest.EventuallyWithin(time.Minute, func() bool {
 		_, err := os.Stat(testenv.HostPath(scratchFolder))
 		return os.IsNotExist(err)
 	}) {
 		t.Errorf("the folder is still on disk a minute after the delete")
 	}
-	if got := acc.Rows(t, suite.Call(t, "movie_list", map[string]any{"query": "moon"})["movies"], "movies"); len(got) != 0 {
+	if got := acctest.Rows(t, suite.Call(t, "movie_list", map[string]any{"query": "moon"})["movies"], "movies"); len(got) != 0 {
 		t.Errorf("still in the library: %v", got)
 	}
 	// and no audit sees a trace of it
-	for _, f := range acc.Rows(t, suite.Call(t, "audit_unmapped_folders", nil)["findings"], "findings") {
-		if strings.Contains(acc.Str(f["path"]), "Moon") {
+	for _, f := range acctest.Rows(t, suite.Call(t, "audit_unmapped_folders", nil)["findings"], "findings") {
+		if strings.Contains(acctest.Str(f["path"]), "Moon") {
 			t.Errorf("its folder is unmapped: %v", f)
 		}
 	}

@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	acc "github.com/katbyte/go-kt/mcp/acctest"
+	"github.com/katbyte/go-kt/mcp/acctest"
 	"github.com/katbyte/radarr-mcp/tools"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -206,7 +206,7 @@ func TestTheBinary(t *testing.T) {
 					t.Errorf("tools = %v\nwant %v", got, want)
 				}
 				// a real answer came back over stdout, uncorrupted
-				if out := callOn(t, cs, "server_info", nil); acc.Str(out["app"]) != "Radarr" || acc.Num(t, out["movies"], "movies") == 0 {
+				if out := callOn(t, cs, "server_info", nil); acctest.Str(out["app"]) != "Radarr" || acctest.Num(t, out["movies"], "movies") == 0 {
 					t.Errorf("server_info = %v", out)
 				}
 				// closing stdin ends the process cleanly
@@ -255,7 +255,7 @@ func TestTheBinary(t *testing.T) {
 		})
 
 		base := "http://" + addr
-		if !acc.EventuallyWithin(time.Minute, func() bool {
+		if !acctest.EventuallyWithin(time.Minute, func() bool {
 			resp, err := http.Get(base + "/healthz") //nolint:noctx // a probe with the test's own timeout
 			if err != nil {
 				return false

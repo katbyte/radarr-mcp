@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"testing"
 
-	acc "github.com/katbyte/go-kt/mcp/acctest"
+	"github.com/katbyte/go-kt/mcp/acctest"
 	"github.com/katbyte/go-kt/test/env"
 	"github.com/katbyte/go-kt/test/services/newznab"
 	"github.com/katbyte/radarr-mcp/lib/testenv"
@@ -122,7 +122,7 @@ var (
 	indexer  *newznab.Indexer
 	// suite drives the tools through a client session; until start connects
 	// it, every call skips
-	suite = &acc.Suite{NotReady: "RADARR_SERVER, RADARR_TOKEN and RADARR_TEST_DATA are not set; run: eval \"$(.scripts/testenv.sh up)\""}
+	suite = &acctest.Suite{NotReady: "RADARR_SERVER, RADARR_TOKEN and RADARR_TEST_DATA are not set; run: eval \"$(.scripts/testenv.sh up)\""}
 )
 
 // testMain connects, starts the provider proxy and the fake indexer, seeds
@@ -153,7 +153,7 @@ func testMain(m *testing.M) {
 	// every registered tool must have answered something above, not only
 	// refused it. Only a whole-suite run can say that, so a -run or -skip
 	// filter skips the check.
-	if acc.WholeRun() {
+	if acctest.WholeRun() {
 		report, err := suite.CoverageReport()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "\n"+err.Error())
@@ -209,7 +209,7 @@ func start() error {
 	if _, err := tools.RegisterAll(srv, sdk, tools.Options{EnableDelete: true}); err != nil {
 		return err
 	}
-	connected, err := acc.Connect(ctx, srv)
+	connected, err := acctest.Connect(ctx, srv)
 	if err != nil {
 		return err
 	}
@@ -232,8 +232,8 @@ func seed() error {
 		return err
 	}
 	have := map[string]bool{}
-	for _, row := range acc.RowsOf(folders["root_folders"]) {
-		have[acc.Str(row["path"])] = true
+	for _, row := range acctest.RowsOf(folders["root_folders"]) {
+		have[acctest.Str(row["path"])] = true
 	}
 	for _, root := range []string{moviesRoot, messyRoot} {
 		if have[root] {
@@ -249,8 +249,8 @@ func seed() error {
 		return err
 	}
 	held := map[int]bool{}
-	for _, row := range acc.RowsOf(library["movies"]) {
-		held[acc.NumOr0(row["tmdb_id"])] = true
+	for _, row := range acctest.RowsOf(library["movies"]) {
+		held[acctest.NumOr0(row["tmdb_id"])] = true
 	}
 	for _, f := range fixtures() {
 		if held[f.TmdbID] {
@@ -288,7 +288,7 @@ func addDownloading() error {
 	if err != nil {
 		return err
 	}
-	if len(acc.RowsOf(have["indexers"])) == 0 {
+	if len(acctest.RowsOf(have["indexers"])) == 0 {
 		settings := map[string]any{"baseUrl": indexer.URL(), "apiPath": "/api", "apiKey": indexerKey, "categories": []any{2000, 2030, 2040, 2045}}
 		if _, err := suite.Invoke("indexer_add", map[string]any{"kind": "Newznab", "name": "Fake Indexer", "settings": settings}); err != nil {
 			return fmt.Errorf("adding the fake indexer at %s: %w", indexer.URL(), err)
@@ -298,7 +298,7 @@ func addDownloading() error {
 	if err != nil {
 		return err
 	}
-	if len(acc.RowsOf(clients["download_clients"])) == 0 {
+	if len(acctest.RowsOf(clients["download_clients"])) == 0 {
 		settings := map[string]any{"nzbFolder": nzbFolder, "watchFolder": watchFolder}
 		if _, err := suite.Invoke("downloadclient_add", map[string]any{"kind": "UsenetBlackhole", "name": "Blackhole", "settings": settings, "options": map[string]any{"priority": 1, "removeCompletedDownloads": true, "removeFailedDownloads": true}}); err != nil {
 			return fmt.Errorf("adding the blackhole download client: %w", err)
@@ -339,7 +339,7 @@ func movieID(t *testing.T, title string, year int) int {
 
 	out := suite.Call(t, "movie_get", map[string]any{"movie": titleYear(title, year)})
 
-	return acc.Num(t, out["id"], "id")
+	return acctest.Num(t, out["id"], "id")
 }
 
 // findings returns the "Title (Year)" of each finding in an audit's
@@ -348,8 +348,8 @@ func findings(t *testing.T, out map[string]any) []string {
 	t.Helper()
 
 	var names []string
-	for _, f := range acc.Rows(t, out["findings"], "findings") {
-		names = append(names, titleYear(acc.Str(f["title"]), acc.NumOr0(f["year"])))
+	for _, f := range acctest.Rows(t, out["findings"], "findings") {
+		names = append(names, titleYear(acctest.Str(f["title"]), acctest.NumOr0(f["year"])))
 	}
 	slices.Sort(names)
 

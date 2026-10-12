@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	acc "github.com/katbyte/go-kt/mcp/acctest"
+	"github.com/katbyte/go-kt/mcp/acctest"
 	"github.com/katbyte/radarr-mcp/lib/testenv"
 )
 
@@ -16,8 +16,8 @@ import (
 func finding(t *testing.T, out map[string]any, name string) map[string]any {
 	t.Helper()
 
-	for _, f := range acc.Rows(t, out["findings"], "findings") {
-		if titleYear(acc.Str(f["title"]), acc.NumOr0(f["year"])) == name {
+	for _, f := range acctest.Rows(t, out["findings"], "findings") {
+		if titleYear(acctest.Str(f["title"]), acctest.NumOr0(f["year"])) == name {
 			return f
 		}
 	}
@@ -31,8 +31,8 @@ func details(t *testing.T, out map[string]any) []string {
 	t.Helper()
 
 	var ds []string
-	for _, f := range acc.Rows(t, out["findings"], "findings") {
-		ds = append(ds, acc.Str(f["detail"]))
+	for _, f := range acctest.Rows(t, out["findings"], "findings") {
+		ds = append(ds, acctest.Str(f["detail"]))
 	}
 	slices.Sort(ds)
 
@@ -64,12 +64,12 @@ func TestAuditsFindWhatTheFixturesCarry(t *testing.T) {
 			if got := findings(t, out); !slices.Equal(got, want) {
 				t.Errorf("%s = %v, want %v", audit, got, want)
 			}
-			if acc.Num(t, out["total_findings"], "total_findings") != len(want) || acc.Num(t, out["scanned"], "scanned") == 0 {
+			if acctest.Num(t, out["total_findings"], "total_findings") != len(want) || acctest.Num(t, out["scanned"], "scanned") == 0 {
 				t.Errorf("%s counts = %v scanned, %v found", audit, out["scanned"], out["total_findings"])
 			}
 			// every finding names its film and, when there is one, its file
-			for _, f := range acc.Rows(t, out["findings"], "findings") {
-				if acc.Num(t, f["id"], "id") == 0 || acc.Str(f["path"]) == "" || acc.Str(f["detail"]) == "" {
+			for _, f := range acctest.Rows(t, out["findings"], "findings") {
+				if acctest.Num(t, f["id"], "id") == 0 || acctest.Str(f["path"]) == "" || acctest.Str(f["detail"]) == "" {
 					t.Errorf("%s finding = %v", audit, f)
 				}
 			}
@@ -102,7 +102,7 @@ func TestAuditDetails(t *testing.T) {
 	} {
 		f := finding(t, suite.Call(t, tc.audit, nil), tc.film)
 		for _, w := range tc.want {
-			if !strings.Contains(acc.Str(f["detail"]), w) {
+			if !strings.Contains(acctest.Str(f["detail"]), w) {
 				t.Errorf("%s %s = %q, want it to say %q", tc.audit, tc.film, f["detail"], w)
 			}
 		}
@@ -113,13 +113,13 @@ func TestAuditDetails(t *testing.T) {
 // tag narrows what is scanned.
 func TestAuditLimitsAndScopes(t *testing.T) {
 	out := suite.Call(t, "audit_profile_mismatch", map[string]any{"limit": 1})
-	if n := len(acc.Rows(t, out["findings"], "findings")); n != 1 || acc.Num(t, out["total_findings"], "total_findings") != 3 {
+	if n := len(acctest.Rows(t, out["findings"], "findings")); n != 1 || acctest.Num(t, out["total_findings"], "total_findings") != 3 {
 		t.Errorf("limit 1 = %d findings of %v", n, out["total_findings"])
 	}
 
 	all := suite.Call(t, "audit_missing_metadata", nil)
 	messyOnly := suite.Call(t, "audit_missing_metadata", map[string]any{"root_folder": messyRoot})
-	if acc.Num(t, all["scanned"], "scanned") != len(fixtures()) || acc.Num(t, messyOnly["scanned"], "scanned") != len(messy) {
+	if acctest.Num(t, all["scanned"], "scanned") != len(fixtures()) || acctest.Num(t, messyOnly["scanned"], "scanned") != len(messy) {
 		t.Errorf("scanned %v in all, %v in %s; want %d and %d", all["scanned"], messyOnly["scanned"], messyRoot, len(fixtures()), len(messy))
 	}
 
@@ -131,7 +131,7 @@ func TestAuditLimitsAndScopes(t *testing.T) {
 		_, _ = suite.Invoke("tag_delete", map[string]any{"tag": "audit-scope"})
 	})
 	tagged := suite.Call(t, "audit_cutoff_unmet", map[string]any{"tag": "audit-scope"})
-	if got := findings(t, tagged); !slices.Equal(got, []string{"Heat (1995)"}) || acc.Num(t, tagged["scanned"], "scanned") != 2 {
+	if got := findings(t, tagged); !slices.Equal(got, []string{"Heat (1995)"}) || acctest.Num(t, tagged["scanned"], "scanned") != 2 {
 		t.Errorf("tagged cutoff unmet = %v (scanned %v)", got, tagged["scanned"])
 	}
 
@@ -161,11 +161,11 @@ func TestAuditQualityThresholds(t *testing.T) {
 		t.Errorf("at 480 lines = %v", d)
 	}
 	out = suite.Call(t, "audit_quality", map[string]any{"min_bitrate_kbps": 1000})
-	if n := acc.Num(t, out["total_findings"], "total_findings"); n != 17 {
+	if n := acctest.Num(t, out["total_findings"], "total_findings"); n != 17 {
 		t.Errorf("a 1000 kbps floor found %d of the 17 files, want all", n)
 	}
 	// fewest lines first
-	if first := acc.Rows(t, out["findings"], "findings")[0]; acc.Str(first["title"]) != messySpirited {
+	if first := acctest.Rows(t, out["findings"], "findings")[0]; acctest.Str(first["title"]) != messySpirited {
 		t.Errorf("the worst file is not first: %v", first)
 	}
 }
@@ -200,7 +200,7 @@ func TestAuditSize(t *testing.T) {
 	if got := findings(t, out); !slices.Equal(got, []string{"Gattaca (1997)"}) {
 		t.Fatalf("with a WEBDL-1080p minimum = %v", got)
 	}
-	if d := acc.Str(finding(t, out, "Gattaca (1997)")["detail"]); !strings.Contains(d, "below WEBDL-1080p's minimum of 1") {
+	if d := acctest.Str(finding(t, out, "Gattaca (1997)")["detail"]); !strings.Contains(d, "below WEBDL-1080p's minimum of 1") {
 		t.Errorf("detail = %q", d)
 	}
 
@@ -217,7 +217,7 @@ func TestAuditSize(t *testing.T) {
 // named by the scheme.
 func TestAuditNaming(t *testing.T) {
 	off := suite.Call(t, "audit_naming", nil)
-	if got := details(t, off); !slices.Equal(got, []string{`folder "Dune (2021)" would be named "Dune (1984)"`}) || !strings.Contains(acc.Str(off["note"]), "renaming is switched off") {
+	if got := details(t, off); !slices.Equal(got, []string{`folder "Dune (2021)" would be named "Dune (1984)"`}) || !strings.Contains(acctest.Str(off["note"]), "renaming is switched off") {
 		t.Errorf("renaming off = %v (note %q)", got, off["note"])
 	}
 
@@ -249,12 +249,12 @@ func TestAuditUnmappedFolders(t *testing.T) {
 		t.Fatalf("unmapped = %v", got)
 	}
 	ronin := finding(t, out, "Ronin (1998)")
-	if acc.Str(ronin["path"]) != unmappedRonin || ronin["duplicate_of"] != nil || !strings.Contains(acc.Str(ronin["detail"]), "not in the library") {
+	if acctest.Str(ronin["path"]) != unmappedRonin || ronin["duplicate_of"] != nil || !strings.Contains(acctest.Str(ronin["detail"]), "not in the library") {
 		t.Errorf("Ronin = %v", ronin)
 	}
 	cut := finding(t, out, "Alien (1979)")
-	if acc.Str(cut["path"]) != unmappedAlienCut || acc.Num(t, cut["duplicate_of"], "duplicate_of") != movieID(t, "Alien", 1979) ||
-		!strings.Contains(acc.Str(cut["detail"]), "a second copy of Alien (1979), which the library keeps at /media/movies/Alien (1979) (this one says Directors Cut)") {
+	if acctest.Str(cut["path"]) != unmappedAlienCut || acctest.Num(t, cut["duplicate_of"], "duplicate_of") != movieID(t, "Alien", 1979) ||
+		!strings.Contains(acctest.Str(cut["detail"]), "a second copy of Alien (1979), which the library keeps at /media/movies/Alien (1979) (this one says Directors Cut)") {
 		t.Errorf("the director's cut = %v", cut)
 	}
 	if got := findings(t, suite.Call(t, "audit_unmapped_folders", map[string]any{"root_folder": moviesRoot})); !slices.Equal(got, []string{"Ronin (1998)"}) {
@@ -282,24 +282,24 @@ func TestAuditMissingFolders(t *testing.T) {
 	t.Cleanup(func() { _ = os.RemoveAll(testenv.HostPath(renamed)) })
 
 	f := finding(t, suite.Call(t, "audit_missing_folders", nil), "Moon (2009)")
-	if acc.Str(f["path"]) != scratchFolder || acc.Str(f["folder"]) != renamed || !strings.Contains(acc.Str(f["detail"]), "reads as this film") {
+	if acctest.Str(f["path"]) != scratchFolder || acctest.Str(f["folder"]) != renamed || !strings.Contains(acctest.Str(f["detail"]), "reads as this film") {
 		t.Fatalf("the renamed film = %v", f)
 	}
 
-	row := acc.Rows(t, suite.Call(t, "movie_edit", map[string]any{"movie": "Moon", "folder": "Moon (2009) [remux]"})["movies"], "movies")
-	if len(row) != 1 || acc.Str(row[0]["path"]) != renamed || row[0]["has_file"] != true {
+	row := acctest.Rows(t, suite.Call(t, "movie_edit", map[string]any{"movie": "Moon", "folder": "Moon (2009) [remux]"})["movies"], "movies")
+	if len(row) != 1 || acctest.Str(row[0]["path"]) != renamed || row[0]["has_file"] != true {
 		t.Fatalf("after pointing the film at the folder = %v", row)
 	}
 	if got := findings(t, suite.Call(t, "audit_missing_folders", nil)); len(got) != 0 {
 		t.Errorf("still missing after the fix: %v", got)
 	}
-	file := acc.Object(t, suite.Call(t, "movie_get", map[string]any{"movie": "Moon"})["file"], "file")
-	if !strings.HasPrefix(acc.Str(file["path"]), renamed+"/") {
+	file := acctest.Object(t, suite.Call(t, "movie_get", map[string]any{"movie": "Moon"})["file"], "file")
+	if !strings.HasPrefix(acctest.Str(file["path"]), renamed+"/") {
 		t.Errorf("the film's file is %v, want it in the renamed folder", file["path"])
 	}
 	// and the folder is no longer one no film is in
-	for _, u := range acc.Rows(t, suite.Call(t, "audit_unmapped_folders", nil)["findings"], "findings") {
-		if acc.Str(u["path"]) == renamed {
+	for _, u := range acctest.Rows(t, suite.Call(t, "audit_unmapped_folders", nil)["findings"], "findings") {
+		if acctest.Str(u["path"]) == renamed {
 			t.Errorf("the folder is still unmapped: %v", u)
 		}
 	}
@@ -311,10 +311,10 @@ func TestAuditUntrackedFiles(t *testing.T) {
 		t.Fatalf("untracked = %v", got)
 	}
 	f := finding(t, out, "Contact (1997)")
-	if acc.Str(f["file"]) != "Contact (1997) Bluray-1080p.mkv" || !strings.Contains(acc.Str(f["detail"]), "Not an upgrade for existing movie file") {
+	if acctest.Str(f["file"]) != "Contact (1997) Bluray-1080p.mkv" || !strings.Contains(acctest.Str(f["detail"]), "Not an upgrade for existing movie file") {
 		t.Errorf("Contact = %v", f)
 	}
-	if acc.Num(t, out["scanned"], "scanned") != 17 {
+	if acctest.Num(t, out["scanned"], "scanned") != 17 {
 		t.Errorf("scanned %v films with files, want 17", out["scanned"])
 	}
 }
@@ -324,18 +324,18 @@ func TestAuditUntrackedFiles(t *testing.T) {
 // announced, is not a gap until it is released).
 func TestAuditCollectionGaps(t *testing.T) {
 	out := suite.Call(t, "audit_collection_gaps", nil)
-	f := acc.Rows(t, out["findings"], "findings")
-	if len(f) != 1 || acc.Str(f[0]["title"]) != "The Matrix Collection" ||
-		acc.Str(f[0]["detail"]) != "holds 1 of 4: missing The Matrix Reloaded (2003), The Matrix Revolutions (2003), The Matrix Resurrections (2021)" {
+	f := acctest.Rows(t, out["findings"], "findings")
+	if len(f) != 1 || acctest.Str(f[0]["title"]) != "The Matrix Collection" ||
+		acctest.Str(f[0]["detail"]) != "holds 1 of 4: missing The Matrix Reloaded (2003), The Matrix Revolutions (2003), The Matrix Resurrections (2021)" {
 		t.Fatalf("gaps = %v", out["findings"])
 	}
-	if missing := acc.Rows(t, f[0]["missing"], "missing"); len(missing) != 3 || acc.Num(t, missing[0]["tmdb_id"], "tmdb_id") != 604 {
+	if missing := acctest.Rows(t, f[0]["missing"], "missing"); len(missing) != 3 || acctest.Num(t, missing[0]["tmdb_id"], "tmdb_id") != 604 {
 		t.Errorf("missing = %v", missing)
 	}
 	with := suite.Call(t, "audit_collection_gaps", map[string]any{"include_unreleased": true})
 	var heat bool
-	for _, f := range acc.Rows(t, with["findings"], "findings") {
-		if acc.Str(f["title"]) == "Heat Collection" && strings.Contains(acc.Str(f["detail"]), "Heat 2") {
+	for _, f := range acctest.Rows(t, with["findings"], "findings") {
+		if acctest.Str(f["title"]) == "Heat Collection" && strings.Contains(acctest.Str(f["detail"]), "Heat 2") {
 			heat = true
 		}
 	}
@@ -347,7 +347,7 @@ func TestAuditCollectionGaps(t *testing.T) {
 // audit_all reports each audit's count, and leaves the two slow ones to deep.
 func TestAuditAll(t *testing.T) {
 	shallow := suite.Call(t, "audit_all", nil)
-	if got := acc.Strs(t, acc.OrEmptyList(shallow["skipped"]), "skipped"); !slices.Equal(got, []string{"audit_naming", "audit_untracked_files"}) {
+	if got := acctest.Strs(t, acctest.OrEmptyList(shallow["skipped"]), "skipped"); !slices.Equal(got, []string{"audit_naming", "audit_untracked_files"}) {
 		t.Errorf("skipped = %v", got)
 	}
 	deep := suite.Call(t, "audit_all", map[string]any{"deep": true})
@@ -355,20 +355,20 @@ func TestAuditAll(t *testing.T) {
 		t.Errorf("deep skipped %v", deep["skipped"])
 	}
 	total := 0
-	for _, row := range acc.Rows(t, deep["audits"], "audits") {
-		name := acc.Str(row["audit"])
+	for _, row := range acctest.Rows(t, deep["audits"], "audits") {
+		name := acctest.Str(row["audit"])
 		alone := suite.Call(t, name, nil)
 		if row["total_findings"] != alone["total_findings"] || row["scanned"] != alone["scanned"] {
 			t.Errorf("audit_all says %s found %v of %v, the audit %v of %v", name, row["total_findings"], row["scanned"], alone["total_findings"], alone["scanned"])
 		}
-		total += acc.Num(t, row["total_findings"], "total_findings")
+		total += acctest.Num(t, row["total_findings"], "total_findings")
 	}
-	if acc.Num(t, deep["total_findings"], "total_findings") != total {
+	if acctest.Num(t, deep["total_findings"], "total_findings") != total {
 		t.Errorf("total %v, the audits sum to %d", deep["total_findings"], total)
 	}
 	scoped := suite.Call(t, "audit_all", map[string]any{"root_folder": moviesRoot})
-	for _, row := range acc.Rows(t, scoped["audits"], "audits") {
-		if name := acc.Str(row["audit"]); name != "audit_unmapped_folders" && name != "audit_collection_gaps" && name != "audit_queue" && acc.Num(t, row["total_findings"], "total_findings") != 0 {
+	for _, row := range acctest.Rows(t, scoped["audits"], "audits") {
+		if name := acctest.Str(row["audit"]); name != "audit_unmapped_folders" && name != "audit_collection_gaps" && name != "audit_queue" && acctest.Num(t, row["total_findings"], "total_findings") != 0 {
 			t.Errorf("audit_all in %s: %s found %v", moviesRoot, name, row["total_findings"])
 		}
 	}
