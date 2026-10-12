@@ -106,7 +106,7 @@ func registerServerTools(r *registry) {
 		if err != nil {
 			return nil, serverInfoOut{}, err
 		}
-		s := status.Model
+		s := status.Answer
 		out := serverInfoOut{
 			RadarrMCP:    version.Version,
 			App:          s.AppName,
@@ -118,7 +118,7 @@ func registerServerTools(r *registry) {
 			Database:     strings.TrimSpace(string(s.DatabaseType) + " " + s.DatabaseVersion),
 			URLBase:      s.UrlBase,
 			StartTime:    s.StartTime,
-			Docker:       isTrue(s.IsDocker),
+			Docker:       s.IsDocker,
 		}
 
 		movies, err := allMovies(ctx, client)
@@ -144,7 +144,7 @@ func registerServerTools(r *registry) {
 		if err != nil {
 			return nil, out, err
 		}
-		for _, f := range folders.Model {
+		for _, f := range folders.Answer {
 			out.RootFolders = append(out.RootFolders, rootFolderSpace{Path: f.Path, FreeSpace: val(f.FreeSpace), Accessible: isTrue(f.Accessible)})
 		}
 
@@ -152,7 +152,7 @@ func registerServerTools(r *registry) {
 		if err != nil {
 			return nil, out, err
 		}
-		for _, h := range health.Model {
+		for _, h := range health.Answer {
 			out.HealthProblems++
 			if h.Type == radarr.HealthCheckResultError {
 				out.HealthErrorOnly = append(out.HealthErrorOnly, h.Source+": "+h.Message)
@@ -174,7 +174,7 @@ func registerServerTools(r *registry) {
 			return nil, healthOut{}, err
 		}
 		out := healthOut{}
-		for _, h := range res.Model {
+		for _, h := range res.Answer {
 			out.Checks = append(out.Checks, healthRow{Source: h.Source, Type: string(h.Type), Message: h.Message, WikiURL: h.WikiUrl})
 		}
 		// errors first: they are what stops Radarr working
@@ -197,7 +197,7 @@ func registerServerTools(r *registry) {
 			return nil, diskOut{}, err
 		}
 		out := diskOut{}
-		for _, d := range res.Model {
+		for _, d := range res.Answer {
 			row := diskRow{Path: d.Path, Label: d.Label, FreeSpace: d.FreeSpace, TotalSpace: d.TotalSpace}
 			if d.TotalSpace > 0 {
 				row.PercentFree = float64(d.FreeSpace*1000/d.TotalSpace) / 10
@@ -224,12 +224,12 @@ func registerServerTools(r *registry) {
 			return nil, logsOut{}, fmt.Errorf("level %q: want one of %s", in.Level, strings.Join(logLevels, ", "))
 		}
 		records, paged, err := window(in.pageIn, func(page, size int) ([]radarr.LogResource, int, error) {
-			res, err := client.GetLog(ctx, radarr.GetLogOperationOptions{Page: new(page), PageSize: new(size), SortKey: "time", SortDirection: radarr.SortDirectionDescending, Level: level})
+			res, err := client.GetLog(ctx, radarr.GetLogOptions{Page: new(page), PageSize: new(size), SortKey: "time", SortDirection: radarr.SortDirectionDescending, Level: level})
 			if err != nil {
 				return nil, 0, err
 			}
 
-			return res.Model.Records, res.Model.TotalRecords, nil
+			return res.Answer.Records, res.Answer.TotalRecords, nil
 		})
 		if err != nil {
 			return nil, logsOut{}, err
@@ -255,10 +255,10 @@ func registerServerTools(r *registry) {
 		list := func() ([]radarr.LogFileResource, error) {
 			if in.Update {
 				res, err := client.GetLogFileUpdate(ctx)
-				return res.Model, err
+				return res.Answer, err
 			}
 			res, err := client.GetLogFile(ctx)
-			return res.Model, err
+			return res.Answer, err
 		}
 		read := func(name string) (*http.Response, error) {
 			if in.Update {
@@ -273,16 +273,16 @@ func registerServerTools(r *registry) {
 		if err != nil {
 			return nil, logFileOut{}, err
 		}
-		files := struct{ Model []radarr.LogFileResource }{found}
+		files := struct{ Answer []radarr.LogFileResource }{found}
 		if in.Name == "" {
 			out := logFileOut{}
-			for _, f := range files.Model {
+			for _, f := range files.Answer {
 				out.Files = append(out.Files, logFileRow{Name: f.Filename, LastWriteTime: f.LastWriteTime})
 			}
 			return nil, out, nil
 		}
 		var names []string
-		for _, f := range files.Model {
+		for _, f := range files.Answer {
 			names = append(names, f.Filename)
 		}
 		if !slices.Contains(names, in.Name) {
@@ -324,7 +324,7 @@ func registerServerTools(r *registry) {
 		if err != nil {
 			return nil, backupCreateOut{}, err
 		}
-		cmd, err := runCommand(ctx, client, map[string]any{"name": "Backup"}, defaultWait)
+		cmd, err := ran(client.BackupAndWait(ctx, radarr.BackupCommand{}, defaultWait))
 		out := backupCreateOut{Command: cmd}
 		if err != nil {
 			return nil, out, err
@@ -356,8 +356,8 @@ func backups(ctx context.Context, c *radarr.Client) ([]backupRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	out := make([]backupRow, 0, len(res.Model))
-	for _, b := range res.Model {
+	out := make([]backupRow, 0, len(res.Answer))
+	for _, b := range res.Answer {
 		out = append(out, backupRow{ID: b.Id, Name: b.Name, Type: string(b.Type), Time: b.Time, Size: b.Size, Path: b.Path})
 	}
 	slices.SortStableFunc(out, func(a, b backupRow) int { return strings.Compare(b.Time, a.Time) })

@@ -3,6 +3,126 @@
   "Tag": "Command",
   "Operations": [
     {
+      "Name": "ApplicationUpdate",
+      "Method": "POST",
+      "Path": "/api/v3/command",
+      "Description": "Queues the ApplicationUpdate command.",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "ApplicationUpdateCommand"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CommandResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        201
+      ],
+      "Command": "ApplicationUpdate"
+    },
+    {
+      "Name": "Backup",
+      "Method": "POST",
+      "Path": "/api/v3/command",
+      "Description": "Queues the Backup command.",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "BackupCommand"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CommandResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        201
+      ],
+      "Command": "Backup"
+    },
+    {
+      "Name": "CheckHealth",
+      "Method": "POST",
+      "Path": "/api/v3/command",
+      "Description": "Queues the CheckHealth command.",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CheckHealthCommand"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CommandResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        201
+      ],
+      "Command": "CheckHealth"
+    },
+    {
+      "Name": "CleanUpRecycleBin",
+      "Method": "POST",
+      "Path": "/api/v3/command",
+      "Description": "Queues the CleanUpRecycleBin command.",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CleanUpRecycleBinCommand"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CommandResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        201
+      ],
+      "Command": "CleanUpRecycleBin"
+    },
+    {
+      "Name": "CutOffUnmetMoviesSearch",
+      "Method": "POST",
+      "Path": "/api/v3/command",
+      "Description": "Queues the CutOffUnmetMoviesSearch command.",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CutOffUnmetMoviesSearchCommand"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CommandResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        201
+      ],
+      "Command": "CutOffUnmetMoviesSearch"
+    },
+    {
       "Name": "DeleteCommandById",
       "Method": "DELETE",
       "Path": "/api/v3/command/{id}",
@@ -62,6 +182,126 @@
       ]
     },
     {
+      "Name": "Housekeeping",
+      "Method": "POST",
+      "Path": "/api/v3/command",
+      "Description": "Queues the Housekeeping command.",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "HousekeepingCommand"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CommandResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        201
+      ],
+      "Command": "Housekeeping"
+    },
+    {
+      "Name": "ImportListSync",
+      "Method": "POST",
+      "Path": "/api/v3/command",
+      "Description": "Queues the ImportListSync command.",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "ImportListSyncCommand"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CommandResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        201
+      ],
+      "Command": "ImportListSync"
+    },
+    {
+      "Name": "ManualImport",
+      "Method": "POST",
+      "Path": "/api/v3/command",
+      "Description": "Queues the ManualImport command.",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "ManualImportCommand"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CommandResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        201
+      ],
+      "Command": "ManualImport"
+    },
+    {
+      "Name": "MissingMoviesSearch",
+      "Method": "POST",
+      "Path": "/api/v3/command",
+      "Description": "Queues the MissingMoviesSearch command.",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "MissingMoviesSearchCommand"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CommandResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        201
+      ],
+      "Command": "MissingMoviesSearch"
+    },
+    {
+      "Name": "MoviesSearch",
+      "Method": "POST",
+      "Path": "/api/v3/command",
+      "Description": "Queues the MoviesSearch command.",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "MoviesSearchCommand"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CommandResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        201
+      ],
+      "Command": "MoviesSearch"
+    },
+    {
       "Name": "PostCommand",
       "Method": "POST",
       "Path": "/api/v3/command",
@@ -80,10 +320,228 @@
       },
       "ExpectedStatusCodes": [
         201
-      ]
+      ],
+      "Commands": {
+        "Get": "GetCommandById",
+        "Status": "status",
+        "Finished": [
+          "completed",
+          "failed",
+          "aborted",
+          "cancelled",
+          "orphaned"
+        ],
+        "Failed": [
+          "failed"
+        ]
+      }
+    },
+    {
+      "Name": "RefreshCollections",
+      "Method": "POST",
+      "Path": "/api/v3/command",
+      "Description": "Queues the RefreshCollections command.",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "RefreshCollectionsCommand"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CommandResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        201
+      ],
+      "Command": "RefreshCollections"
+    },
+    {
+      "Name": "RefreshMonitoredDownloads",
+      "Method": "POST",
+      "Path": "/api/v3/command",
+      "Description": "Queues the RefreshMonitoredDownloads command.",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "RefreshMonitoredDownloadsCommand"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CommandResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        201
+      ],
+      "Command": "RefreshMonitoredDownloads"
+    },
+    {
+      "Name": "RefreshMovie",
+      "Method": "POST",
+      "Path": "/api/v3/command",
+      "Description": "Queues the RefreshMovie command.",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "RefreshMovieCommand"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CommandResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        201
+      ],
+      "Command": "RefreshMovie"
+    },
+    {
+      "Name": "RenameFiles",
+      "Method": "POST",
+      "Path": "/api/v3/command",
+      "Description": "Queues the RenameFiles command.",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "RenameFilesCommand"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CommandResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        201
+      ],
+      "Command": "RenameFiles"
+    },
+    {
+      "Name": "RescanMovie",
+      "Method": "POST",
+      "Path": "/api/v3/command",
+      "Description": "Queues the RescanMovie command.",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "RescanMovieCommand"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CommandResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        201
+      ],
+      "Command": "RescanMovie"
+    },
+    {
+      "Name": "RssSync",
+      "Method": "POST",
+      "Path": "/api/v3/command",
+      "Description": "Queues the RssSync command.",
+      "Request": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "RssSyncCommand"
+        }
+      },
+      "Response": {
+        "ContentType": "application/json",
+        "Type": {
+          "Type": "Reference",
+          "ReferenceName": "CommandResource"
+        }
+      },
+      "ExpectedStatusCodes": [
+        201
+      ],
+      "Command": "RssSync"
     }
   ],
   "Models": [
+    {
+      "Name": "ApplicationUpdateCommand",
+      "SchemaName": "ApplicationUpdateCommand",
+      "Description": "The ApplicationUpdate command, as POST /api/v3/command queues it.",
+      "Fields": [
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Description": "The command's name, which the method sets.",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "BackupCommand",
+      "SchemaName": "BackupCommand",
+      "Description": "The Backup command, as POST /api/v3/command queues it.",
+      "Fields": [
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Description": "The command's name, which the method sets.",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "CheckHealthCommand",
+      "SchemaName": "CheckHealthCommand",
+      "Description": "The CheckHealth command, as POST /api/v3/command queues it.",
+      "Fields": [
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Description": "The command's name, which the method sets.",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "CleanUpRecycleBinCommand",
+      "SchemaName": "CleanUpRecycleBinCommand",
+      "Description": "The CleanUpRecycleBin command, as POST /api/v3/command queues it.",
+      "Fields": [
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Description": "The command's name, which the method sets.",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ]
+    },
     {
       "Name": "CommandResource",
       "SchemaName": "CommandResource",
@@ -237,6 +695,313 @@
           "JsonName": "updateScheduledTask",
           "Type": {
             "Type": "Boolean"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "CutOffUnmetMoviesSearchCommand",
+      "SchemaName": "CutOffUnmetMoviesSearchCommand",
+      "Description": "The CutOffUnmetMoviesSearch command, as POST /api/v3/command queues it.",
+      "Fields": [
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Description": "The command's name, which the method sets.",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "HousekeepingCommand",
+      "SchemaName": "HousekeepingCommand",
+      "Description": "The Housekeeping command, as POST /api/v3/command queues it.",
+      "Fields": [
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Description": "The command's name, which the method sets.",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "ImportListSyncCommand",
+      "SchemaName": "ImportListSyncCommand",
+      "Description": "The ImportListSync command, as POST /api/v3/command queues it.",
+      "Fields": [
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Description": "The command's name, which the method sets.",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "ManualImportCommand",
+      "SchemaName": "ManualImportCommand",
+      "Description": "The ManualImport command, as POST /api/v3/command queues it.",
+      "Fields": [
+        {
+          "Name": "Files",
+          "JsonName": "files",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "ManualImportCommandFiles"
+            }
+          }
+        },
+        {
+          "Name": "ImportMode",
+          "JsonName": "importMode",
+          "Type": {
+            "Type": "String"
+          }
+        },
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Description": "The command's name, which the method sets.",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "ManualImportCommandFiles",
+      "Fields": [
+        {
+          "Name": "DownloadId",
+          "JsonName": "downloadId",
+          "Type": {
+            "Type": "String"
+          }
+        },
+        {
+          "Name": "IndexerFlags",
+          "JsonName": "indexerFlags",
+          "Type": {
+            "Type": "Integer"
+          }
+        },
+        {
+          "Name": "Languages",
+          "JsonName": "languages",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "Reference",
+              "ReferenceName": "Language"
+            }
+          }
+        },
+        {
+          "Name": "MovieId",
+          "JsonName": "movieId",
+          "Type": {
+            "Type": "ID",
+            "ReferenceName": "MovieID"
+          }
+        },
+        {
+          "Name": "Path",
+          "JsonName": "path",
+          "Type": {
+            "Type": "String"
+          }
+        },
+        {
+          "Name": "Quality",
+          "JsonName": "quality",
+          "Type": {
+            "Type": "Reference",
+            "ReferenceName": "QualityModel"
+          }
+        },
+        {
+          "Name": "ReleaseGroup",
+          "JsonName": "releaseGroup",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "MissingMoviesSearchCommand",
+      "SchemaName": "MissingMoviesSearchCommand",
+      "Description": "The MissingMoviesSearch command, as POST /api/v3/command queues it.",
+      "Fields": [
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Description": "The command's name, which the method sets.",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "MoviesSearchCommand",
+      "SchemaName": "MoviesSearchCommand",
+      "Description": "The MoviesSearch command, as POST /api/v3/command queues it.",
+      "Fields": [
+        {
+          "Name": "MovieIds",
+          "JsonName": "movieIds",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "ID",
+              "ReferenceName": "MovieID"
+            }
+          }
+        },
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Description": "The command's name, which the method sets.",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "RefreshCollectionsCommand",
+      "SchemaName": "RefreshCollectionsCommand",
+      "Description": "The RefreshCollections command, as POST /api/v3/command queues it.",
+      "Fields": [
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Description": "The command's name, which the method sets.",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "RefreshMonitoredDownloadsCommand",
+      "SchemaName": "RefreshMonitoredDownloadsCommand",
+      "Description": "The RefreshMonitoredDownloads command, as POST /api/v3/command queues it.",
+      "Fields": [
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Description": "The command's name, which the method sets.",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "RefreshMovieCommand",
+      "SchemaName": "RefreshMovieCommand",
+      "Description": "The RefreshMovie command, as POST /api/v3/command queues it.",
+      "Fields": [
+        {
+          "Name": "MovieIds",
+          "JsonName": "movieIds",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "ID",
+              "ReferenceName": "MovieID"
+            }
+          }
+        },
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Description": "The command's name, which the method sets.",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "RenameFilesCommand",
+      "SchemaName": "RenameFilesCommand",
+      "Description": "The RenameFiles command, as POST /api/v3/command queues it.",
+      "Fields": [
+        {
+          "Name": "Files",
+          "JsonName": "files",
+          "Type": {
+            "Type": "List",
+            "NestedItem": {
+              "Type": "ID",
+              "ReferenceName": "MovieFileID"
+            }
+          }
+        },
+        {
+          "Name": "MovieId",
+          "JsonName": "movieId",
+          "Type": {
+            "Type": "ID",
+            "ReferenceName": "MovieID"
+          }
+        },
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Description": "The command's name, which the method sets.",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "RescanMovieCommand",
+      "SchemaName": "RescanMovieCommand",
+      "Description": "The RescanMovie command, as POST /api/v3/command queues it.",
+      "Fields": [
+        {
+          "Name": "MovieId",
+          "JsonName": "movieId",
+          "Type": {
+            "Type": "ID",
+            "ReferenceName": "MovieID"
+          }
+        },
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Description": "The command's name, which the method sets.",
+          "Type": {
+            "Type": "String"
+          }
+        }
+      ]
+    },
+    {
+      "Name": "RssSyncCommand",
+      "SchemaName": "RssSyncCommand",
+      "Description": "The RssSync command, as POST /api/v3/command queues it.",
+      "Fields": [
+        {
+          "Name": "Name",
+          "JsonName": "name",
+          "Description": "The command's name, which the method sets.",
+          "Type": {
+            "Type": "String"
           }
         }
       ]

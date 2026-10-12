@@ -4,34 +4,39 @@ package radarr
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetManualImportOperationResponse is the result of GetManualImport.
-type GetManualImportOperationResponse struct {
+// GetManualImportResponse is the result of GetManualImport.
+type GetManualImportResponse struct {
 	HttpResponse *http.Response
-	Model        []ManualImportResource
+	Answer       []ManualImportResource
 }
 
-// GetManualImportOperationOptions holds the query and header parameters of GetManualImport.
-type GetManualImportOperationOptions struct {
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetManualImportResponse) Answered() bool { return r.Answer != nil }
+
+// GetManualImportOptions holds the query and header parameters of GetManualImport.
+type GetManualImportOptions struct {
 	Folder              string
 	DownloadId          string
-	MovieId             *int
+	MovieId             MovieID
 	FilterExistingFiles *bool
 }
 
 // ToHeaders returns the header parameters the options set.
-func (o GetManualImportOperationOptions) ToHeaders() *client.Headers {
+func (o GetManualImportOptions) ToHeaders() *client.Headers {
 	out := client.Headers{}
 	return &out
 }
 
 // ToQuery returns the query parameters the options set.
-func (o GetManualImportOperationOptions) ToQuery() *client.QueryParams {
+func (o GetManualImportOptions) ToQuery() *client.QueryParams {
 	out := client.QueryParams{}
 	if o.Folder != "" {
 		out.Append("folder", o.Folder)
@@ -39,8 +44,8 @@ func (o GetManualImportOperationOptions) ToQuery() *client.QueryParams {
 	if o.DownloadId != "" {
 		out.Append("downloadId", o.DownloadId)
 	}
-	if o.MovieId != nil {
-		out.Append("movieId", strconv.Itoa(*o.MovieId))
+	if o.MovieId != 0 {
+		out.Append("movieId", strconv.Itoa(int(o.MovieId)))
 	}
 	if o.FilterExistingFiles != nil {
 		out.Append("filterExistingFiles", strconv.FormatBool(*o.FilterExistingFiles))
@@ -49,13 +54,23 @@ func (o GetManualImportOperationOptions) ToQuery() *client.QueryParams {
 }
 
 // GetManualImport calls GET /api/v3/manualimport.
-func (c Client) GetManualImport(ctx context.Context, options GetManualImportOperationOptions) (result GetManualImportOperationResponse, err error) {
+func (c Client) GetManualImport(ctx context.Context, options ...GetManualImportOptions) (result GetManualImportResponse, err error) {
+	if len(options) > 1 {
+		err = fmt.Errorf("GetManualImport takes one options struct at most, not %d", len(options))
+		return
+	}
+	var option GetManualImportOptions
+	if len(options) == 1 {
+		option = options[0]
+	}
+
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodGet,
-		OptionsObject: options,
+		Operation:     "GetManualImport",
+		OptionsObject: option,
 		Path:          "/api/v3/manualimport",
 	}
 
@@ -73,7 +88,7 @@ func (c Client) GetManualImport(ctx context.Context, options GetManualImportOper
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

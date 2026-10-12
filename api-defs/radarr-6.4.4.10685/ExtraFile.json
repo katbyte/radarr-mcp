@@ -12,7 +12,8 @@
           "Field": "MovieId",
           "In": "Query",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieID"
           }
         }
       ],
@@ -66,7 +67,8 @@
           "Name": "MovieFileId",
           "JsonName": "movieFileId",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieFileID"
           },
           "Nullable": true,
           "KeepsNull": true
@@ -75,7 +77,8 @@
           "Name": "MovieId",
           "JsonName": "movieId",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieID"
           }
         },
         {

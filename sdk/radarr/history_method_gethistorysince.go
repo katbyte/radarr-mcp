@@ -4,33 +4,38 @@ package radarr
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetHistorySinceOperationResponse is the result of GetHistorySince.
-type GetHistorySinceOperationResponse struct {
+// GetHistorySinceResponse is the result of GetHistorySince.
+type GetHistorySinceResponse struct {
 	HttpResponse *http.Response
-	Model        []HistoryResource
+	Answer       []HistoryResource
 }
 
-// GetHistorySinceOperationOptions holds the query and header parameters of GetHistorySince.
-type GetHistorySinceOperationOptions struct {
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetHistorySinceResponse) Answered() bool { return r.Answer != nil }
+
+// GetHistorySinceOptions holds the query and header parameters of GetHistorySince.
+type GetHistorySinceOptions struct {
 	Date         string
 	EventType    MovieHistoryEventType
 	IncludeMovie *bool
 }
 
 // ToHeaders returns the header parameters the options set.
-func (o GetHistorySinceOperationOptions) ToHeaders() *client.Headers {
+func (o GetHistorySinceOptions) ToHeaders() *client.Headers {
 	out := client.Headers{}
 	return &out
 }
 
 // ToQuery returns the query parameters the options set.
-func (o GetHistorySinceOperationOptions) ToQuery() *client.QueryParams {
+func (o GetHistorySinceOptions) ToQuery() *client.QueryParams {
 	out := client.QueryParams{}
 	if o.Date != "" {
 		out.Append("date", o.Date)
@@ -45,13 +50,23 @@ func (o GetHistorySinceOperationOptions) ToQuery() *client.QueryParams {
 }
 
 // GetHistorySince calls GET /api/v3/history/since.
-func (c Client) GetHistorySince(ctx context.Context, options GetHistorySinceOperationOptions) (result GetHistorySinceOperationResponse, err error) {
+func (c Client) GetHistorySince(ctx context.Context, options ...GetHistorySinceOptions) (result GetHistorySinceResponse, err error) {
+	if len(options) > 1 {
+		err = fmt.Errorf("GetHistorySince takes one options struct at most, not %d", len(options))
+		return
+	}
+	var option GetHistorySinceOptions
+	if len(options) == 1 {
+		option = options[0]
+	}
+
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodGet,
-		OptionsObject: options,
+		Operation:     "GetHistorySince",
+		OptionsObject: option,
 		Path:          "/api/v3/history/since",
 	}
 
@@ -69,7 +84,7 @@ func (c Client) GetHistorySince(ctx context.Context, options GetHistorySinceOper
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

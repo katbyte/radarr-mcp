@@ -2,6 +2,8 @@
 
 package radarr
 
+import "slices"
+
 // CreditType is the "CreditType" enum.
 type CreditType string
 
@@ -17,4 +19,9 @@ func PossibleValuesForCreditType() []string {
 		string(CreditTypeCast),
 		string(CreditTypeCrew),
 	}
+}
+
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v CreditType) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForCreditType(), string(v))
 }

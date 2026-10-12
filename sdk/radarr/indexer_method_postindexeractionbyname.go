@@ -12,20 +12,25 @@ import (
 	"github.com/katbyte/pandorest/client"
 )
 
-// PostIndexerActionByNameOperationResponse is the result of PostIndexerActionByName.
-type PostIndexerActionByNameOperationResponse struct {
+// PostIndexerActionByNameResponse is the result of PostIndexerActionByName.
+type PostIndexerActionByNameResponse struct {
 	HttpResponse *http.Response
-	Model        json.RawMessage
+	Answer       json.RawMessage
 }
 
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r PostIndexerActionByNameResponse) Answered() bool { return r.Answer != nil }
+
 // PostIndexerActionByName calls POST /api/v3/indexer/action/{name}.
-func (c Client) PostIndexerActionByName(ctx context.Context, name string, input IndexerResource) (result PostIndexerActionByNameOperationResponse, err error) {
+func (c Client) PostIndexerActionByName(ctx context.Context, name string, input IndexerResource) (result PostIndexerActionByNameResponse, err error) {
 	opts := client.RequestOptions{
 		ContentType: "application/json",
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod: http.MethodPost,
+		Operation:  "PostIndexerActionByName",
 		Path:       fmt.Sprintf("/api/v3/indexer/action/%s", url.PathEscape(name)),
 	}
 
@@ -47,7 +52,7 @@ func (c Client) PostIndexerActionByName(ctx context.Context, name string, input 
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

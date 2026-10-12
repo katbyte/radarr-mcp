@@ -9,21 +9,26 @@ import (
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetExclusionsOperationResponse is the result of GetExclusions.
-type GetExclusionsOperationResponse struct {
+// GetExclusionsResponse is the result of GetExclusions.
+type GetExclusionsResponse struct {
 	HttpResponse *http.Response
-	Model        []ImportListExclusionResource
+	Answer       []ImportListExclusionResource
 }
+
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetExclusionsResponse) Answered() bool { return r.Answer != nil }
 
 // GetExclusions calls GET /api/v3/exclusions.
 //
 // Deprecated: the document marks this operation deprecated.
-func (c Client) GetExclusions(ctx context.Context) (result GetExclusionsOperationResponse, err error) {
+func (c Client) GetExclusions(ctx context.Context) (result GetExclusionsResponse, err error) {
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod: http.MethodGet,
+		Operation:  "GetExclusions",
 		Path:       "/api/v3/exclusions",
 	}
 
@@ -41,7 +46,7 @@ func (c Client) GetExclusions(ctx context.Context) (result GetExclusionsOperatio
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

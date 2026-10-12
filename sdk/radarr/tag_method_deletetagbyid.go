@@ -10,18 +10,19 @@ import (
 	"github.com/katbyte/pandorest/client"
 )
 
-// DeleteTagByIdOperationResponse is the result of DeleteTagById.
-type DeleteTagByIdOperationResponse struct {
+// DeleteTagByIdResponse is the result of DeleteTagById.
+type DeleteTagByIdResponse struct {
 	HttpResponse *http.Response
 }
 
 // DeleteTagById calls DELETE /api/v3/tag/{id}.
-func (c Client) DeleteTagById(ctx context.Context, id int) (result DeleteTagByIdOperationResponse, err error) {
+func (c Client) DeleteTagById(ctx context.Context, id int) (result DeleteTagByIdResponse, err error) {
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod: http.MethodDelete,
+		Operation:  "DeleteTagById",
 		Path:       fmt.Sprintf("/api/v3/tag/%d", id),
 	}
 

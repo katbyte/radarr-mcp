@@ -4,25 +4,49 @@ package radarr
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetConfigMetadataByIdOperationResponse is the result of GetConfigMetadataById.
-type GetConfigMetadataByIdOperationResponse struct {
+// GetConfigMetadataByIdResponse is the result of GetConfigMetadataById.
+//
+// Answer is the MetadataConfigResource answered, nil when the server answered none (a 204), which
+// Answered tells. The same record is embedded, so res.Answer.Name may be read as
+// res.Name; when nothing was answered the embedded record is a zero one, so that
+// read is empty rather than a panic. Only the method sets the two; a response built
+// by hand sets both or neither.
+type GetConfigMetadataByIdResponse struct {
 	HttpResponse *http.Response
-	Model        *MetadataConfigResource
+	Answer       *MetadataConfigResource
+	*MetadataConfigResource
+}
+
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetConfigMetadataByIdResponse) Answered() bool { return r.Answer != nil }
+
+// Record is the MetadataConfigResource answered, as a value to change and write back, or an
+// error when the server answered none.
+func (r GetConfigMetadataByIdResponse) Record() (MetadataConfigResource, error) {
+	if r.Answer == nil {
+		return MetadataConfigResource{}, errors.New("GetConfigMetadataById answered no MetadataConfigResource")
+	}
+
+	return *r.Answer, nil
 }
 
 // GetConfigMetadataById calls GET /api/v3/config/metadata/{id}.
-func (c Client) GetConfigMetadataById(ctx context.Context, id int) (result GetConfigMetadataByIdOperationResponse, err error) {
+func (c Client) GetConfigMetadataById(ctx context.Context, id int) (result GetConfigMetadataByIdResponse, err error) {
+	result.MetadataConfigResource = &MetadataConfigResource{}
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod: http.MethodGet,
+		Operation:  "GetConfigMetadataById",
 		Path:       fmt.Sprintf("/api/v3/config/metadata/%d", id),
 	}
 
@@ -40,11 +64,12 @@ func (c Client) GetConfigMetadataById(ctx context.Context, id int) (result GetCo
 		return
 	}
 
-	var model MetadataConfigResource
-	result.Model = &model
-	if err = resp.Unmarshal(result.Model); err != nil {
+	var answer MetadataConfigResource
+	result.Answer = &answer
+	if err = resp.Unmarshal(result.Answer); err != nil {
 		return
 	}
+	result.MetadataConfigResource = result.Answer
 
 	return
 }

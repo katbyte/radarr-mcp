@@ -12,7 +12,7 @@ The document is named by the Radarr release it was taken from, not by its own ve
 
 To move to a newer release, `make spec-update RELEASE=<release>` vendors its document beside this one and `make generate` imports it into a definitions directory of its own and writes the client from it, the highest release present being the one used. `go run ./sdk/pandorest diff -old api-defs/radarr-<old> -new api-defs/radarr-<new>` shows what changed in API terms, breaking changes marked; review it, then delete the old document and its definitions. A workaround whose bug the new document fixes fails the import and names itself: delete it.
 
-The spec is documentation of intent, not of behaviour. Swashbuckle writes it from the controllers' signatures, so it can only say what a signature says: every action that returns `object` or `IActionResult` comes out as an empty 200. The live suites (`integration/`, `acceptance/`) are what prove the shapes against a real Radarr, and what they found is recorded below.
+The spec is documentation of intent, not of behaviour. Swashbuckle writes it from the controllers' signatures, so it can only say what a signature says: every action that returns `object` or `IActionResult` comes out as an empty 200. The live suites (`acceptance/radarr/`, `acceptance/tools/`) are what prove the shapes against a real Radarr, and what they found is recorded below.
 
 ## Where the spec is wrong
 
@@ -77,6 +77,6 @@ What the suites found that no document could say. The tools work with it; anyone
   - `GET /update` answers 500 when Radarr cannot reach its update server, or cannot read what it says. In the test container a stand-in answers for that server (go-kt's `test/services/arrserver`), with no releases on offer, and `GET /update` answers an empty list.
   - Once a build is two weeks old Radarr's health check asks its update server whether there is a newer one, and an answer it cannot read ends the whole check with no health recorded at all. The stand-in answers that too, with no.
 
-## What the integration suite leaves alone
+## What the SDK suite leaves alone
 
-It calls every GET, and every POST, PUT and DELETE but four, which it lists in `integration/coverage_test.go` with why: restarting and shutting Radarr down, and restoring a backup (by id, or uploaded), which replace the database the suite is using and restart it. The restore upload also takes a multipart file the document does not declare; with nothing exercising it, no workaround adds it.
+It calls every GET, and every POST, PUT and DELETE but four, which it lists in `acceptance/radarr/coverage_test.go` with why: restarting and shutting Radarr down, and restoring a backup (by id, or uploaded), which replace the database the suite is using and restart it. The restore upload also takes a multipart file the document does not declare; with nothing exercising it, no workaround adds it.

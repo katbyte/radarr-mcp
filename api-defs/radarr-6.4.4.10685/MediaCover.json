@@ -11,7 +11,8 @@
           "Name": "movieId",
           "Argument": "movieId",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieID"
           }
         },
         {

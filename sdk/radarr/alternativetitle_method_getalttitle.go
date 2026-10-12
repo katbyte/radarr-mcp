@@ -4,35 +4,40 @@ package radarr
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetAltTitleOperationResponse is the result of GetAltTitle.
-type GetAltTitleOperationResponse struct {
+// GetAltTitleResponse is the result of GetAltTitle.
+type GetAltTitleResponse struct {
 	HttpResponse *http.Response
-	Model        []AlternativeTitleResource
+	Answer       []AlternativeTitleResource
 }
 
-// GetAltTitleOperationOptions holds the query and header parameters of GetAltTitle.
-type GetAltTitleOperationOptions struct {
-	MovieId         *int
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetAltTitleResponse) Answered() bool { return r.Answer != nil }
+
+// GetAltTitleOptions holds the query and header parameters of GetAltTitle.
+type GetAltTitleOptions struct {
+	MovieId         MovieID
 	MovieMetadataId *int
 }
 
 // ToHeaders returns the header parameters the options set.
-func (o GetAltTitleOperationOptions) ToHeaders() *client.Headers {
+func (o GetAltTitleOptions) ToHeaders() *client.Headers {
 	out := client.Headers{}
 	return &out
 }
 
 // ToQuery returns the query parameters the options set.
-func (o GetAltTitleOperationOptions) ToQuery() *client.QueryParams {
+func (o GetAltTitleOptions) ToQuery() *client.QueryParams {
 	out := client.QueryParams{}
-	if o.MovieId != nil {
-		out.Append("movieId", strconv.Itoa(*o.MovieId))
+	if o.MovieId != 0 {
+		out.Append("movieId", strconv.Itoa(int(o.MovieId)))
 	}
 	if o.MovieMetadataId != nil {
 		out.Append("movieMetadataId", strconv.Itoa(*o.MovieMetadataId))
@@ -41,13 +46,23 @@ func (o GetAltTitleOperationOptions) ToQuery() *client.QueryParams {
 }
 
 // GetAltTitle calls GET /api/v3/alttitle.
-func (c Client) GetAltTitle(ctx context.Context, options GetAltTitleOperationOptions) (result GetAltTitleOperationResponse, err error) {
+func (c Client) GetAltTitle(ctx context.Context, options ...GetAltTitleOptions) (result GetAltTitleResponse, err error) {
+	if len(options) > 1 {
+		err = fmt.Errorf("GetAltTitle takes one options struct at most, not %d", len(options))
+		return
+	}
+	var option GetAltTitleOptions
+	if len(options) == 1 {
+		option = options[0]
+	}
+
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodGet,
-		OptionsObject: options,
+		Operation:     "GetAltTitle",
+		OptionsObject: option,
 		Path:          "/api/v3/alttitle",
 	}
 
@@ -65,7 +80,7 @@ func (c Client) GetAltTitle(ctx context.Context, options GetAltTitleOperationOpt
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

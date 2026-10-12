@@ -12,20 +12,25 @@ import (
 	"github.com/katbyte/pandorest/client"
 )
 
-// PostDownloadClientActionByNameOperationResponse is the result of PostDownloadClientActionByName.
-type PostDownloadClientActionByNameOperationResponse struct {
+// PostDownloadClientActionByNameResponse is the result of PostDownloadClientActionByName.
+type PostDownloadClientActionByNameResponse struct {
 	HttpResponse *http.Response
-	Model        json.RawMessage
+	Answer       json.RawMessage
 }
 
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r PostDownloadClientActionByNameResponse) Answered() bool { return r.Answer != nil }
+
 // PostDownloadClientActionByName calls POST /api/v3/downloadclient/action/{name}.
-func (c Client) PostDownloadClientActionByName(ctx context.Context, name string, input DownloadClientResource) (result PostDownloadClientActionByNameOperationResponse, err error) {
+func (c Client) PostDownloadClientActionByName(ctx context.Context, name string, input DownloadClientResource) (result PostDownloadClientActionByNameResponse, err error) {
 	opts := client.RequestOptions{
 		ContentType: "application/json",
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod: http.MethodPost,
+		Operation:  "PostDownloadClientActionByName",
 		Path:       fmt.Sprintf("/api/v3/downloadclient/action/%s", url.PathEscape(name)),
 	}
 
@@ -47,7 +52,7 @@ func (c Client) PostDownloadClientActionByName(ctx context.Context, name string,
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

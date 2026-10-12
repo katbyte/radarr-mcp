@@ -561,15 +561,15 @@ func registerRecordKindTools(r *registry) map[string]kindDescriber {
 		},
 		list: func(ctx context.Context) ([]radarr.DelayProfileResource, error) {
 			res, err := c.GetDelayProfile(ctx)
-			return res.Model, err
+			return res.Answer, err
 		},
 		create: func(ctx context.Context, v radarr.DelayProfileResource) (*radarr.DelayProfileResource, error) {
 			res, err := c.PostDelayProfile(ctx, v)
-			return res.Model, err
+			return res.Answer, err
 		},
 		update: func(ctx context.Context, id int, v radarr.DelayProfileResource) (*radarr.DelayProfileResource, error) {
 			res, err := c.PutDelayProfileById(ctx, id, v)
-			return res.Model, err
+			return res.Answer, err
 		},
 		remove: func(ctx context.Context, id int) error {
 			_, err := c.DeleteDelayProfileById(ctx, id)
@@ -588,7 +588,7 @@ func registerRecordKindTools(r *registry) map[string]kindDescriber {
 		if in.ID == 0 {
 			return nil, recordListOut{}, errors.New("give the id of the delay profile to move")
 		}
-		opts := radarr.PutDelayProfileReorderByIdOperationOptions{}
+		opts := radarr.PutDelayProfileReorderByIdOptions{}
 		if in.After != 0 {
 			opts.After = new(in.After)
 		}
@@ -600,9 +600,9 @@ func registerRecordKindTools(r *registry) map[string]kindDescriber {
 		if err != nil {
 			return nil, recordListOut{}, err
 		}
-		out := recordListOut{Items: make([]map[string]any, 0, len(res.Model)), Total: len(res.Model)}
-		for i := range res.Model {
-			m, err := asMap(res.Model[i])
+		out := recordListOut{Items: make([]map[string]any, 0, len(res.Answer)), Total: len(res.Answer)}
+		for i := range res.Answer {
+			m, err := asMap(res.Answer[i])
 			if err != nil {
 				return nil, recordListOut{}, err
 			}
@@ -619,15 +619,15 @@ func registerRecordKindTools(r *registry) map[string]kindDescriber {
 		loses: "releases it kept out may be grabbed again, and ones it insisted on are no longer preferred",
 		list: func(ctx context.Context) ([]radarr.ReleaseProfileResource, error) {
 			res, err := c.GetReleaseProfile(ctx)
-			return res.Model, err
+			return res.Answer, err
 		},
 		create: func(ctx context.Context, v radarr.ReleaseProfileResource) (*radarr.ReleaseProfileResource, error) {
 			res, err := c.PostReleaseProfile(ctx, v)
-			return res.Model, err
+			return res.Answer, err
 		},
 		update: func(ctx context.Context, id int, v radarr.ReleaseProfileResource) (*radarr.ReleaseProfileResource, error) {
 			res, err := c.PutReleaseProfileById(ctx, id, v)
-			return res.Model, err
+			return res.Answer, err
 		},
 		remove: func(ctx context.Context, id int) error {
 			_, err := c.DeleteReleaseProfileById(ctx, id)
@@ -637,7 +637,7 @@ func registerRecordKindTools(r *registry) map[string]kindDescriber {
 
 	tagging := func(ctx context.Context) ([]map[string]any, error) {
 		res, err := c.GetAutoTaggingSchema(ctx)
-		return conditionKinds(res.Model, err)
+		return conditionKinds(res.Answer, err)
 	}
 	registerRecordTools(r, &recordKind[radarr.AutoTaggingResource]{
 		family: "autotagging", noun: "auto tagging rule", plural: "auto tagging rules", nameKey: "name", conditions: tagging,
@@ -646,15 +646,15 @@ func registerRecordKindTools(r *registry) map[string]kindDescriber {
 		loses: "Radarr stops tagging films by it; the tags it already gave stay",
 		list: func(ctx context.Context) ([]radarr.AutoTaggingResource, error) {
 			res, err := c.GetAutoTagging(ctx)
-			return res.Model, err
+			return res.Answer, err
 		},
 		create: func(ctx context.Context, v radarr.AutoTaggingResource) (*radarr.AutoTaggingResource, error) {
 			res, err := c.PostAutoTagging(ctx, v)
-			return res.Model, err
+			return res.Answer, err
 		},
 		update: func(ctx context.Context, id int, v radarr.AutoTaggingResource) (*radarr.AutoTaggingResource, error) {
 			res, err := c.PutAutoTaggingById(ctx, id, v)
-			return res.Model, err
+			return res.Answer, err
 		},
 		remove: func(ctx context.Context, id int) error {
 			_, err := c.DeleteAutoTaggingById(ctx, id)
@@ -669,15 +669,15 @@ func registerRecordKindTools(r *registry) map[string]kindDescriber {
 		loses: "Radarr looks for that client's downloads at the path the client reports, and fails to import what it cannot find there",
 		list: func(ctx context.Context) ([]radarr.RemotePathMappingResource, error) {
 			res, err := c.GetRemotePathMapping(ctx)
-			return res.Model, err
+			return res.Answer, err
 		},
 		create: func(ctx context.Context, v radarr.RemotePathMappingResource) (*radarr.RemotePathMappingResource, error) {
 			res, err := c.PostRemotePathMapping(ctx, v)
-			return res.Model, err
+			return res.Answer, err
 		},
 		update: func(ctx context.Context, id int, v radarr.RemotePathMappingResource) (*radarr.RemotePathMappingResource, error) {
 			res, err := c.PutRemotePathMappingById(ctx, id, v)
-			return res.Model, err
+			return res.Answer, err
 		},
 		remove: func(ctx context.Context, id int) error {
 			_, err := c.DeleteRemotePathMappingById(ctx, id)
@@ -692,15 +692,15 @@ func registerRecordKindTools(r *registry) map[string]kindDescriber {
 		loses: "the filter is gone from the page it was saved on",
 		list: func(ctx context.Context) ([]radarr.CustomFilterResource, error) {
 			res, err := c.GetCustomFilter(ctx)
-			return res.Model, err
+			return res.Answer, err
 		},
 		create: func(ctx context.Context, v radarr.CustomFilterResource) (*radarr.CustomFilterResource, error) {
 			res, err := c.PostCustomFilter(ctx, v)
-			return res.Model, err
+			return res.Answer, err
 		},
 		update: func(ctx context.Context, id int, v radarr.CustomFilterResource) (*radarr.CustomFilterResource, error) {
 			res, err := c.PutCustomFilterById(ctx, id, v)
-			return res.Model, err
+			return res.Answer, err
 		},
 		remove: func(ctx context.Context, id int) error {
 			_, err := c.DeleteCustomFilterById(ctx, id)
@@ -710,7 +710,7 @@ func registerRecordKindTools(r *registry) map[string]kindDescriber {
 
 	formats := func(ctx context.Context) ([]map[string]any, error) {
 		res, err := c.GetCustomFormatSchema(ctx)
-		return conditionKinds(res.Model, err)
+		return conditionKinds(res.Answer, err)
 	}
 	registerRecordTools(r, &recordKind[radarr.CustomFormatResource]{
 		family: "customformat", noun: "custom format", plural: "custom formats", nameKey: "name", conditions: formats, listed: true,
@@ -719,15 +719,15 @@ func registerRecordKindTools(r *registry) map[string]kindDescriber {
 		loses: "every quality profile's score for it, and with them the preference for releases that match it",
 		list: func(ctx context.Context) ([]radarr.CustomFormatResource, error) {
 			res, err := c.GetCustomFormat(ctx)
-			return res.Model, err
+			return res.Answer, err
 		},
 		create: func(ctx context.Context, v radarr.CustomFormatResource) (*radarr.CustomFormatResource, error) {
 			res, err := c.PostCustomFormat(ctx, v)
-			return res.Model, err
+			return res.Answer, err
 		},
 		update: func(ctx context.Context, id int, v radarr.CustomFormatResource) (*radarr.CustomFormatResource, error) {
 			res, err := c.PutCustomFormatById(ctx, id, v)
-			return res.Model, err
+			return res.Answer, err
 		},
 		remove: func(ctx context.Context, id int) error {
 			_, err := c.DeleteCustomFormatById(ctx, id)

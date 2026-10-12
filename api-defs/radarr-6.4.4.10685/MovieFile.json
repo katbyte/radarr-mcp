@@ -26,7 +26,8 @@
           "Name": "id",
           "Argument": "id",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieFileID"
           }
         }
       ],
@@ -46,7 +47,8 @@
           "Type": {
             "Type": "List",
             "NestedItem": {
-              "Type": "Integer"
+              "Type": "ID",
+              "ReferenceName": "MovieID"
             }
           }
         },
@@ -57,7 +59,8 @@
           "Type": {
             "Type": "List",
             "NestedItem": {
-              "Type": "Integer"
+              "Type": "ID",
+              "ReferenceName": "MovieFileID"
             }
           }
         }
@@ -85,7 +88,8 @@
           "Name": "id",
           "Argument": "id",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieFileID"
           }
         }
       ],
@@ -137,7 +141,8 @@
           "Name": "id",
           "Argument": "id",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieFileID"
           }
         }
       ],
@@ -226,7 +231,8 @@
           "Type": {
             "Type": "List",
             "NestedItem": {
-              "Type": "Integer"
+              "Type": "ID",
+              "ReferenceName": "MovieFileID"
             }
           },
           "Nullable": true

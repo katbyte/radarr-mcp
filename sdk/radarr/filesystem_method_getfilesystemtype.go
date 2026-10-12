@@ -10,25 +10,29 @@ import (
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetFileSystemTypeOperationResponse is the result of GetFileSystemType.
-type GetFileSystemTypeOperationResponse struct {
+// GetFileSystemTypeResponse is the result of GetFileSystemType.
+type GetFileSystemTypeResponse struct {
 	HttpResponse *http.Response
-	Model        json.RawMessage
+	Answer       json.RawMessage
 }
 
-// GetFileSystemTypeOperationOptions holds the query and header parameters of GetFileSystemType.
-type GetFileSystemTypeOperationOptions struct {
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetFileSystemTypeResponse) Answered() bool { return r.Answer != nil }
+
+// GetFileSystemTypeOptions holds the query and header parameters of GetFileSystemType.
+type GetFileSystemTypeOptions struct {
 	Path string
 }
 
 // ToHeaders returns the header parameters the options set.
-func (o GetFileSystemTypeOperationOptions) ToHeaders() *client.Headers {
+func (o GetFileSystemTypeOptions) ToHeaders() *client.Headers {
 	out := client.Headers{}
 	return &out
 }
 
 // ToQuery returns the query parameters the options set.
-func (o GetFileSystemTypeOperationOptions) ToQuery() *client.QueryParams {
+func (o GetFileSystemTypeOptions) ToQuery() *client.QueryParams {
 	out := client.QueryParams{}
 	if o.Path != "" {
 		out.Append("path", o.Path)
@@ -37,12 +41,13 @@ func (o GetFileSystemTypeOperationOptions) ToQuery() *client.QueryParams {
 }
 
 // GetFileSystemType calls GET /api/v3/filesystem/type.
-func (c Client) GetFileSystemType(ctx context.Context, options GetFileSystemTypeOperationOptions) (result GetFileSystemTypeOperationResponse, err error) {
+func (c Client) GetFileSystemType(ctx context.Context, options GetFileSystemTypeOptions) (result GetFileSystemTypeResponse, err error) {
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodGet,
+		Operation:     "GetFileSystemType",
 		OptionsObject: options,
 		Path:          "/api/v3/filesystem/type",
 	}
@@ -61,7 +66,7 @@ func (c Client) GetFileSystemType(ctx context.Context, options GetFileSystemType
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

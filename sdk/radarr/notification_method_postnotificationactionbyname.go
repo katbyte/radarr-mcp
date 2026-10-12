@@ -12,20 +12,25 @@ import (
 	"github.com/katbyte/pandorest/client"
 )
 
-// PostNotificationActionByNameOperationResponse is the result of PostNotificationActionByName.
-type PostNotificationActionByNameOperationResponse struct {
+// PostNotificationActionByNameResponse is the result of PostNotificationActionByName.
+type PostNotificationActionByNameResponse struct {
 	HttpResponse *http.Response
-	Model        json.RawMessage
+	Answer       json.RawMessage
 }
 
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r PostNotificationActionByNameResponse) Answered() bool { return r.Answer != nil }
+
 // PostNotificationActionByName calls POST /api/v3/notification/action/{name}.
-func (c Client) PostNotificationActionByName(ctx context.Context, name string, input NotificationResource) (result PostNotificationActionByNameOperationResponse, err error) {
+func (c Client) PostNotificationActionByName(ctx context.Context, name string, input NotificationResource) (result PostNotificationActionByNameResponse, err error) {
 	opts := client.RequestOptions{
 		ContentType: "application/json",
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod: http.MethodPost,
+		Operation:  "PostNotificationActionByName",
 		Path:       fmt.Sprintf("/api/v3/notification/action/%s", url.PathEscape(name)),
 	}
 
@@ -47,7 +52,7 @@ func (c Client) PostNotificationActionByName(ctx context.Context, name string, i
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

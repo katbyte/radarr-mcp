@@ -10,6 +10,7 @@
     "radarr-auth-redirects",
     "radarr-root-path-parameter",
     "radarr-command-body",
+    "radarr-commands",
     "radarr-statuses",
     "radarr-undeclared-fields",
     "radarr-command-resource-body",
@@ -18,5 +19,19 @@
     "radarr-bulk-responses",
     "radarr-host-required",
     "radarr-put-ids"
+  ],
+  "IDs": [
+    {
+      "Name": "MovieID",
+      "Base": "Integer"
+    },
+    {
+      "Name": "MovieFileID",
+      "Base": "Integer"
+    },
+    {
+      "Name": "TmdbID",
+      "Base": "Integer"
+    }
   ]
 }

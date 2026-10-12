@@ -4,36 +4,41 @@ package radarr
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetHistoryMovieOperationResponse is the result of GetHistoryMovie.
-type GetHistoryMovieOperationResponse struct {
+// GetHistoryMovieResponse is the result of GetHistoryMovie.
+type GetHistoryMovieResponse struct {
 	HttpResponse *http.Response
-	Model        []HistoryResource
+	Answer       []HistoryResource
 }
 
-// GetHistoryMovieOperationOptions holds the query and header parameters of GetHistoryMovie.
-type GetHistoryMovieOperationOptions struct {
-	MovieId      *int
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetHistoryMovieResponse) Answered() bool { return r.Answer != nil }
+
+// GetHistoryMovieOptions holds the query and header parameters of GetHistoryMovie.
+type GetHistoryMovieOptions struct {
+	MovieId      MovieID
 	EventType    MovieHistoryEventType
 	IncludeMovie *bool
 }
 
 // ToHeaders returns the header parameters the options set.
-func (o GetHistoryMovieOperationOptions) ToHeaders() *client.Headers {
+func (o GetHistoryMovieOptions) ToHeaders() *client.Headers {
 	out := client.Headers{}
 	return &out
 }
 
 // ToQuery returns the query parameters the options set.
-func (o GetHistoryMovieOperationOptions) ToQuery() *client.QueryParams {
+func (o GetHistoryMovieOptions) ToQuery() *client.QueryParams {
 	out := client.QueryParams{}
-	if o.MovieId != nil {
-		out.Append("movieId", strconv.Itoa(*o.MovieId))
+	if o.MovieId != 0 {
+		out.Append("movieId", strconv.Itoa(int(o.MovieId)))
 	}
 	if o.EventType != "" {
 		out.Append("eventType", string(o.EventType))
@@ -45,13 +50,23 @@ func (o GetHistoryMovieOperationOptions) ToQuery() *client.QueryParams {
 }
 
 // GetHistoryMovie calls GET /api/v3/history/movie.
-func (c Client) GetHistoryMovie(ctx context.Context, options GetHistoryMovieOperationOptions) (result GetHistoryMovieOperationResponse, err error) {
+func (c Client) GetHistoryMovie(ctx context.Context, options ...GetHistoryMovieOptions) (result GetHistoryMovieResponse, err error) {
+	if len(options) > 1 {
+		err = fmt.Errorf("GetHistoryMovie takes one options struct at most, not %d", len(options))
+		return
+	}
+	var option GetHistoryMovieOptions
+	if len(options) == 1 {
+		option = options[0]
+	}
+
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodGet,
-		OptionsObject: options,
+		Operation:     "GetHistoryMovie",
+		OptionsObject: option,
 		Path:          "/api/v3/history/movie",
 	}
 
@@ -69,7 +84,7 @@ func (c Client) GetHistoryMovie(ctx context.Context, options GetHistoryMovieOper
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

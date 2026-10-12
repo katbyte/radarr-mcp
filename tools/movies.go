@@ -168,17 +168,17 @@ func registerMovieTools(r *registry) {
 		}
 		out := detailOf(m, lk)
 
-		queue, err := queueFor(ctx, client, []int{m.Id})
+		queue, err := queueFor(ctx, client, []radarr.MovieID{m.Id})
 		if err != nil {
 			return nil, out, err
 		}
 		out.Queue = queue
 
-		history, err := client.GetHistoryMovie(ctx, radarr.GetHistoryMovieOperationOptions{MovieId: new(m.Id)})
+		history, err := client.GetHistoryMovie(ctx, radarr.GetHistoryMovieOptions{MovieId: m.Id})
 		if err != nil {
 			return nil, out, err
 		}
-		events := history.Model
+		events := history.Answer
 		slices.SortStableFunc(events, func(a, b radarr.HistoryResource) int { return strings.Compare(b.Date, a.Date) })
 		for i := range events {
 			if len(out.History) == 5 {
@@ -187,11 +187,11 @@ func registerMovieTools(r *registry) {
 			out.History = append(out.History, historyOf(&events[i]))
 		}
 
-		extras, err := client.GetExtraFile(ctx, radarr.GetExtraFileOperationOptions{MovieId: new(m.Id)})
+		extras, err := client.GetExtraFile(ctx, radarr.GetExtraFileOptions{MovieId: m.Id})
 		if err != nil {
 			return nil, out, err
 		}
-		for _, e := range extras.Model {
+		for _, e := range extras.Answer {
 			out.ExtraFiles = append(out.ExtraFiles, extraFileRow{Type: string(e.Type), RelativePath: e.RelativePath, LanguageTags: e.LanguageTags})
 		}
 
@@ -213,7 +213,7 @@ func registerMovieTools(r *registry) {
 		if err != nil {
 			return nil, lookupOut{}, err
 		}
-		have := map[int]int{}
+		have := map[radarr.TmdbID]radarr.MovieID{}
 		for i := range library {
 			m := &library[i]
 			have[m.TmdbId] = m.Id
@@ -249,11 +249,11 @@ func registerMovieTools(r *registry) {
 		if err != nil {
 			return nil, creditsOut{}, err
 		}
-		res, err := client.GetCredit(ctx, radarr.GetCreditOperationOptions{MovieId: new(m.Id)})
+		res, err := client.GetCredit(ctx, radarr.GetCreditOptions{MovieId: m.Id})
 		if err != nil {
 			return nil, creditsOut{}, err
 		}
-		credits := res.Model
+		credits := res.Answer
 		slices.SortStableFunc(credits, func(a, b radarr.CreditResource) int {
 			if a.Type == radarr.CreditTypeCrew && b.Type == radarr.CreditTypeCrew {
 				return crewRank(a) - crewRank(b)
@@ -459,44 +459,44 @@ func lookupMovies(ctx context.Context, c *radarr.Client, term string) ([]radarr.
 		if err != nil {
 			return nil, fmt.Errorf("%q: a tmdb id is a number", term)
 		}
-		res, err := c.GetMovieLookupTmdb(ctx, radarr.GetMovieLookupTmdbOperationOptions{TmdbId: new(id)})
+		res, err := c.GetMovieLookupTmdb(ctx, radarr.GetMovieLookupTmdbOptions{TmdbId: radarr.TmdbID(id)})
 		if err != nil {
 			return nil, fmt.Errorf("looking up tmdb:%d: %w", id, err)
 		}
-		if res.Model == nil {
+		if res.Answer == nil {
 			return nil, fmt.Errorf("looking up %s: no answer from Radarr", term)
 		}
 
-		return []radarr.MovieResource{*res.Model}, nil
+		return []radarr.MovieResource{*res.Answer}, nil
 	case strings.HasPrefix(lower, "imdb:"):
-		res, err := c.GetMovieLookupImdb(ctx, radarr.GetMovieLookupImdbOperationOptions{ImdbId: strings.TrimSpace(term[5:])})
+		res, err := c.GetMovieLookupImdb(ctx, radarr.GetMovieLookupImdbOptions{ImdbId: strings.TrimSpace(term[5:])})
 		if err != nil {
 			return nil, fmt.Errorf("looking up %s: %w", term, err)
 		}
-		if res.Model == nil {
+		if res.Answer == nil {
 			return nil, fmt.Errorf("looking up %s: no answer from Radarr", term)
 		}
 
-		return []radarr.MovieResource{*res.Model}, nil
+		return []radarr.MovieResource{*res.Answer}, nil
 	default:
-		res, err := c.GetMovieLookup(ctx, radarr.GetMovieLookupOperationOptions{Term: term})
+		res, err := c.GetMovieLookup(ctx, radarr.GetMovieLookupOptions{Term: term})
 		if err != nil {
 			return nil, err
 		}
-		return res.Model, nil
+		return res.Answer, nil
 	}
 }
 
-func lookupOf(m *radarr.MovieResource, have map[int]int) lookupRow {
+func lookupOf(m *radarr.MovieResource, have map[radarr.TmdbID]radarr.MovieID) lookupRow {
 	row := lookupRow{
 		Title:     m.Title,
 		Year:      m.Year,
-		TmdbID:    m.TmdbId,
+		TmdbID:    int(m.TmdbId),
 		ImdbID:    m.ImdbId,
 		Runtime:   m.Runtime,
 		Status:    string(m.Status),
 		Overview:  truncate(outsideProse(m.Overview), 300),
-		LibraryID: have[m.TmdbId],
+		LibraryID: int(have[m.TmdbId]),
 	}
 	row.InLibrary = row.LibraryID != 0
 	if m.OriginalLanguage != nil {

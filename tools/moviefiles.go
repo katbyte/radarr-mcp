@@ -64,7 +64,7 @@ func registerMovieFileTools(r *registry) {
 			return nil, movieFileOut{}, err
 		}
 
-		return nil, movieFileOut{Movie: titleYear(m.Title, m.Year), File: fileOf(file.Model)}, nil
+		return nil, movieFileOut{Movie: titleYear(m.Title, m.Year), File: fileOf(file.Answer)}, nil
 	})
 
 	type fileDeleteIn struct {
@@ -98,7 +98,7 @@ func registerMovieFileTools(r *registry) {
 				return nil, fileDeleteOut{}, err
 			}
 			out.Warning = fmt.Sprintf("Radarr still monitors %s, so it downloads the film again once its file is gone. To keep it gone, unmonitor it first with movie_edit.", out.Movie)
-			if isTrue(media.Model.AutoUnmonitorPreviouslyDownloadedMovies) {
+			if isTrue(media.Answer.AutoUnmonitorPreviouslyDownloadedMovies) {
 				out.Warning = fmt.Sprintf("Radarr is set to stop monitoring a film whose file is deleted (Unmonitor Deleted Movies), so %s is not downloaded again. To have another copy fetched, monitor it again with movie_edit.", out.Movie)
 			}
 		}
@@ -125,7 +125,7 @@ func qualityByName(ctx context.Context, c *radarr.Client, name string) (*radarr.
 		return nil, err
 	}
 	var names []string
-	for _, d := range res.Model {
+	for _, d := range res.Answer {
 		if d.Quality == nil {
 			continue
 		}
@@ -146,11 +146,11 @@ func languagesByName(ctx context.Context, c *radarr.Client, names []string) ([]r
 	}
 	out := []radarr.Language{}
 	for _, name := range names {
-		i := slices.IndexFunc(res.Model, func(l radarr.LanguageResource) bool { return strings.EqualFold(l.Name, strings.TrimSpace(name)) })
+		i := slices.IndexFunc(res.Answer, func(l radarr.LanguageResource) bool { return strings.EqualFold(l.Name, strings.TrimSpace(name)) })
 		if i < 0 {
 			return nil, fmt.Errorf("no language %q", name)
 		}
-		out = append(out, radarr.Language{Id: res.Model[i].Id, Name: res.Model[i].Name})
+		out = append(out, radarr.Language{Id: res.Answer[i].Id, Name: res.Answer[i].Name})
 	}
 
 	return out, nil

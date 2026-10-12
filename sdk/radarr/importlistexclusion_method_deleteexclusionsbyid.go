@@ -10,18 +10,19 @@ import (
 	"github.com/katbyte/pandorest/client"
 )
 
-// DeleteExclusionsByIdOperationResponse is the result of DeleteExclusionsById.
-type DeleteExclusionsByIdOperationResponse struct {
+// DeleteExclusionsByIdResponse is the result of DeleteExclusionsById.
+type DeleteExclusionsByIdResponse struct {
 	HttpResponse *http.Response
 }
 
 // DeleteExclusionsById calls DELETE /api/v3/exclusions/{id}.
-func (c Client) DeleteExclusionsById(ctx context.Context, id int) (result DeleteExclusionsByIdOperationResponse, err error) {
+func (c Client) DeleteExclusionsById(ctx context.Context, id int) (result DeleteExclusionsByIdResponse, err error) {
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod: http.MethodDelete,
+		Operation:  "DeleteExclusionsById",
 		Path:       fmt.Sprintf("/api/v3/exclusions/%d", id),
 	}
 

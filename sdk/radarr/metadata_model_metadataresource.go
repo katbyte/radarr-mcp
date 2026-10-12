@@ -16,3 +16,9 @@ type MetadataResource struct {
 	Presets            []MetadataResource `json:"presets,omitzero"`
 	Tags               []int              `json:"tags,omitzero"`
 }
+
+// GetName is the record's Name, for code that handles records of several types alike.
+func (m MetadataResource) GetName() string { return m.Name }
+
+// GetId is the record's Id, for code that handles records of several types alike.
+func (m MetadataResource) GetId() int { return m.Id }

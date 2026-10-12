@@ -385,7 +385,7 @@ func TestMovieListFiltersAndSorts(t *testing.T) {
 func TestCommands(t *testing.T) {
 	t.Parallel()
 
-	commandPoll = time.Millisecond
+	radarr.CommandPoll = time.Millisecond
 	f := newFakeRadarr(t)
 	f.library(movie(1, "Alien", 1979, "Bluray-1080p", "1920x1080", "1:57:00"))
 	var polls int
@@ -417,6 +417,7 @@ func TestCommands(t *testing.T) {
 	failing := newFakeRadarr(t)
 	failing.library(movie(1, "Alien", 1979, "", "", ""))
 	failing.answer("POST /api/v3/command", http.StatusCreated, map[string]any{"id": 8, "name": "RefreshMovie", "status": "failed", "message": "TMDB is down"})
+	failing.answer("GET /api/v3/command/8", http.StatusOK, map[string]any{"id": 8, "name": "RefreshMovie", "status": "failed", "message": "TMDB is down"})
 	mustFail(t, session(t, failing, Options{}), "movie_refresh", map[string]any{"movies": []any{"1"}}, "RefreshMovie failed: TMDB is down")
 
 	mustFail(t, cs, "task_run", map[string]any{"task": "Restart"}, `task "Restart" is not one task_run starts`)
@@ -468,6 +469,7 @@ func TestMovieEditPointsAtAFolder(t *testing.T) {
 	f.library(movie(1, "Alien", 1979, "Bluray-1080p", "1920x1080", "1:57:00"))
 	f.answer("PUT /api/v3/movie/1", http.StatusAccepted, movie(1, "Alien", 1979, "Bluray-1080p", "1920x1080", "1:57:00"))
 	f.answer("POST /api/v3/command", http.StatusCreated, map[string]any{"id": 3, "name": "RescanMovie", "status": "completed"})
+	f.answer("GET /api/v3/command/3", http.StatusOK, map[string]any{"id": 3, "name": "RescanMovie", "status": "completed"})
 	cs := session(t, f, Options{})
 
 	mustCall(t, cs, "movie_edit", map[string]any{"movie": "Alien", "folder": "Alien (1979) [remux]"})

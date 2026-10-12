@@ -5,33 +5,38 @@ package radarr
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetImportListMovieOperationResponse is the result of GetImportListMovie.
-type GetImportListMovieOperationResponse struct {
+// GetImportListMovieResponse is the result of GetImportListMovie.
+type GetImportListMovieResponse struct {
 	HttpResponse *http.Response
-	Model        json.RawMessage
+	Answer       json.RawMessage
 }
 
-// GetImportListMovieOperationOptions holds the query and header parameters of GetImportListMovie.
-type GetImportListMovieOperationOptions struct {
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetImportListMovieResponse) Answered() bool { return r.Answer != nil }
+
+// GetImportListMovieOptions holds the query and header parameters of GetImportListMovie.
+type GetImportListMovieOptions struct {
 	IncludeRecommendations *bool
 	IncludeTrending        *bool
 	IncludePopular         *bool
 }
 
 // ToHeaders returns the header parameters the options set.
-func (o GetImportListMovieOperationOptions) ToHeaders() *client.Headers {
+func (o GetImportListMovieOptions) ToHeaders() *client.Headers {
 	out := client.Headers{}
 	return &out
 }
 
 // ToQuery returns the query parameters the options set.
-func (o GetImportListMovieOperationOptions) ToQuery() *client.QueryParams {
+func (o GetImportListMovieOptions) ToQuery() *client.QueryParams {
 	out := client.QueryParams{}
 	if o.IncludeRecommendations != nil {
 		out.Append("includeRecommendations", strconv.FormatBool(*o.IncludeRecommendations))
@@ -46,13 +51,23 @@ func (o GetImportListMovieOperationOptions) ToQuery() *client.QueryParams {
 }
 
 // GetImportListMovie calls GET /api/v3/importlist/movie.
-func (c Client) GetImportListMovie(ctx context.Context, options GetImportListMovieOperationOptions) (result GetImportListMovieOperationResponse, err error) {
+func (c Client) GetImportListMovie(ctx context.Context, options ...GetImportListMovieOptions) (result GetImportListMovieResponse, err error) {
+	if len(options) > 1 {
+		err = fmt.Errorf("GetImportListMovie takes one options struct at most, not %d", len(options))
+		return
+	}
+	var option GetImportListMovieOptions
+	if len(options) == 1 {
+		option = options[0]
+	}
+
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodGet,
-		OptionsObject: options,
+		Operation:     "GetImportListMovie",
+		OptionsObject: option,
 		Path:          "/api/v3/importlist/movie",
 	}
 
@@ -70,7 +85,7 @@ func (c Client) GetImportListMovie(ctx context.Context, options GetImportListMov
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

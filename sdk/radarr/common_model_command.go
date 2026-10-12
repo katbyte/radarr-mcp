@@ -6,15 +6,15 @@ package radarr
 type Command struct {
 	ClientUserAgent     string         `json:"clientUserAgent,omitempty"`
 	CompletionMessage   string         `json:"completionMessage,omitempty"`
-	IsExclusive         *bool          `json:"isExclusive,omitempty"`
-	IsLongRunning       *bool          `json:"isLongRunning,omitempty"`
-	IsTypeExclusive     *bool          `json:"isTypeExclusive,omitempty"`
+	IsExclusive         bool           `json:"isExclusive"`
+	IsLongRunning       bool           `json:"isLongRunning"`
+	IsTypeExclusive     bool           `json:"isTypeExclusive"`
 	LastExecutionTime   string         `json:"lastExecutionTime,omitempty"`
 	LastStartTime       string         `json:"lastStartTime,omitempty"`
 	Name                string         `json:"name,omitempty"`
-	RequiresDiskAccess  *bool          `json:"requiresDiskAccess,omitempty"`
-	SendUpdatesToClient *bool          `json:"sendUpdatesToClient,omitempty"`
-	SuppressMessages    *bool          `json:"suppressMessages,omitempty"`
+	RequiresDiskAccess  bool           `json:"requiresDiskAccess"`
+	SendUpdatesToClient bool           `json:"sendUpdatesToClient"`
+	SuppressMessages    bool           `json:"suppressMessages"`
 	Trigger             CommandTrigger `json:"trigger,omitempty"`
-	UpdateScheduledTask *bool          `json:"updateScheduledTask,omitempty"`
+	UpdateScheduledTask bool           `json:"updateScheduledTask"`
 }

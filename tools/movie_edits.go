@@ -132,10 +132,10 @@ func registerMovieEditTools(r *registry) {
 		// its own; waiting for that one, rather than starting a scan beside
 		// it, is what makes the file (if the folder has one) part of the
 		// answer - two scans at once import the same file twice
-		if err := waitForNewMovie(ctx, client, added.Model.Id); err != nil {
+		if err := waitForNewMovie(ctx, client, added.Answer.Id); err != nil {
 			return nil, movieDetail{}, err
 		}
-		m, err := resolveMovie(ctx, client, strconv.Itoa(added.Model.Id))
+		m, err := resolveMovie(ctx, client, strconv.Itoa(int(added.Answer.Id)))
 		if err != nil {
 			return nil, movieDetail{}, err
 		}
@@ -168,7 +168,7 @@ func registerMovieEditTools(r *registry) {
 			if heldErr != nil {
 				return nil, editOut{}, heldErr
 			}
-			row, pointErr := pointAt(ctx, client, held.Model, in.Folder)
+			row, pointErr := pointAt(ctx, client, held.Answer, in.Folder)
 			if pointErr != nil {
 				return nil, editOut{}, pointErr
 			}
@@ -176,7 +176,7 @@ func registerMovieEditTools(r *registry) {
 				return nil, editOut{Movies: []movieRow{row}}, nil
 			}
 		}
-		rows, err := applyEdit(ctx, client, []int{m.Id}, in.editFields)
+		rows, err := applyEdit(ctx, client, []radarr.MovieID{m.Id}, in.editFields)
 
 		return nil, editOut{Movies: rows}, err
 	})
@@ -190,7 +190,7 @@ func registerMovieEditTools(r *registry) {
 		if err != nil {
 			return nil, editOut{}, err
 		}
-		ids := make([]int, 0, len(movies))
+		ids := make([]radarr.MovieID, 0, len(movies))
 		for i := range movies {
 			m := &movies[i]
 			ids = append(ids, m.Id)
@@ -243,7 +243,7 @@ func registerMovieEditTools(r *registry) {
 			return nil, out, nil
 		}
 
-		if _, err := client.DeleteMovieById(ctx, m.Id, radarr.DeleteMovieByIdOperationOptions{DeleteFiles: new(in.DeleteFiles), AddImportExclusion: new(in.AddExclusion)}); err != nil {
+		if _, err := client.DeleteMovieById(ctx, m.Id, radarr.DeleteMovieByIdOptions{DeleteFiles: new(in.DeleteFiles), AddImportExclusion: new(in.AddExclusion)}); err != nil {
 			return nil, movieDeleteOut{}, err
 		}
 		out.Deleted, out.FilesDeleted, out.Excluded = &row, in.DeleteFiles, in.AddExclusion
@@ -264,7 +264,7 @@ func registerMovieEditTools(r *registry) {
 		if err != nil {
 			return nil, commandsOut{}, err
 		}
-		cmd, err := runCommand(ctx, client, map[string]any{"name": "RefreshMovie", "movieIds": movieIDs(movies)}, waitFor(in.Wait))
+		cmd, err := ran(client.RefreshMovieAndWait(ctx, radarr.RefreshMovieCommand{MovieIds: movieIDs(movies)}, waitFor(in.Wait)))
 		out := commandsOut{Commands: []commandOut{cmd}}
 		if err != nil {
 			return nil, out, err
@@ -286,7 +286,7 @@ func registerMovieEditTools(r *registry) {
 		out := commandsOut{}
 		for i := range movies {
 			var cmd commandOut
-			cmd, err = runCommand(ctx, client, map[string]any{"name": "RescanMovie", "movieId": movies[i].Id}, waitFor(in.Wait))
+			cmd, err = ran(client.RescanMovieAndWait(ctx, radarr.RescanMovieCommand{MovieId: movies[i].Id}, waitFor(in.Wait)))
 			out.Commands = append(out.Commands, cmd)
 			if err != nil {
 				return nil, out, err
@@ -328,18 +328,18 @@ func registerMovieEditTools(r *registry) {
 			return nil, renameOut{}, err
 		}
 		out := renameOut{}
-		if !isTrue(naming.Model.RenameMovies) {
+		if !isTrue(naming.Answer.RenameMovies) {
 			out.Note = "renaming is switched off in Radarr, so it gives no new names: naming_edit rename_movies true switches it on"
 		}
-		byFile := map[int][]int{}
+		byFile := map[radarr.MovieID][]radarr.MovieFileID{}
 		for i := range movies {
 			m := &movies[i]
-			res, err := client.GetRename(ctx, radarr.GetRenameOperationOptions{MovieId: []int{m.Id}})
+			res, err := client.GetRename(ctx, radarr.GetRenameOptions{MovieId: []radarr.MovieID{m.Id}})
 			if err != nil {
 				return nil, out, err
 			}
-			for _, p := range res.Model {
-				out.Renames = append(out.Renames, renameRow{Movie: titleYear(m.Title, m.Year), MovieID: m.Id, FileID: p.MovieFileId, Existing: p.ExistingPath, New: p.NewPath})
+			for _, p := range res.Answer {
+				out.Renames = append(out.Renames, renameRow{Movie: titleYear(m.Title, m.Year), MovieID: int(m.Id), FileID: int(p.MovieFileId), Existing: p.ExistingPath, New: p.NewPath})
 				byFile[m.Id] = append(byFile[m.Id], p.MovieFileId)
 			}
 		}
@@ -349,7 +349,7 @@ func registerMovieEditTools(r *registry) {
 				if len(byFile[m.Id]) == 0 {
 					continue
 				}
-				cmd, err := runCommand(ctx, client, map[string]any{"name": "RenameFiles", "movieId": m.Id, "files": byFile[m.Id]}, defaultWait)
+				cmd, err := ran(client.RenameFilesAndWait(ctx, radarr.RenameFilesCommand{MovieId: m.Id, Files: byFile[m.Id]}, defaultWait))
 				out.Commands = append(out.Commands, cmd)
 				if err != nil {
 					return nil, out, err
@@ -374,7 +374,7 @@ func registerMovieEditTools(r *registry) {
 		if err != nil {
 			return nil, downloadOut{}, err
 		}
-		cmd, err := runCommand(ctx, client, map[string]any{"name": "MoviesSearch", "movieIds": movieIDs(movies)}, waitFor(in.Wait))
+		cmd, err := ran(client.MoviesSearchAndWait(ctx, radarr.MoviesSearchCommand{MovieIds: movieIDs(movies)}, waitFor(in.Wait)))
 		out := downloadOut{Command: cmd}
 		if err != nil {
 			return nil, out, err
@@ -455,13 +455,13 @@ func pointAt(ctx context.Context, c *radarr.Client, m *radarr.MovieResource, fol
 	edit := *m
 	edit.Path = path
 	edit.RootFolderPath = ""
-	if _, err := c.PutMovieById(ctx, m.Id, edit, radarr.PutMovieByIdOperationOptions{MoveFiles: new(false)}); err != nil {
+	if _, err := c.PutMovieById(ctx, m.Id, edit, radarr.PutMovieByIdOptions{MoveFiles: new(false)}); err != nil {
 		return movieRow{}, fmt.Errorf("pointing %s at %s: %w", titleYear(m.Title, m.Year), path, err)
 	}
-	if _, err := runCommand(ctx, c, map[string]any{"name": "RescanMovie", "movieId": m.Id}, defaultWait); err != nil {
+	if _, err := ran(c.RescanMovieAndWait(ctx, radarr.RescanMovieCommand{MovieId: m.Id}, defaultWait)); err != nil {
 		return movieRow{}, err
 	}
-	rows, err := rowsFor(ctx, c, []int{m.Id})
+	rows, err := rowsFor(ctx, c, []radarr.MovieID{m.Id})
 	if err != nil || len(rows) == 0 {
 		return movieRow{}, err
 	}
@@ -473,12 +473,12 @@ func pointAt(ctx context.Context, c *radarr.Client, m *radarr.MovieResource, fol
 // The generated command model has no movieIds (every command has fields of
 // its own), so the list is read as the JSON Radarr sends. Should Radarr not
 // have started one within a few seconds, a rescan of our own stands in.
-func waitForNewMovie(ctx context.Context, c *radarr.Client, id int) error {
+func waitForNewMovie(ctx context.Context, c *radarr.Client, id radarr.MovieID) error {
 	type command struct {
 		Name   string `json:"name"`
 		Status string `json:"status"`
 		Body   struct {
-			MovieIDs []int `json:"movieIds"`
+			MovieIDs []radarr.MovieID `json:"movieIds"`
 		} `json:"body"`
 	}
 	seen := false
@@ -508,13 +508,13 @@ func waitForNewMovie(ctx context.Context, c *radarr.Client, id int) error {
 		case seen && !pending:
 			return nil
 		case !seen && time.Now().After(grace):
-			_, err := runCommand(ctx, c, map[string]any{"name": "RescanMovie", "movieId": id}, defaultWait)
+			_, err := ran(c.RescanMovieAndWait(ctx, radarr.RescanMovieCommand{MovieId: id}, defaultWait))
 			return err
 		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(commandPoll):
+		case <-time.After(radarr.CommandPoll):
 		}
 	}
 
@@ -535,8 +535,8 @@ func minimumAvailability(s string) (radarr.MovieStatusType, error) {
 	return "", fmt.Errorf("minimum availability %q: want announced, inCinemas or released", s)
 }
 
-func movieIDs(movies []radarr.MovieResource) []int {
-	ids := make([]int, 0, len(movies))
+func movieIDs(movies []radarr.MovieResource) []radarr.MovieID {
+	ids := make([]radarr.MovieID, 0, len(movies))
 	for i := range movies {
 		m := &movies[i]
 		ids = append(ids, m.Id)
@@ -546,7 +546,7 @@ func movieIDs(movies []radarr.MovieResource) []int {
 }
 
 // rowsFor reads films back by id, in the order given.
-func rowsFor(ctx context.Context, c *radarr.Client, ids []int) ([]movieRow, error) {
+func rowsFor(ctx context.Context, c *radarr.Client, ids []radarr.MovieID) ([]movieRow, error) {
 	movies, err := allMovies(ctx, c)
 	if err != nil {
 		return nil, err
@@ -572,7 +572,7 @@ func rowsFor(ctx context.Context, c *radarr.Client, ids []int) ([]movieRow, erro
 // monitored flag, profile, availability and root folder in one call, then
 // each tag operation in one of its own. A move of root folder is a command
 // Radarr runs afterwards, and is waited for.
-func applyEdit(ctx context.Context, c *radarr.Client, ids []int, e editFields) ([]movieRow, error) {
+func applyEdit(ctx context.Context, c *radarr.Client, ids []radarr.MovieID, e editFields) ([]movieRow, error) {
 	if e.empty() {
 		return nil, errors.New("nothing to change: give monitored, quality_profile, minimum_availability, root_folder, tags, add_tags or remove_tags")
 	}
@@ -650,7 +650,7 @@ func waitForMove(ctx context.Context, c *radarr.Client, since time.Time) error {
 			return err
 		}
 		pending := false
-		for _, cmd := range res.Model {
+		for _, cmd := range res.Answer {
 			if cmd.Name != "BulkMoveMovie" && cmd.Name != "MoveMovie" {
 				continue
 			}
@@ -671,7 +671,7 @@ func waitForMove(ctx context.Context, c *radarr.Client, since time.Time) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(commandPoll):
+		case <-time.After(radarr.CommandPoll):
 		}
 	}
 

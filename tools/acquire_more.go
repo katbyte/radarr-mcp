@@ -103,9 +103,9 @@ func registerAcquireMoreTools(r *registry) {
 		if err != nil {
 			return nil, pushOut{}, err
 		}
-		out := pushOut{Releases: make([]releaseRow, 0, len(res.Model))}
-		for i := range res.Model {
-			out.Releases = append(out.Releases, releaseOf(&res.Model[i]))
+		out := pushOut{Releases: make([]releaseRow, 0, len(res.Answer))}
+		for i := range res.Answer {
+			out.Releases = append(out.Releases, releaseOf(&res.Answer[i]))
 		}
 		if len(out.Releases) == 0 {
 			return nil, out, errors.New("Radarr took the release and answered nothing about it: " + strconv.Quote(title))

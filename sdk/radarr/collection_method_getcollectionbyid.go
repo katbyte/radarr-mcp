@@ -4,25 +4,49 @@ package radarr
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetCollectionByIdOperationResponse is the result of GetCollectionById.
-type GetCollectionByIdOperationResponse struct {
+// GetCollectionByIdResponse is the result of GetCollectionById.
+//
+// Answer is the CollectionResource answered, nil when the server answered none (a 204), which
+// Answered tells. The same record is embedded, so res.Answer.Name may be read as
+// res.Name; when nothing was answered the embedded record is a zero one, so that
+// read is empty rather than a panic. Only the method sets the two; a response built
+// by hand sets both or neither.
+type GetCollectionByIdResponse struct {
 	HttpResponse *http.Response
-	Model        *CollectionResource
+	Answer       *CollectionResource
+	*CollectionResource
+}
+
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetCollectionByIdResponse) Answered() bool { return r.Answer != nil }
+
+// Record is the CollectionResource answered, as a value to change and write back, or an
+// error when the server answered none.
+func (r GetCollectionByIdResponse) Record() (CollectionResource, error) {
+	if r.Answer == nil {
+		return CollectionResource{}, errors.New("GetCollectionById answered no CollectionResource")
+	}
+
+	return *r.Answer, nil
 }
 
 // GetCollectionById calls GET /api/v3/collection/{id}.
-func (c Client) GetCollectionById(ctx context.Context, id int) (result GetCollectionByIdOperationResponse, err error) {
+func (c Client) GetCollectionById(ctx context.Context, id int) (result GetCollectionByIdResponse, err error) {
+	result.CollectionResource = &CollectionResource{}
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod: http.MethodGet,
+		Operation:  "GetCollectionById",
 		Path:       fmt.Sprintf("/api/v3/collection/%d", id),
 	}
 
@@ -40,11 +64,12 @@ func (c Client) GetCollectionById(ctx context.Context, id int) (result GetCollec
 		return
 	}
 
-	var model CollectionResource
-	result.Model = &model
-	if err = resp.Unmarshal(result.Model); err != nil {
+	var answer CollectionResource
+	result.Answer = &answer
+	if err = resp.Unmarshal(result.Answer); err != nil {
 		return
 	}
+	result.CollectionResource = result.Answer
 
 	return
 }

@@ -4,25 +4,49 @@ package radarr
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetCreditByIdOperationResponse is the result of GetCreditById.
-type GetCreditByIdOperationResponse struct {
+// GetCreditByIdResponse is the result of GetCreditById.
+//
+// Answer is the CreditResource answered, nil when the server answered none (a 204), which
+// Answered tells. The same record is embedded, so res.Answer.Name may be read as
+// res.Name; when nothing was answered the embedded record is a zero one, so that
+// read is empty rather than a panic. Only the method sets the two; a response built
+// by hand sets both or neither.
+type GetCreditByIdResponse struct {
 	HttpResponse *http.Response
-	Model        *CreditResource
+	Answer       *CreditResource
+	*CreditResource
+}
+
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetCreditByIdResponse) Answered() bool { return r.Answer != nil }
+
+// Record is the CreditResource answered, as a value to change and write back, or an
+// error when the server answered none.
+func (r GetCreditByIdResponse) Record() (CreditResource, error) {
+	if r.Answer == nil {
+		return CreditResource{}, errors.New("GetCreditById answered no CreditResource")
+	}
+
+	return *r.Answer, nil
 }
 
 // GetCreditById calls GET /api/v3/credit/{id}.
-func (c Client) GetCreditById(ctx context.Context, id int) (result GetCreditByIdOperationResponse, err error) {
+func (c Client) GetCreditById(ctx context.Context, id int) (result GetCreditByIdResponse, err error) {
+	result.CreditResource = &CreditResource{}
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod: http.MethodGet,
+		Operation:  "GetCreditById",
 		Path:       fmt.Sprintf("/api/v3/credit/%d", id),
 	}
 
@@ -40,11 +64,12 @@ func (c Client) GetCreditById(ctx context.Context, id int) (result GetCreditById
 		return
 	}
 
-	var model CreditResource
-	result.Model = &model
-	if err = resp.Unmarshal(result.Model); err != nil {
+	var answer CreditResource
+	result.Answer = &answer
+	if err = resp.Unmarshal(result.Answer); err != nil {
 		return
 	}
+	result.CreditResource = result.Answer
 
 	return
 }

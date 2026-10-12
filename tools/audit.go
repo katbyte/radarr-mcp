@@ -54,7 +54,7 @@ type auditOut struct {
 
 // finding is a film's finding.
 func finding(m *radarr.MovieResource, detail string) auditFinding {
-	return auditFinding{ID: m.Id, Title: m.Title, Year: m.Year, Path: m.Path, Detail: detail}
+	return auditFinding{ID: int(m.Id), Title: m.Title, Year: m.Year, Path: m.Path, Detail: detail}
 }
 
 // collect adds a finding, counting it and keeping it when there is room.
@@ -96,8 +96,8 @@ func (e *auditEnv) profile(ctx context.Context, id int) (*radarr.QualityProfileR
 			return nil, err
 		}
 		e.profiles = map[int]*radarr.QualityProfileResource{}
-		for i := range res.Model {
-			e.profiles[res.Model[i].Id] = &res.Model[i]
+		for i := range res.Answer {
+			e.profiles[res.Answer[i].Id] = &res.Answer[i]
 		}
 	}
 

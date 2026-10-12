@@ -2,6 +2,8 @@
 
 package radarr
 
+import "slices"
+
 // ExtraFileType is the "ExtraFileType" enum.
 type ExtraFileType string
 
@@ -19,4 +21,9 @@ func PossibleValuesForExtraFileType() []string {
 		string(ExtraFileTypeMetadata),
 		string(ExtraFileTypeOther),
 	}
+}
+
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v ExtraFileType) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForExtraFileType(), string(v))
 }

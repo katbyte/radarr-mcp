@@ -72,7 +72,7 @@ func (r *registry) settingsSections() []settingsSection {
 
 	getHost := func(ctx context.Context) (*radarr.HostConfigResource, error) {
 		res, err := c.GetConfigHost(ctx)
-		return res.Model, err
+		return res.Answer, err
 	}
 	putHost := func(ctx context.Context, id int, v radarr.HostConfigResource) error {
 		_, err := c.PutConfigHostById(ctx, id, v)
@@ -80,7 +80,7 @@ func (r *registry) settingsSections() []settingsSection {
 	}
 	getUI := func(ctx context.Context) (*radarr.UiConfigResource, error) {
 		res, err := c.GetConfigUi(ctx)
-		return res.Model, err
+		return res.Answer, err
 	}
 	putUI := func(ctx context.Context, id int, v radarr.UiConfigResource) error {
 		_, err := c.PutConfigUiById(ctx, id, v)
@@ -88,7 +88,7 @@ func (r *registry) settingsSections() []settingsSection {
 	}
 	getMediaManagement := func(ctx context.Context) (*radarr.MediaManagementConfigResource, error) {
 		res, err := c.GetConfigMediaManagement(ctx)
-		return res.Model, err
+		return res.Answer, err
 	}
 	putMediaManagement := func(ctx context.Context, id int, v radarr.MediaManagementConfigResource) error {
 		_, err := c.PutConfigMediaManagementById(ctx, id, v)
@@ -96,7 +96,7 @@ func (r *registry) settingsSections() []settingsSection {
 	}
 	getIndexer := func(ctx context.Context) (*radarr.IndexerConfigResource, error) {
 		res, err := c.GetConfigIndexer(ctx)
-		return res.Model, err
+		return res.Answer, err
 	}
 	putIndexer := func(ctx context.Context, id int, v radarr.IndexerConfigResource) error {
 		_, err := c.PutConfigIndexerById(ctx, id, v)
@@ -104,7 +104,7 @@ func (r *registry) settingsSections() []settingsSection {
 	}
 	getDownloadClient := func(ctx context.Context) (*radarr.DownloadClientConfigResource, error) {
 		res, err := c.GetConfigDownloadClient(ctx)
-		return res.Model, err
+		return res.Answer, err
 	}
 	putDownloadClient := func(ctx context.Context, id int, v radarr.DownloadClientConfigResource) error {
 		_, err := c.PutConfigDownloadClientById(ctx, id, v)
@@ -112,7 +112,7 @@ func (r *registry) settingsSections() []settingsSection {
 	}
 	getImportList := func(ctx context.Context) (*radarr.ImportListConfigResource, error) {
 		res, err := c.GetConfigImportList(ctx)
-		return res.Model, err
+		return res.Answer, err
 	}
 	putImportList := func(ctx context.Context, id int, v radarr.ImportListConfigResource) error {
 		_, err := c.PutConfigImportListById(ctx, id, v)
@@ -120,7 +120,7 @@ func (r *registry) settingsSections() []settingsSection {
 	}
 	getMetadata := func(ctx context.Context) (*radarr.MetadataConfigResource, error) {
 		res, err := c.GetConfigMetadata(ctx)
-		return res.Model, err
+		return res.Answer, err
 	}
 	putMetadata := func(ctx context.Context, id int, v radarr.MetadataConfigResource) error {
 		_, err := c.PutConfigMetadataById(ctx, id, v)
@@ -144,21 +144,6 @@ func secretSetting(name string) bool {
 	lower := strings.ToLower(name)
 
 	return lower == "apikey" || strings.Contains(lower, "password")
-}
-
-// secretSettings are the credentials among Radarr's own settings, by name, for the line logged for a write to blank. That line's own rule reads how a
-// name ends, and passwordConfirmation ends as no credential's does.
-func (r *registry) secretSettings() []string {
-	var names []string
-	for _, section := range r.settingsSections() {
-		for _, name := range section.names {
-			if secretSetting(name) {
-				names = append(names, name)
-			}
-		}
-	}
-
-	return names
 }
 
 // reachSettings are the settings that decide how Radarr is reached and who

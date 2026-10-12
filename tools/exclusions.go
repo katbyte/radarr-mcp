@@ -20,13 +20,13 @@ type exclusionRow struct {
 }
 
 func exclusionOf(e *radarr.ImportListExclusionResource) exclusionRow {
-	return exclusionRow{ID: e.Id, TmdbID: e.TmdbId, Title: e.MovieTitle, Year: e.MovieYear}
+	return exclusionRow{ID: e.Id, TmdbID: int(e.TmdbId), Title: e.MovieTitle, Year: e.MovieYear}
 }
 
 // exclusions reads every import list exclusion, a page at a time (the
 // unpaged list is deprecated).
 func exclusions(ctx context.Context, c *radarr.Client) ([]radarr.ImportListExclusionResource, error) {
-	res, err := c.GetExclusionsPagedComplete(ctx, radarr.GetExclusionsPagedOperationOptions{})
+	res, err := c.GetExclusionsPagedComplete(ctx, radarr.GetExclusionsPagedOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func registerExclusionTools(r *registry) {
 			return nil, exclusionRow{}, err
 		}
 
-		return nil, exclusionOf(res.Model), nil
+		return nil, exclusionOf(res.Answer), nil
 	})
 
 	type exclusionRemoveIn struct {

@@ -74,7 +74,8 @@
           "Type": {
             "Type": "List",
             "NestedItem": {
-              "Type": "Integer"
+              "Type": "ID",
+              "ReferenceName": "MovieID"
             }
           }
         },
@@ -133,7 +134,8 @@
           "Field": "MovieId",
           "In": "Query",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieID"
           }
         },
         {
@@ -320,7 +322,8 @@
           "Name": "MovieId",
           "JsonName": "movieId",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieID"
           }
         },
         {

@@ -13,8 +13,8 @@ type HistoryResource struct {
 	Id                  int                    `json:"id,omitempty"`
 	Languages           []Language             `json:"languages,omitzero"`
 	Movie               *MovieResource         `json:"movie,omitempty"`
-	MovieId             int                    `json:"movieId,omitempty"`
+	MovieId             MovieID                `json:"movieId,omitempty"`
 	Quality             *QualityModel          `json:"quality,omitempty"`
-	QualityCutoffNotMet *bool                  `json:"qualityCutoffNotMet,omitempty"`
+	QualityCutoffNotMet bool                   `json:"qualityCutoffNotMet"`
 	SourceTitle         string                 `json:"sourceTitle,omitempty"`
 }

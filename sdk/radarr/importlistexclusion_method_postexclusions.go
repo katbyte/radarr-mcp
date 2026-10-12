@@ -4,25 +4,49 @@ package radarr
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// PostExclusionsOperationResponse is the result of PostExclusions.
-type PostExclusionsOperationResponse struct {
+// PostExclusionsResponse is the result of PostExclusions.
+//
+// Answer is the ImportListExclusionResource answered, nil when the server answered none (a 204), which
+// Answered tells. The same record is embedded, so res.Answer.Name may be read as
+// res.Name; when nothing was answered the embedded record is a zero one, so that
+// read is empty rather than a panic. Only the method sets the two; a response built
+// by hand sets both or neither.
+type PostExclusionsResponse struct {
 	HttpResponse *http.Response
-	Model        *ImportListExclusionResource
+	Answer       *ImportListExclusionResource
+	*ImportListExclusionResource
+}
+
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r PostExclusionsResponse) Answered() bool { return r.Answer != nil }
+
+// Record is the ImportListExclusionResource answered, as a value to change and write back, or an
+// error when the server answered none.
+func (r PostExclusionsResponse) Record() (ImportListExclusionResource, error) {
+	if r.Answer == nil {
+		return ImportListExclusionResource{}, errors.New("PostExclusions answered no ImportListExclusionResource")
+	}
+
+	return *r.Answer, nil
 }
 
 // PostExclusions calls POST /api/v3/exclusions.
-func (c Client) PostExclusions(ctx context.Context, input ImportListExclusionResource) (result PostExclusionsOperationResponse, err error) {
+func (c Client) PostExclusions(ctx context.Context, input ImportListExclusionResource) (result PostExclusionsResponse, err error) {
+	result.ImportListExclusionResource = &ImportListExclusionResource{}
 	opts := client.RequestOptions{
 		ContentType: "application/json",
 		ExpectedStatusCodes: []int{
 			http.StatusCreated,
 		},
 		HTTPMethod: http.MethodPost,
+		Operation:  "PostExclusions",
 		Path:       "/api/v3/exclusions",
 	}
 
@@ -44,11 +68,12 @@ func (c Client) PostExclusions(ctx context.Context, input ImportListExclusionRes
 		return
 	}
 
-	var model ImportListExclusionResource
-	result.Model = &model
-	if err = resp.Unmarshal(result.Model); err != nil {
+	var answer ImportListExclusionResource
+	result.Answer = &answer
+	if err = resp.Unmarshal(result.Answer); err != nil {
 		return
 	}
+	result.ImportListExclusionResource = result.Answer
 
 	return
 }

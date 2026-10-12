@@ -9,25 +9,29 @@ import (
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetMovieLookupOperationResponse is the result of GetMovieLookup.
-type GetMovieLookupOperationResponse struct {
+// GetMovieLookupResponse is the result of GetMovieLookup.
+type GetMovieLookupResponse struct {
 	HttpResponse *http.Response
-	Model        []MovieResource
+	Answer       []MovieResource
 }
 
-// GetMovieLookupOperationOptions holds the query and header parameters of GetMovieLookup.
-type GetMovieLookupOperationOptions struct {
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetMovieLookupResponse) Answered() bool { return r.Answer != nil }
+
+// GetMovieLookupOptions holds the query and header parameters of GetMovieLookup.
+type GetMovieLookupOptions struct {
 	Term string
 }
 
 // ToHeaders returns the header parameters the options set.
-func (o GetMovieLookupOperationOptions) ToHeaders() *client.Headers {
+func (o GetMovieLookupOptions) ToHeaders() *client.Headers {
 	out := client.Headers{}
 	return &out
 }
 
 // ToQuery returns the query parameters the options set.
-func (o GetMovieLookupOperationOptions) ToQuery() *client.QueryParams {
+func (o GetMovieLookupOptions) ToQuery() *client.QueryParams {
 	out := client.QueryParams{}
 	if o.Term != "" {
 		out.Append("term", o.Term)
@@ -36,12 +40,13 @@ func (o GetMovieLookupOperationOptions) ToQuery() *client.QueryParams {
 }
 
 // GetMovieLookup calls GET /api/v3/movie/lookup.
-func (c Client) GetMovieLookup(ctx context.Context, options GetMovieLookupOperationOptions) (result GetMovieLookupOperationResponse, err error) {
+func (c Client) GetMovieLookup(ctx context.Context, options GetMovieLookupOptions) (result GetMovieLookupResponse, err error) {
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodGet,
+		Operation:     "GetMovieLookup",
 		OptionsObject: options,
 		Path:          "/api/v3/movie/lookup",
 	}
@@ -60,7 +65,7 @@ func (c Client) GetMovieLookup(ctx context.Context, options GetMovieLookupOperat
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

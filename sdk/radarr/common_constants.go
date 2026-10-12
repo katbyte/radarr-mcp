@@ -2,6 +2,8 @@
 
 package radarr
 
+import "slices"
+
 // AddMovieMethod is the "AddMovieMethod" enum.
 type AddMovieMethod string
 
@@ -21,6 +23,11 @@ func PossibleValuesForAddMovieMethod() []string {
 	}
 }
 
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v AddMovieMethod) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForAddMovieMethod(), string(v))
+}
+
 // ApplyTags is the "ApplyTags" enum.
 type ApplyTags string
 
@@ -38,6 +45,11 @@ func PossibleValuesForApplyTags() []string {
 		string(ApplyTagsRemove),
 		string(ApplyTagsReplace),
 	}
+}
+
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v ApplyTags) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForApplyTags(), string(v))
 }
 
 // AuthenticationType is the "AuthenticationType" enum.
@@ -61,6 +73,11 @@ func PossibleValuesForAuthenticationType() []string {
 	}
 }
 
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v AuthenticationType) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForAuthenticationType(), string(v))
+}
+
 // DownloadProtocol is the "DownloadProtocol" enum.
 type DownloadProtocol string
 
@@ -78,6 +95,11 @@ func PossibleValuesForDownloadProtocol() []string {
 		string(DownloadProtocolUsenet),
 		string(DownloadProtocolTorrent),
 	}
+}
+
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v DownloadProtocol) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForDownloadProtocol(), string(v))
 }
 
 // MediaCoverTypes is the "MediaCoverTypes" enum.
@@ -107,6 +129,11 @@ func PossibleValuesForMediaCoverTypes() []string {
 	}
 }
 
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v MediaCoverTypes) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForMediaCoverTypes(), string(v))
+}
+
 // Modifier is the "Modifier" enum.
 type Modifier string
 
@@ -132,6 +159,11 @@ func PossibleValuesForModifier() []string {
 	}
 }
 
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v Modifier) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForModifier(), string(v))
+}
+
 // MonitorTypes is the "MonitorTypes" enum.
 type MonitorTypes string
 
@@ -149,6 +181,11 @@ func PossibleValuesForMonitorTypes() []string {
 		string(MonitorTypesMovieAndCollection),
 		string(MonitorTypesNone),
 	}
+}
+
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v MonitorTypes) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForMonitorTypes(), string(v))
 }
 
 // MovieStatusType is the "MovieStatusType" enum.
@@ -174,6 +211,11 @@ func PossibleValuesForMovieStatusType() []string {
 	}
 }
 
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v MovieStatusType) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForMovieStatusType(), string(v))
+}
+
 // PrivacyLevel is the "PrivacyLevel" enum.
 type PrivacyLevel string
 
@@ -195,6 +237,11 @@ func PossibleValuesForPrivacyLevel() []string {
 	}
 }
 
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v PrivacyLevel) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForPrivacyLevel(), string(v))
+}
+
 // ProviderMessageType is the "ProviderMessageType" enum.
 type ProviderMessageType string
 
@@ -212,6 +259,11 @@ func PossibleValuesForProviderMessageType() []string {
 		string(ProviderMessageTypeWarning),
 		string(ProviderMessageTypeError),
 	}
+}
+
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v ProviderMessageType) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForProviderMessageType(), string(v))
 }
 
 // QualitySource is the "QualitySource" enum.
@@ -247,6 +299,11 @@ func PossibleValuesForQualitySource() []string {
 	}
 }
 
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v QualitySource) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForQualitySource(), string(v))
+}
+
 // QueueStatus is the "QueueStatus" enum.
 type QueueStatus string
 
@@ -280,6 +337,11 @@ func PossibleValuesForQueueStatus() []string {
 	}
 }
 
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v QueueStatus) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForQueueStatus(), string(v))
+}
+
 // RatingType is the "RatingType" enum.
 type RatingType string
 
@@ -295,6 +357,11 @@ func PossibleValuesForRatingType() []string {
 		string(RatingTypeUser),
 		string(RatingTypeCritic),
 	}
+}
+
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v RatingType) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForRatingType(), string(v))
 }
 
 // SortDirection is the "SortDirection" enum.
@@ -316,6 +383,11 @@ func PossibleValuesForSortDirection() []string {
 	}
 }
 
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v SortDirection) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForSortDirection(), string(v))
+}
+
 // SourceType is the "SourceType" enum.
 type SourceType string
 
@@ -335,6 +407,11 @@ func PossibleValuesForSourceType() []string {
 		string(SourceTypeUser),
 		string(SourceTypeIndexer),
 	}
+}
+
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v SourceType) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForSourceType(), string(v))
 }
 
 // TrackedDownloadState is the "TrackedDownloadState" enum.
@@ -366,6 +443,11 @@ func PossibleValuesForTrackedDownloadState() []string {
 	}
 }
 
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v TrackedDownloadState) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForTrackedDownloadState(), string(v))
+}
+
 // TrackedDownloadStatus is the "TrackedDownloadStatus" enum.
 type TrackedDownloadStatus string
 
@@ -383,6 +465,11 @@ func PossibleValuesForTrackedDownloadStatus() []string {
 		string(TrackedDownloadStatusWarning),
 		string(TrackedDownloadStatusError),
 	}
+}
+
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v TrackedDownloadStatus) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForTrackedDownloadStatus(), string(v))
 }
 
 // UpdateMechanism is the "UpdateMechanism" enum.
@@ -406,4 +493,9 @@ func PossibleValuesForUpdateMechanism() []string {
 		string(UpdateMechanismApt),
 		string(UpdateMechanismDocker),
 	}
+}
+
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v UpdateMechanism) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForUpdateMechanism(), string(v))
 }

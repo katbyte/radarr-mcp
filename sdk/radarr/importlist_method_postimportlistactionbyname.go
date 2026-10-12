@@ -12,20 +12,25 @@ import (
 	"github.com/katbyte/pandorest/client"
 )
 
-// PostImportListActionByNameOperationResponse is the result of PostImportListActionByName.
-type PostImportListActionByNameOperationResponse struct {
+// PostImportListActionByNameResponse is the result of PostImportListActionByName.
+type PostImportListActionByNameResponse struct {
 	HttpResponse *http.Response
-	Model        json.RawMessage
+	Answer       json.RawMessage
 }
 
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r PostImportListActionByNameResponse) Answered() bool { return r.Answer != nil }
+
 // PostImportListActionByName calls POST /api/v3/importlist/action/{name}.
-func (c Client) PostImportListActionByName(ctx context.Context, name string, input ImportListResource) (result PostImportListActionByNameOperationResponse, err error) {
+func (c Client) PostImportListActionByName(ctx context.Context, name string, input ImportListResource) (result PostImportListActionByNameResponse, err error) {
 	opts := client.RequestOptions{
 		ContentType: "application/json",
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod: http.MethodPost,
+		Operation:  "PostImportListActionByName",
 		Path:       fmt.Sprintf("/api/v3/importlist/action/%s", url.PathEscape(name)),
 	}
 
@@ -47,7 +52,7 @@ func (c Client) PostImportListActionByName(ctx context.Context, name string, inp
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

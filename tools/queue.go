@@ -40,7 +40,7 @@ func queueOf(q *radarr.QueueResource) queueRow {
 	row := queueRow{
 		ID:                  q.Id,
 		Title:               outsideName(q.Title),
-		MovieID:             val(q.MovieId),
+		MovieID:             int(val(q.MovieId)),
 		Status:              string(q.Status),
 		State:               string(q.TrackedDownloadState),
 		Health:              string(q.TrackedDownloadStatus),
@@ -78,8 +78,8 @@ func queueOf(q *radarr.QueueResource) queueRow {
 // queueItems reads the whole queue, each item with its film, optionally for
 // some films only, and optionally with the downloads Radarr could not match
 // to a film.
-func queueItems(ctx context.Context, c *radarr.Client, movieIDs []int, unknown bool) ([]radarr.QueueResource, error) {
-	res, err := c.GetQueueComplete(ctx, radarr.GetQueueOperationOptions{
+func queueItems(ctx context.Context, c *radarr.Client, movieIDs []radarr.MovieID, unknown bool) ([]radarr.QueueResource, error) {
+	res, err := c.GetQueueComplete(ctx, radarr.GetQueueOptions{
 		IncludeMovie:             new(true),
 		IncludeUnknownMovieItems: new(unknown),
 		MovieIds:                 movieIDs,
@@ -92,7 +92,7 @@ func queueItems(ctx context.Context, c *radarr.Client, movieIDs []int, unknown b
 }
 
 // queueFor is the queue for some films, as rows.
-func queueFor(ctx context.Context, c *radarr.Client, movieIDs []int) ([]queueRow, error) {
+func queueFor(ctx context.Context, c *radarr.Client, movieIDs []radarr.MovieID) ([]queueRow, error) {
 	items, err := queueItems(ctx, c, movieIDs, false)
 	if err != nil {
 		return nil, err
@@ -122,13 +122,13 @@ func registerQueueTools(r *registry) {
 		Description: "List the downloads Radarr is tracking: what each is for, how far along it is, and where Radarr has it - downloading, waiting to import, blocked from importing - with the reasons it gives for anything stuck. " +
 			"Stuck ones come first.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in queueListIn) (*mcp.CallToolResult, queueListOut, error) {
-		var ids []int
+		var ids []radarr.MovieID
 		if in.Movie != "" {
 			m, err := resolveMovie(ctx, client, in.Movie)
 			if err != nil {
 				return nil, queueListOut{}, err
 			}
-			ids = []int{m.Id}
+			ids = []radarr.MovieID{m.Id}
 		}
 		items, err := queueItems(ctx, client, ids, in.IncludeUnknown)
 		if err != nil {
@@ -183,7 +183,7 @@ func registerQueueTools(r *registry) {
 
 		out := queueRemoveOut{}
 		for _, id := range in.IDs {
-			if _, err := client.DeleteQueueById(ctx, id, radarr.DeleteQueueByIdOperationOptions{
+			if _, err := client.DeleteQueueById(ctx, id, radarr.DeleteQueueByIdOptions{
 				RemoveFromClient: new(in.RemoveFromClient),
 				Blocklist:        new(in.Blocklist),
 				SkipRedownload:   new(in.SkipRedownload),

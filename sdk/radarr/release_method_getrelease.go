@@ -4,46 +4,61 @@ package radarr
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetReleaseOperationResponse is the result of GetRelease.
-type GetReleaseOperationResponse struct {
+// GetReleaseResponse is the result of GetRelease.
+type GetReleaseResponse struct {
 	HttpResponse *http.Response
-	Model        []ReleaseResource
+	Answer       []ReleaseResource
 }
 
-// GetReleaseOperationOptions holds the query and header parameters of GetRelease.
-type GetReleaseOperationOptions struct {
-	MovieId *int
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetReleaseResponse) Answered() bool { return r.Answer != nil }
+
+// GetReleaseOptions holds the query and header parameters of GetRelease.
+type GetReleaseOptions struct {
+	MovieId MovieID
 }
 
 // ToHeaders returns the header parameters the options set.
-func (o GetReleaseOperationOptions) ToHeaders() *client.Headers {
+func (o GetReleaseOptions) ToHeaders() *client.Headers {
 	out := client.Headers{}
 	return &out
 }
 
 // ToQuery returns the query parameters the options set.
-func (o GetReleaseOperationOptions) ToQuery() *client.QueryParams {
+func (o GetReleaseOptions) ToQuery() *client.QueryParams {
 	out := client.QueryParams{}
-	if o.MovieId != nil {
-		out.Append("movieId", strconv.Itoa(*o.MovieId))
+	if o.MovieId != 0 {
+		out.Append("movieId", strconv.Itoa(int(o.MovieId)))
 	}
 	return &out
 }
 
 // GetRelease calls GET /api/v3/release.
-func (c Client) GetRelease(ctx context.Context, options GetReleaseOperationOptions) (result GetReleaseOperationResponse, err error) {
+func (c Client) GetRelease(ctx context.Context, options ...GetReleaseOptions) (result GetReleaseResponse, err error) {
+	if len(options) > 1 {
+		err = fmt.Errorf("GetRelease takes one options struct at most, not %d", len(options))
+		return
+	}
+	var option GetReleaseOptions
+	if len(options) == 1 {
+		option = options[0]
+	}
+
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodGet,
-		OptionsObject: options,
+		Operation:     "GetRelease",
+		OptionsObject: option,
 		Path:          "/api/v3/release",
 	}
 
@@ -61,7 +76,7 @@ func (c Client) GetRelease(ctx context.Context, options GetReleaseOperationOptio
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

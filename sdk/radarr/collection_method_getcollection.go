@@ -4,31 +4,36 @@ package radarr
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetCollectionOperationResponse is the result of GetCollection.
-type GetCollectionOperationResponse struct {
+// GetCollectionResponse is the result of GetCollection.
+type GetCollectionResponse struct {
 	HttpResponse *http.Response
-	Model        []CollectionResource
+	Answer       []CollectionResource
 }
 
-// GetCollectionOperationOptions holds the query and header parameters of GetCollection.
-type GetCollectionOperationOptions struct {
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetCollectionResponse) Answered() bool { return r.Answer != nil }
+
+// GetCollectionOptions holds the query and header parameters of GetCollection.
+type GetCollectionOptions struct {
 	TmdbId *int
 }
 
 // ToHeaders returns the header parameters the options set.
-func (o GetCollectionOperationOptions) ToHeaders() *client.Headers {
+func (o GetCollectionOptions) ToHeaders() *client.Headers {
 	out := client.Headers{}
 	return &out
 }
 
 // ToQuery returns the query parameters the options set.
-func (o GetCollectionOperationOptions) ToQuery() *client.QueryParams {
+func (o GetCollectionOptions) ToQuery() *client.QueryParams {
 	out := client.QueryParams{}
 	if o.TmdbId != nil {
 		out.Append("tmdbId", strconv.Itoa(*o.TmdbId))
@@ -37,13 +42,23 @@ func (o GetCollectionOperationOptions) ToQuery() *client.QueryParams {
 }
 
 // GetCollection calls GET /api/v3/collection.
-func (c Client) GetCollection(ctx context.Context, options GetCollectionOperationOptions) (result GetCollectionOperationResponse, err error) {
+func (c Client) GetCollection(ctx context.Context, options ...GetCollectionOptions) (result GetCollectionResponse, err error) {
+	if len(options) > 1 {
+		err = fmt.Errorf("GetCollection takes one options struct at most, not %d", len(options))
+		return
+	}
+	var option GetCollectionOptions
+	if len(options) == 1 {
+		option = options[0]
+	}
+
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodGet,
-		OptionsObject: options,
+		Operation:     "GetCollection",
+		OptionsObject: option,
 		Path:          "/api/v3/collection",
 	}
 
@@ -61,7 +76,7 @@ func (c Client) GetCollection(ctx context.Context, options GetCollectionOperatio
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

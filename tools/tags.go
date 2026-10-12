@@ -41,9 +41,9 @@ func resolveTag(ctx context.Context, c *radarr.Client, ref string) (*radarr.TagD
 		return nil, err
 	}
 	ref = strings.TrimSpace(ref)
-	labels := make([]string, 0, len(res.Model))
-	for i := range res.Model {
-		t := &res.Model[i]
+	labels := make([]string, 0, len(res.Answer))
+	for i := range res.Answer {
+		t := &res.Answer[i]
 		if strings.EqualFold(t.Label, ref) || strconv.Itoa(t.Id) == ref {
 			return t, nil
 		}
@@ -69,9 +69,9 @@ func registerTagTools(r *registry) {
 		if err != nil {
 			return nil, tagListOut{}, err
 		}
-		rows := make([]tagRow, 0, len(res.Model))
-		for i := range res.Model {
-			rows = append(rows, tagOf(&res.Model[i]))
+		rows := make([]tagRow, 0, len(res.Answer))
+		for i := range res.Answer {
+			rows = append(rows, tagOf(&res.Answer[i]))
 		}
 		slices.SortFunc(rows, func(a, b tagRow) int { return strings.Compare(a.Label, b.Label) })
 
@@ -100,7 +100,7 @@ func registerTagTools(r *registry) {
 			return nil, tagRow{}, err
 		}
 
-		return nil, tagRow{ID: res.Model.Id, Label: res.Model.Label}, nil
+		return nil, tagRow{ID: res.Answer.Id, Label: res.Answer.Label}, nil
 	})
 
 	type tagRenameIn struct {

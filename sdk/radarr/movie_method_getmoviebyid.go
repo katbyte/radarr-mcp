@@ -4,26 +4,52 @@ package radarr
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetMovieByIdOperationResponse is the result of GetMovieById.
-type GetMovieByIdOperationResponse struct {
+// GetMovieByIdResponse is the result of GetMovieById.
+//
+// Answer is the MovieResource answered, nil when the server answered none (a 204), which
+// Answered tells. The same record is embedded, so res.Answer.Name may be read as
+// res.Name; when nothing was answered the embedded record is a zero one, so that
+// read is empty rather than a panic. Only the method sets the two; a response built
+// by hand sets both or neither.
+type GetMovieByIdResponse struct {
 	HttpResponse *http.Response
-	Model        *MovieResource
+	Answer       *MovieResource
+	*MovieResource
+}
+
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetMovieByIdResponse) Answered() bool { return r.Answer != nil }
+
+// Record is the MovieResource answered, as a value to change and write back, or an
+// error when the server answered none.
+func (r GetMovieByIdResponse) Record() (MovieResource, error) {
+	if r.Answer == nil {
+		return MovieResource{}, errors.New("GetMovieById answered no MovieResource")
+	}
+
+	return *r.Answer, nil
 }
 
 // GetMovieById calls GET /api/v3/movie/{id}.
-func (c Client) GetMovieById(ctx context.Context, id int) (result GetMovieByIdOperationResponse, err error) {
+func (c Client) GetMovieById(ctx context.Context, id MovieID) (result GetMovieByIdResponse, err error) {
+	result.MovieResource = &MovieResource{}
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod: http.MethodGet,
-		Path:       fmt.Sprintf("/api/v3/movie/%d", id),
+		Operation:  "GetMovieById",
+		Path:       fmt.Sprintf("/api/v3/movie/%s", url.PathEscape(strconv.Itoa(int(id)))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
@@ -40,11 +66,12 @@ func (c Client) GetMovieById(ctx context.Context, id int) (result GetMovieByIdOp
 		return
 	}
 
-	var model MovieResource
-	result.Model = &model
-	if err = resp.Unmarshal(result.Model); err != nil {
+	var answer MovieResource
+	result.Answer = &answer
+	if err = resp.Unmarshal(result.Answer); err != nil {
 		return
 	}
+	result.MovieResource = result.Answer
 
 	return
 }

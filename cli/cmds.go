@@ -164,9 +164,9 @@ Needs no server: it reports what would be registered, not what a server accepts.
 				return err
 			}
 
-			s := status.Model
+			s := status.Answer
 			_, _ = fmt.Fprintf(out, "%s %s (%s %s) at %s\n", s.AppName, s.Version, s.OsName, s.OsVersion, client.Client.BaseURL)
-			for _, f := range folders.Model {
+			for _, f := range folders.Answer {
 				_, _ = fmt.Fprintf(out, "  root folder %q, %s free\n", f.Path, humanBytes(val(f.FreeSpace)))
 			}
 			return nil

@@ -15,7 +15,8 @@
           "Type": {
             "Type": "List",
             "NestedItem": {
-              "Type": "Integer"
+              "Type": "ID",
+              "ReferenceName": "MovieID"
             }
           }
         }
@@ -59,14 +60,16 @@
           "Name": "MovieFileId",
           "JsonName": "movieFileId",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieFileID"
           }
         },
         {
           "Name": "MovieId",
           "JsonName": "movieId",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieID"
           }
         },
         {

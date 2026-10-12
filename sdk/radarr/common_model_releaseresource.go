@@ -27,8 +27,8 @@ type ReleaseResource struct {
 	Languages           []Language             `json:"languages,omitzero"`
 	Leechers            *int                   `json:"leechers,omitempty"`
 	MagnetUrl           string                 `json:"magnetUrl,omitempty"`
-	MappedMovieId       *int                   `json:"mappedMovieId,omitempty"`
-	MovieId             *int                   `json:"movieId,omitempty"`
+	MappedMovieId       *MovieID               `json:"mappedMovieId,omitempty"`
+	MovieId             *MovieID               `json:"movieId,omitempty"`
 	MovieRequested      *bool                  `json:"movieRequested,omitempty"`
 	MovieTitles         []string               `json:"movieTitles,omitzero"`
 	Protocol            DownloadProtocol       `json:"protocol,omitempty"`
@@ -47,5 +47,5 @@ type ReleaseResource struct {
 	SubGroup            string                 `json:"subGroup,omitempty"`
 	TemporarilyRejected *bool                  `json:"temporarilyRejected,omitempty"`
 	Title               string                 `json:"title,omitempty"`
-	TmdbId              int                    `json:"tmdbId,omitempty"`
+	TmdbId              TmdbID                 `json:"tmdbId,omitempty"`
 }

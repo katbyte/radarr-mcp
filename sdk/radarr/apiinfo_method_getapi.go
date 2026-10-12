@@ -4,24 +4,48 @@ package radarr
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetApiOperationResponse is the result of GetApi.
-type GetApiOperationResponse struct {
+// GetApiResponse is the result of GetApi.
+//
+// Answer is the ApiInfoResource answered, nil when the server answered none (a 204), which
+// Answered tells. The same record is embedded, so res.Answer.Name may be read as
+// res.Name; when nothing was answered the embedded record is a zero one, so that
+// read is empty rather than a panic. Only the method sets the two; a response built
+// by hand sets both or neither.
+type GetApiResponse struct {
 	HttpResponse *http.Response
-	Model        *ApiInfoResource
+	Answer       *ApiInfoResource
+	*ApiInfoResource
+}
+
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetApiResponse) Answered() bool { return r.Answer != nil }
+
+// Record is the ApiInfoResource answered, as a value to change and write back, or an
+// error when the server answered none.
+func (r GetApiResponse) Record() (ApiInfoResource, error) {
+	if r.Answer == nil {
+		return ApiInfoResource{}, errors.New("GetApi answered no ApiInfoResource")
+	}
+
+	return *r.Answer, nil
 }
 
 // GetApi calls GET /api.
-func (c Client) GetApi(ctx context.Context) (result GetApiOperationResponse, err error) {
+func (c Client) GetApi(ctx context.Context) (result GetApiResponse, err error) {
+	result.ApiInfoResource = &ApiInfoResource{}
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod: http.MethodGet,
+		Operation:  "GetApi",
 		Path:       "/api",
 	}
 
@@ -39,11 +63,12 @@ func (c Client) GetApi(ctx context.Context) (result GetApiOperationResponse, err
 		return
 	}
 
-	var model ApiInfoResource
-	result.Model = &model
-	if err = resp.Unmarshal(result.Model); err != nil {
+	var answer ApiInfoResource
+	result.Answer = &answer
+	if err = resp.Unmarshal(result.Answer); err != nil {
 		return
 	}
+	result.ApiInfoResource = result.Answer
 
 	return
 }

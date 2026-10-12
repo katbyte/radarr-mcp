@@ -2,6 +2,8 @@
 
 package radarr
 
+import "slices"
+
 // MovieHistoryEventType is the "MovieHistoryEventType" enum.
 type MovieHistoryEventType string
 
@@ -29,4 +31,9 @@ func PossibleValuesForMovieHistoryEventType() []string {
 		string(MovieHistoryEventTypeMovieFileRenamed),
 		string(MovieHistoryEventTypeDownloadIgnored),
 	}
+}
+
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v MovieHistoryEventType) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForMovieHistoryEventType(), string(v))
 }

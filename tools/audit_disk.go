@@ -39,22 +39,22 @@ func namingAudit(ctx context.Context, e *auditEnv, in namingIn) (auditOut, error
 	if err != nil {
 		return out, err
 	}
-	byID := map[int]*radarr.MovieResource{}
-	var withFiles []int
+	byID := map[radarr.MovieID]*radarr.MovieResource{}
+	var withFiles []radarr.MovieID
 	for i := range movies {
 		byID[movies[i].Id] = &movies[i]
 		if isTrue(movies[i].HasFile) {
 			withFiles = append(withFiles, movies[i].Id)
 		}
 	}
-	if isTrue(naming.Model.RenameMovies) {
+	if isTrue(naming.Answer.RenameMovies) {
 		for start := 0; start < len(withFiles); start += renameBatch {
 			ids := withFiles[start:min(start+renameBatch, len(withFiles))]
-			res, err := e.c.GetRename(ctx, radarr.GetRenameOperationOptions{MovieId: ids})
+			res, err := e.c.GetRename(ctx, radarr.GetRenameOptions{MovieId: ids})
 			if err != nil {
 				return out, err
 			}
-			for _, p := range res.Model {
+			for _, p := range res.Answer {
 				m := byID[p.MovieId]
 				if m == nil {
 					continue
@@ -138,7 +138,7 @@ func unmappedAudit(ctx context.Context, e *auditEnv, in auditIn) (auditOut, erro
 		root = f.Path
 	}
 	out := auditOut{}
-	for _, rf := range folders.Model {
+	for _, rf := range folders.Answer {
 		if root != "" && rf.Path != root {
 			continue
 		}
@@ -149,7 +149,7 @@ func unmappedAudit(ctx context.Context, e *auditEnv, in auditIn) (auditOut, erro
 			for i := range movies {
 				m := &movies[i]
 				if cleanTitle(m.Title) == cleanTitle(title) && (year == 0 || m.Year == year) {
-					f.DuplicateOf = m.Id
+					f.DuplicateOf = int(m.Id)
 					f.Detail = fmt.Sprintf("a second copy of %s, which the library keeps at %s", titleYear(m.Title, m.Year), m.Path)
 					if rest != "" {
 						f.Detail += " (this one says " + rest + ")"
@@ -167,7 +167,7 @@ func unmappedAudit(ctx context.Context, e *auditEnv, in auditIn) (auditOut, erro
 // folderNames lists the folders directly inside a path, as Radarr sees them
 // from where it runs.
 func folderNames(ctx context.Context, c *radarr.Client, path string) (map[string]bool, error) {
-	res, err := c.GetFileSystem(ctx, radarr.GetFileSystemOperationOptions{
+	res, err := c.GetFileSystem(ctx, radarr.GetFileSystemOptions{
 		Path: strings.TrimSuffix(path, "/") + "/", IncludeFiles: new(false), AllowFoldersWithoutTrailingSlashes: new(true),
 	})
 	if err != nil {
@@ -181,7 +181,7 @@ func folderNames(ctx context.Context, c *radarr.Client, path string) (map[string
 			Path string `json:"path"`
 		} `json:"directories"`
 	}
-	if err := json.Unmarshal(res.Model, &body); err != nil {
+	if err := json.Unmarshal(res.Answer, &body); err != nil {
 		return nil, fmt.Errorf("reading the folders in %s: %w", path, err)
 	}
 	out := make(map[string]bool, len(body.Directories))
@@ -210,8 +210,8 @@ func missingFoldersAudit(ctx context.Context, e *auditEnv, in auditIn) (auditOut
 	// a renamed film now lives
 	onDisk := map[string]map[string]bool{}
 	unmapped := map[string][]radarr.UnmappedFolder{}
-	for i := range roots.Model {
-		rf := &roots.Model[i]
+	for i := range roots.Answer {
+		rf := &roots.Answer[i]
 		if !isTrue(rf.Accessible) {
 			continue
 		}
@@ -316,7 +316,7 @@ func untrackedAudit(ctx context.Context, e *auditEnv, in auditIn) (auditOut, err
 		out.Scanned++
 		// by folder alone: given the film's id as well, Radarr ignores the
 		// folder and the filter and answers the film's own tracked files
-		files, err := scanImport(ctx, e.c, radarr.GetManualImportOperationOptions{Folder: m.Path, FilterExistingFiles: new(true)})
+		files, err := scanImport(ctx, e.c, radarr.GetManualImportOptions{Folder: m.Path, FilterExistingFiles: new(true)})
 		if err != nil {
 			return out, fmt.Errorf("scanning %s: %w", m.Path, err)
 		}

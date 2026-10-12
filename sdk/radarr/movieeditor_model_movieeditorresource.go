@@ -10,7 +10,7 @@ type MovieEditorResource struct {
 	MinimumAvailability MovieStatusType `json:"minimumAvailability,omitempty"`
 	Monitored           *bool           `json:"monitored,omitempty"`
 	MoveFiles           *bool           `json:"moveFiles,omitempty"`
-	MovieIds            []int           `json:"movieIds,omitzero"`
+	MovieIds            []MovieID       `json:"movieIds,omitzero"`
 	QualityProfileId    *int            `json:"qualityProfileId,omitempty"`
 	RootFolderPath      string          `json:"rootFolderPath,omitempty"`
 	Tags                []int           `json:"tags,omitzero"`

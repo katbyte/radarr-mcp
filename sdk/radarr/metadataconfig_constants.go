@@ -2,6 +2,8 @@
 
 package radarr
 
+import "slices"
+
 // TMDbCountryCode is the "TMDbCountryCode" enum.
 type TMDbCountryCode string
 
@@ -39,4 +41,9 @@ func PossibleValuesForTMDbCountryCode() []string {
 		string(TMDbCountryCodeEs),
 		string(TMDbCountryCodeUs),
 	}
+}
+
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v TMDbCountryCode) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForTMDbCountryCode(), string(v))
 }

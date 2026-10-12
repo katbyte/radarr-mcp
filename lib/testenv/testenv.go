@@ -3,8 +3,8 @@
 // the record/replay proxy Radarr's calls to its metadata service go through
 // is set up. The machinery is go-kt's (test/env and test/replayproxy).
 //
-// The acceptance suite (../../acceptance) drives the tools over MCP and the
-// integration suite (../../integration) drives the generated SDK; each runs
+// The tool suite (../../acceptance/tools) drives the tools over MCP and the
+// SDK suite (../../acceptance/radarr) drives the generated SDK; each runs
 // against a Radarr of its own, with cassettes of its own.
 package testenv
 

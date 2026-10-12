@@ -16,5 +16,11 @@ type ImportListExclusionResource struct {
 	Name               string                        `json:"name,omitempty"`
 	Presets            []ImportListExclusionResource `json:"presets,omitzero"`
 	Tags               []int                         `json:"tags,omitzero"`
-	TmdbId             int                           `json:"tmdbId,omitempty"`
+	TmdbId             TmdbID                        `json:"tmdbId,omitempty"`
 }
+
+// GetName is the record's Name, for code that handles records of several types alike.
+func (m ImportListExclusionResource) GetName() string { return m.Name }
+
+// GetId is the record's Id, for code that handles records of several types alike.
+func (m ImportListExclusionResource) GetId() int { return m.Id }

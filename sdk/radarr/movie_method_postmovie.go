@@ -4,25 +4,49 @@ package radarr
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// PostMovieOperationResponse is the result of PostMovie.
-type PostMovieOperationResponse struct {
+// PostMovieResponse is the result of PostMovie.
+//
+// Answer is the MovieResource answered, nil when the server answered none (a 204), which
+// Answered tells. The same record is embedded, so res.Answer.Name may be read as
+// res.Name; when nothing was answered the embedded record is a zero one, so that
+// read is empty rather than a panic. Only the method sets the two; a response built
+// by hand sets both or neither.
+type PostMovieResponse struct {
 	HttpResponse *http.Response
-	Model        *MovieResource
+	Answer       *MovieResource
+	*MovieResource
+}
+
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r PostMovieResponse) Answered() bool { return r.Answer != nil }
+
+// Record is the MovieResource answered, as a value to change and write back, or an
+// error when the server answered none.
+func (r PostMovieResponse) Record() (MovieResource, error) {
+	if r.Answer == nil {
+		return MovieResource{}, errors.New("PostMovie answered no MovieResource")
+	}
+
+	return *r.Answer, nil
 }
 
 // PostMovie calls POST /api/v3/movie.
-func (c Client) PostMovie(ctx context.Context, input MovieResource) (result PostMovieOperationResponse, err error) {
+func (c Client) PostMovie(ctx context.Context, input MovieResource) (result PostMovieResponse, err error) {
+	result.MovieResource = &MovieResource{}
 	opts := client.RequestOptions{
 		ContentType: "application/json",
 		ExpectedStatusCodes: []int{
 			http.StatusCreated,
 		},
 		HTTPMethod: http.MethodPost,
+		Operation:  "PostMovie",
 		Path:       "/api/v3/movie",
 	}
 
@@ -44,11 +68,12 @@ func (c Client) PostMovie(ctx context.Context, input MovieResource) (result Post
 		return
 	}
 
-	var model MovieResource
-	result.Model = &model
-	if err = resp.Unmarshal(result.Model); err != nil {
+	var answer MovieResource
+	result.Answer = &answer
+	if err = resp.Unmarshal(result.Answer); err != nil {
 		return
 	}
+	result.MovieResource = result.Answer
 
 	return
 }

@@ -4,35 +4,40 @@ package radarr
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetCreditOperationResponse is the result of GetCredit.
-type GetCreditOperationResponse struct {
+// GetCreditResponse is the result of GetCredit.
+type GetCreditResponse struct {
 	HttpResponse *http.Response
-	Model        []CreditResource
+	Answer       []CreditResource
 }
 
-// GetCreditOperationOptions holds the query and header parameters of GetCredit.
-type GetCreditOperationOptions struct {
-	MovieId         *int
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetCreditResponse) Answered() bool { return r.Answer != nil }
+
+// GetCreditOptions holds the query and header parameters of GetCredit.
+type GetCreditOptions struct {
+	MovieId         MovieID
 	MovieMetadataId *int
 }
 
 // ToHeaders returns the header parameters the options set.
-func (o GetCreditOperationOptions) ToHeaders() *client.Headers {
+func (o GetCreditOptions) ToHeaders() *client.Headers {
 	out := client.Headers{}
 	return &out
 }
 
 // ToQuery returns the query parameters the options set.
-func (o GetCreditOperationOptions) ToQuery() *client.QueryParams {
+func (o GetCreditOptions) ToQuery() *client.QueryParams {
 	out := client.QueryParams{}
-	if o.MovieId != nil {
-		out.Append("movieId", strconv.Itoa(*o.MovieId))
+	if o.MovieId != 0 {
+		out.Append("movieId", strconv.Itoa(int(o.MovieId)))
 	}
 	if o.MovieMetadataId != nil {
 		out.Append("movieMetadataId", strconv.Itoa(*o.MovieMetadataId))
@@ -41,13 +46,23 @@ func (o GetCreditOperationOptions) ToQuery() *client.QueryParams {
 }
 
 // GetCredit calls GET /api/v3/credit.
-func (c Client) GetCredit(ctx context.Context, options GetCreditOperationOptions) (result GetCreditOperationResponse, err error) {
+func (c Client) GetCredit(ctx context.Context, options ...GetCreditOptions) (result GetCreditResponse, err error) {
+	if len(options) > 1 {
+		err = fmt.Errorf("GetCredit takes one options struct at most, not %d", len(options))
+		return
+	}
+	var option GetCreditOptions
+	if len(options) == 1 {
+		option = options[0]
+	}
+
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodGet,
-		OptionsObject: options,
+		Operation:     "GetCredit",
+		OptionsObject: option,
 		Path:          "/api/v3/credit",
 	}
 
@@ -65,7 +80,7 @@ func (c Client) GetCredit(ctx context.Context, options GetCreditOperationOptions
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

@@ -12,20 +12,25 @@ import (
 	"github.com/katbyte/pandorest/client"
 )
 
-// PostMetadataActionByNameOperationResponse is the result of PostMetadataActionByName.
-type PostMetadataActionByNameOperationResponse struct {
+// PostMetadataActionByNameResponse is the result of PostMetadataActionByName.
+type PostMetadataActionByNameResponse struct {
 	HttpResponse *http.Response
-	Model        json.RawMessage
+	Answer       json.RawMessage
 }
 
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r PostMetadataActionByNameResponse) Answered() bool { return r.Answer != nil }
+
 // PostMetadataActionByName calls POST /api/v3/metadata/action/{name}.
-func (c Client) PostMetadataActionByName(ctx context.Context, name string, input MetadataResource) (result PostMetadataActionByNameOperationResponse, err error) {
+func (c Client) PostMetadataActionByName(ctx context.Context, name string, input MetadataResource) (result PostMetadataActionByNameResponse, err error) {
 	opts := client.RequestOptions{
 		ContentType: "application/json",
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod: http.MethodPost,
+		Operation:  "PostMetadataActionByName",
 		Path:       fmt.Sprintf("/api/v3/metadata/action/%s", url.PathEscape(name)),
 	}
 
@@ -47,7 +52,7 @@ func (c Client) PostMetadataActionByName(ctx context.Context, name string, input
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

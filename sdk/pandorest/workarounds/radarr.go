@@ -15,7 +15,7 @@ import (
 // src/Radarr.Api.V3/openapi.json, written by Swashbuckle from the
 // controllers. Swashbuckle can only describe what a controller's signature
 // says, so every action that returns object or IActionResult comes out with
-// an empty 200. What follows was found by the integration suite against the
+// an empty 200. What follows was found by the SDK suite against the
 // server itself.
 
 const radarr = Service
@@ -120,6 +120,51 @@ func (radarrCommandBody) Apply(spec *openapi.Spec) error {
 
 	return nil
 }
+
+// radarrCommands names the commands the tools and suites queue, with the fields each reads, so each has a method of its own and one that
+// waits for it to finish. Radarr has more; one not named here is still queued through PostCommand by name.
+var radarrCommands = pandorest.Commands(pandorest.About{
+	Name: "radarr-commands", Service: radarr,
+	Bug: "POST /api/v3/command takes any command by name and the document declares none of them, nor the fields each reads",
+}, pandorest.CommandSet{
+	Post:     "POST /api/v3/command",
+	Get:      "GET /api/v3/command/{id}",
+	Status:   "status",
+	Finished: []string{"completed", "failed", "aborted", "cancelled", "orphaned"},
+	Failed:   []string{"failed"},
+	Commands: map[string]map[string]*openapi.Schema{
+		"ApplicationUpdate":         {},
+		"Backup":                    {},
+		"CheckHealth":               {},
+		"CleanUpRecycleBin":         {},
+		"CutOffUnmetMoviesSearch":   {},
+		"Housekeeping":              {},
+		"ImportListSync":            {},
+		"MissingMoviesSearch":       {},
+		"RefreshCollections":        {},
+		"RefreshMonitoredDownloads": {},
+		"RssSync":                   {},
+		// every film when movieIds is left out
+		"RefreshMovie": {"movieIds": numbers()},
+		"MoviesSearch": {"movieIds": numbers()},
+		"RescanMovie":  {"movieId": number()},
+		"RenameFiles":  {"movieId": number(), "files": numbers()},
+		"ManualImport": {"importMode": {Type: openapi.TypeString}, "files": {Type: openapi.TypeArray, Items: &openapi.Schema{Type: openapi.TypeObject, Properties: map[string]*openapi.Schema{
+			"path":         {Type: openapi.TypeString},
+			"movieId":      number(),
+			"quality":      {Ref: openapi.SchemaRefPrefix + "QualityModel"},
+			"languages":    {Type: openapi.TypeArray, Items: &openapi.Schema{Ref: openapi.SchemaRefPrefix + "Language"}},
+			"releaseGroup": {Type: openapi.TypeString},
+			"downloadId":   {Type: openapi.TypeString},
+			"indexerFlags": number(),
+		}}}},
+	},
+})
+
+// number is a whole number as Radarr's document declares one, and numbers a list of them.
+func number() *openapi.Schema { return &openapi.Schema{Type: openapi.TypeInteger, Format: "int32"} }
+
+func numbers() *openapi.Schema { return &openapi.Schema{Type: openapi.TypeArray, Items: number()} }
 
 // each is every path with its method, as a ready-made workaround names an
 // operation.

@@ -4,27 +4,53 @@ package radarr
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// PutMovieFileByIdOperationResponse is the result of PutMovieFileById.
-type PutMovieFileByIdOperationResponse struct {
+// PutMovieFileByIdResponse is the result of PutMovieFileById.
+//
+// Answer is the MovieFileResource answered, nil when the server answered none (a 204), which
+// Answered tells. The same record is embedded, so res.Answer.Name may be read as
+// res.Name; when nothing was answered the embedded record is a zero one, so that
+// read is empty rather than a panic. Only the method sets the two; a response built
+// by hand sets both or neither.
+type PutMovieFileByIdResponse struct {
 	HttpResponse *http.Response
-	Model        *MovieFileResource
+	Answer       *MovieFileResource
+	*MovieFileResource
+}
+
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r PutMovieFileByIdResponse) Answered() bool { return r.Answer != nil }
+
+// Record is the MovieFileResource answered, as a value to change and write back, or an
+// error when the server answered none.
+func (r PutMovieFileByIdResponse) Record() (MovieFileResource, error) {
+	if r.Answer == nil {
+		return MovieFileResource{}, errors.New("PutMovieFileById answered no MovieFileResource")
+	}
+
+	return *r.Answer, nil
 }
 
 // PutMovieFileById calls PUT /api/v3/moviefile/{id}.
-func (c Client) PutMovieFileById(ctx context.Context, id int, input MovieFileResource) (result PutMovieFileByIdOperationResponse, err error) {
+func (c Client) PutMovieFileById(ctx context.Context, id MovieFileID, input MovieFileResource) (result PutMovieFileByIdResponse, err error) {
+	result.MovieFileResource = &MovieFileResource{}
 	opts := client.RequestOptions{
 		ContentType: "application/json",
 		ExpectedStatusCodes: []int{
 			http.StatusAccepted,
 		},
 		HTTPMethod: http.MethodPut,
-		Path:       fmt.Sprintf("/api/v3/moviefile/%d", id),
+		Operation:  "PutMovieFileById",
+		Path:       fmt.Sprintf("/api/v3/moviefile/%s", url.PathEscape(strconv.Itoa(int(id)))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
@@ -45,11 +71,12 @@ func (c Client) PutMovieFileById(ctx context.Context, id int, input MovieFileRes
 		return
 	}
 
-	var model MovieFileResource
-	result.Model = &model
-	if err = resp.Unmarshal(result.Model); err != nil {
+	var answer MovieFileResource
+	result.Answer = &answer
+	if err = resp.Unmarshal(result.Answer); err != nil {
 		return
 	}
+	result.MovieFileResource = result.Answer
 
 	return
 }

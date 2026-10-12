@@ -25,3 +25,9 @@ type ImportListResource struct {
 	SearchOnAdd         *bool                `json:"searchOnAdd,omitempty"`
 	Tags                []int                `json:"tags,omitzero"`
 }
+
+// GetName is the record's Name, for code that handles records of several types alike.
+func (m ImportListResource) GetName() string { return m.Name }
+
+// GetId is the record's Id, for code that handles records of several types alike.
+func (m ImportListResource) GetId() int { return m.Id }

@@ -23,7 +23,7 @@ GOLANGCI_LINT=$(TOOLS_BIN)/golangci-lint
 # into a repo-local prefix. all rebuild when this makefile changes.
 MARKDOWNLINT_CLI2_VERSION=0.23.2
 SHELLCHECK_VERSION=v0.11.0
-TYPOS_VERSION=v1.50.1
+TYPOS_VERSION=v1.51.1
 YAMLLINT_VERSION=1.38.0
 ZIZMOR_VERSION=v1.30.1
 MARKDOWNLINT=$(TOOLS_BIN)/markdownlint-cli2
@@ -212,26 +212,28 @@ depscheck: ## Check that go.mod/go.sum and vendor/ are in sync
 test: build ## Run tests
 	go test ./... -timeout ${TEST_TIMEOUT}
 
-test-integration: ## Run the SDK tests (sdk/radarr) against a Radarr .scripts/testenv.sh started
+test-sdk: ## Run the SDK tests (acceptance/radarr) against a Radarr .scripts/testenv.sh started
 	@[ -n "${RADARR_SERVER}" ] && [ -n "${RADARR_TOKEN}" ] && [ -n "${RADARR_TEST_DATA}" ] || \
 		(echo 'RADARR_SERVER, RADARR_TOKEN and RADARR_TEST_DATA must be set (eval "$$(make testenv-up)"); or use "make testacc"'; exit 1)
-	go test -tags integration -count=1 ./integration/... -timeout ${TEST_TIMEOUT} -v
+	go test -tags acceptance -count=1 ./acceptance/radarr/... -timeout ${TEST_TIMEOUT} -v
 
-test-acceptance: ## Run the tool tests (behaviour, audits, journeys) against a Radarr .scripts/testenv.sh started
+test-tools: ## Run the tool tests (acceptance/tools: behaviour, audits, journeys) against a Radarr .scripts/testenv.sh started
 	@[ -n "${RADARR_SERVER}" ] && [ -n "${RADARR_TOKEN}" ] && [ -n "${RADARR_TEST_DATA}" ] || \
 		(echo 'RADARR_SERVER, RADARR_TOKEN and RADARR_TEST_DATA must be set (eval "$$(make testenv-up)"); or use "make testacc"'; exit 1)
-	go test -tags integration -count=1 ./acceptance/... -timeout ${TEST_TIMEOUT} -v
+	go test -tags acceptance -count=1 ./acceptance/tools/... -timeout ${TEST_TIMEOUT} -v
 
 # each suite gets its own container: the SDK tests create and delete root
 # folders, films and settings of their own, which would trample the tool
 # suite's fixtures. The SDK container, its provider proxy and its fake indexer
-# sit 100 ports above the acceptance suite's, so both can run side by side.
-# live SUITE [EXTRA ENV] [GO TEST ARGS] - start a container, run one suite, tear it down
+# sit 100 ports above the tool suite's, so both can run side by side.
+# live SUITE [EXTRA ENV] [GO TEST ARGS] - start a container, run one suite (sdk is
+# acceptance/radarr, tools is acceptance/tools), tear it down
 define live
 	@echo "==> $(1)..."
 	@set -e; \
 		env=".testenv-$(1).sh"; \
-		offset=$$( [ "$(1)" = "integration" ] && echo 100 || echo 0 ); \
+		offset=$$( [ "$(1)" = "sdk" ] && echo 100 || echo 0 ); \
+		folder=$$( [ "$(1)" = "sdk" ] && echo radarr || echo tools ); \
 		export RADARR_TEST_CONTAINER=radarr-mcp-$(1) \
 			RADARR_TEST_DATA=$${HOME}/.cache/radarr-mcp/testenv/$(1) \
 			RADARR_TEST_PORT=$$((17878 + offset)) RADARR_TEST_PROXY_PORT=$$((17880 + offset)) RADARR_TEST_INDEXER_PORT=$$((17881 + offset)) $(2); \
@@ -239,35 +241,35 @@ define live
 		trap 'st=$$?; [ $$st -eq 0 ] || .scripts/testenv.sh logs; \
 			.scripts/testenv.sh down; rm -f '"$$env"'; exit $$st' EXIT; \
 		. ./"$$env"; \
-		go test -tags integration -count=1 ./$(1)/... -timeout ${TEST_TIMEOUT} -v $(3)
+		go test -tags acceptance -count=1 ./acceptance/$$folder/... -timeout ${TEST_TIMEOUT} -v $(3)
 endef
 
-testacc-integration: ## SDK tests in a throwaway container
-	$(call live,integration)
+testacc-sdk: ## SDK tests in a throwaway container
+	$(call live,sdk)
 
-testacc-acceptance: ## Tool tests in a throwaway container
-	$(call live,acceptance)
+testacc-tools: ## Tool tests in a throwaway container
+	$(call live,tools)
 
-testacc: testacc-integration testacc-acceptance ## Run both live suites, each in its own container
+testacc: testacc-sdk testacc-tools ## Run both live suites, each in its own container
 
 # Coverage has to span all three suites or it lies: the unit tests alone report
 # a fraction for tools/, because almost everything real happens in the live
-# suites behind the integration tag. Each writes binary coverage into its own
+# suites behind the acceptance tag. Each writes binary coverage into its own
 # directory and covdata merges them, which is stdlib tooling rather than a
 # third-party merger.
 COVERDIR?=.coverage
 COVERPKG=./tools/...,./sdk/...,./lib/...,./cli/...
 SDKS=/sdk/radarr/
-COVERDIRS=$(COVERDIR)/unit,$(COVERDIR)/integration,$(COVERDIR)/acceptance
+COVERDIRS=$(COVERDIR)/unit,$(COVERDIR)/sdk,$(COVERDIR)/tools
 
 cover: ## Run every suite with coverage and report the total
 	@rm -rf $(COVERDIR)
-	@mkdir -p $(COVERDIR)/unit $(COVERDIR)/integration $(COVERDIR)/acceptance
+	@mkdir -p $(COVERDIR)/unit $(COVERDIR)/sdk $(COVERDIR)/tools
 	@echo "==> unit..."
 	@go test -count=1 -coverpkg=$(COVERPKG) ./tools/ ./cli/ ./sdk/... ./lib/... \
 		-args -test.gocoverdir=$(CURDIR)/$(COVERDIR)/unit >/dev/null
-	@$(MAKE) --no-print-directory cover-integration
-	@$(MAKE) --no-print-directory cover-acceptance
+	@$(MAKE) --no-print-directory cover-sdk
+	@$(MAKE) --no-print-directory cover-tools
 	@go tool covdata textfmt -i=$(COVERDIRS) -o=$(COVERDIR)/coverage.all
 	@# sdk/radarr is generated, one mechanical method per operation; the suites
 	@# exercise the ones the tools rely on and the read sweep every GET, so the
@@ -281,11 +283,11 @@ cover: ## Run every suite with coverage and report the total
 	@echo "==> per package"
 	@go tool covdata percent -i=$(COVERDIRS)
 
-cover-integration:
-	$(call live,integration,,-coverpkg=$(COVERPKG) -args -test.gocoverdir=$(CURDIR)/$(COVERDIR)/integration)
+cover-sdk:
+	$(call live,sdk,,-coverpkg=$(COVERPKG) -args -test.gocoverdir=$(CURDIR)/$(COVERDIR)/sdk)
 
-cover-acceptance:
-	$(call live,acceptance,,-coverpkg=$(COVERPKG) -args -test.gocoverdir=$(CURDIR)/$(COVERDIR)/acceptance)
+cover-tools:
+	$(call live,tools,,-coverpkg=$(COVERPKG) -args -test.gocoverdir=$(CURDIR)/$(COVERDIR)/tools)
 
 cover-html: cover ## Run every suite with coverage and open the HTML report
 	@go tool cover -html=$(COVERDIR)/coverage.out
@@ -294,12 +296,12 @@ cover-html: cover ## Run every suite with coverage and open the HTML report
 # RADARR_TEST_RECORD=1 records only the requests no cassette holds
 record: ## Re-record every metadata cassette against Radarr's real metadata service (this hits the network; RADARR_TEST_RECORD=1 on a testacc target records only what they lack)
 	@echo "==> re-recording against Radarr's metadata service (this hits the network)..."
-	$(call live,acceptance,RADARR_TEST_RECORD=all)
-	$(call live,integration,RADARR_TEST_RECORD=all)
+	$(call live,tools,RADARR_TEST_RECORD=all)
+	$(call live,sdk,RADARR_TEST_RECORD=all)
 
 record-check: ## Check the cassettes still match the real metadata service, without rewriting them
 	@echo "==> verifying cassettes against Radarr's metadata service (this hits the network)..."
-	$(call live,acceptance,RADARR_TEST_VERIFY=1)
+	$(call live,tools,RADARR_TEST_VERIFY=1)
 
 testenv-up: ## Start a throwaway Radarr with the fixtures laid out (eval "$$(make testenv-up)")
 	@.scripts/testenv.sh up
@@ -309,4 +311,4 @@ testenv-down: ## Remove the throwaway Radarr
 
 check-all: build test testacc lint actionlint yamllint shellcheck typos markdownlint depscheck gencheck apicheck ## Run build + tests (incl. live) + all linters + depscheck
 
-.PHONY: default all help fmt goimports build docker generate pandorest-import pandorest-generate pandorest-diff spec-update lint lint-fix actionlint yamllint shellcheck zizmor typos typos-fix markdownlint gencheck apicheck depscheck check-all install tools test test-integration test-acceptance testacc testacc-integration testacc-acceptance cover cover-html record record-check testenv-up testenv-down
+.PHONY: default all help fmt goimports build docker generate pandorest-import pandorest-generate pandorest-diff spec-update lint lint-fix actionlint yamllint shellcheck zizmor typos typos-fix markdownlint gencheck apicheck depscheck check-all install tools test test-sdk test-tools testacc testacc-sdk testacc-tools cover cover-html record record-check testenv-up testenv-down

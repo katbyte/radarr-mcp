@@ -11,7 +11,7 @@ type ManualImportReprocessResource struct {
 	IndexerFlags      int                       `json:"indexerFlags,omitempty"`
 	Languages         []Language                `json:"languages,omitzero"`
 	Movie             *MovieResource            `json:"movie,omitempty"`
-	MovieId           int                       `json:"movieId,omitempty"`
+	MovieId           MovieID                   `json:"movieId,omitempty"`
 	Path              string                    `json:"path,omitempty"`
 	Quality           *QualityModel             `json:"quality,omitempty"`
 	Rejections        []ImportRejectionResource `json:"rejections,omitzero"`

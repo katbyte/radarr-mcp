@@ -68,7 +68,7 @@ log() { echo "==> $*" >&2; }
 # at a tenth of a frame a second runs the film's length in tens of kilobytes,
 # so Radarr probes a real container with a real resolution, codec, runtime
 # and audio language. Change a line here and the suites' fixture tables
-# (acceptance/harness_test.go, integration/harness_test.go) must agree.
+# (acceptance/tools/harness_test.go, acceptance/radarr/harness_test.go) must agree.
 #
 # The clean films, one folder each under /media/movies, every file named the
 # way Radarr's default naming scheme would name it, 1080p h264 at the film's

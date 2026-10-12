@@ -11,7 +11,7 @@ type BlocklistResource struct {
 	Languages     []Language             `json:"languages,omitzero"`
 	Message       string                 `json:"message,omitempty"`
 	Movie         *MovieResource         `json:"movie,omitempty"`
-	MovieId       int                    `json:"movieId,omitempty"`
+	MovieId       MovieID                `json:"movieId,omitempty"`
 	Protocol      DownloadProtocol       `json:"protocol,omitempty"`
 	Quality       *QualityModel          `json:"quality,omitempty"`
 	SourceTitle   string                 `json:"sourceTitle,omitempty"`

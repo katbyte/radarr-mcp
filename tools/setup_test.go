@@ -535,8 +535,7 @@ func TestServerSettings(t *testing.T) {
 }
 
 // The line logged for a change to Radarr's own settings carries no credential, whatever the setting is called. Every credential of every section is
-// set through the tool, once answered and once refused: the shared rule for that line reads how a name ends, and passwordConfirmation ends as no
-// credential's does.
+// set through the tool, once answered and once refused.
 func TestNoCredentialOfRadarrsOwnIsLogged(t *testing.T) {
 	t.Parallel()
 

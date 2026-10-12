@@ -88,8 +88,8 @@ func definitions(ctx context.Context, c *radarr.Client) ([]definitionRow, error)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]definitionRow, 0, len(res.Model))
-	for _, d := range res.Model {
+	out := make([]definitionRow, 0, len(res.Answer))
+	for _, d := range res.Answer {
 		row := definitionRow{ID: d.Id, Title: d.Title, MinSize: val(d.MinSize), PreferredSize: d.PreferredSize, MaxSize: d.MaxSize}
 		if d.Quality != nil {
 			row.Quality = d.Quality.Name
@@ -124,7 +124,7 @@ func registerQualityTools(r *registry) {
 			m := &movies[i]
 			counts[m.QualityProfileId]++
 		}
-		page, paged := pageRows(res.Model, in)
+		page, paged := pageRows(res.Answer, in)
 		out := profileListOut{Profiles: make([]profileRow, 0, len(page)), pageOut: paged}
 		for i := range page {
 			out.Profiles = append(out.Profiles, profileOf(&page[i], counts[page[i].Id]))
@@ -157,10 +157,10 @@ func registerQualityTools(r *registry) {
 		if err != nil {
 			return nil, profileRow{}, err
 		}
-		if held.Model == nil {
+		if held.Answer == nil {
 			return nil, profileRow{}, fmt.Errorf("no answer from Radarr when asked for quality profile %d", p.Id)
 		}
-		p = held.Model
+		p = held.Answer
 
 		edit := *p
 		if name := strings.TrimSpace(in.NewName); name != "" {
@@ -185,7 +185,7 @@ func registerQualityTools(r *registry) {
 			}
 		}
 
-		return nil, profileOf(res.Model, n), nil
+		return nil, profileOf(res.Answer, n), nil
 	})
 
 	type definitionListOut struct {
@@ -241,13 +241,13 @@ func registerQualityTools(r *registry) {
 		if err != nil {
 			return nil, definitionRow{}, err
 		}
-		if current.Model == nil {
+		if current.Answer == nil {
 			return nil, definitionRow{}, fmt.Errorf("no answer from Radarr when asked for quality definition %d", d.ID)
 		}
 
 		// a nil maximum or preference is Radarr's unlimited and none: the
 		// generated model leaves it out, which Radarr reads as null
-		edit := *current.Model
+		edit := *current.Answer
 		if in.MinSize != nil {
 			edit.MinSize = in.MinSize
 		}
@@ -293,7 +293,7 @@ func registerQualityTools(r *registry) {
 		if err != nil {
 			return nil, formatListOut{}, err
 		}
-		page, paged := pageRows(formats.Model, in)
+		page, paged := pageRows(formats.Answer, in)
 		out := formatListOut{Formats: make([]formatRow, 0, len(page)), pageOut: paged}
 		for _, f := range page {
 			row := formatRow{ID: f.Id, Name: f.Name}
@@ -312,7 +312,7 @@ func registerQualityTools(r *registry) {
 				}
 				row.Specifications = append(row.Specifications, line)
 			}
-			for _, p := range profiles.Model {
+			for _, p := range profiles.Answer {
 				for _, fi := range p.FormatItems {
 					if fi.Format == f.Id && fi.Score != 0 {
 						if row.Scores == nil {

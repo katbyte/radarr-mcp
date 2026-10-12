@@ -30,19 +30,19 @@ func indexerKind(c *radarr.Client) *providerKind[radarr.IndexerResource] {
 		},
 		list: func(ctx context.Context) ([]radarr.IndexerResource, error) {
 			res, err := c.GetIndexer(ctx)
-			return res.Model, err
+			return res.Answer, err
 		},
 		schema: func(ctx context.Context) ([]radarr.IndexerResource, error) {
 			res, err := c.GetIndexerSchema(ctx)
-			return res.Model, err
+			return res.Answer, err
 		},
 		create: func(ctx context.Context, v radarr.IndexerResource, force bool) (*radarr.IndexerResource, error) {
-			res, err := c.PostIndexer(ctx, v, radarr.PostIndexerOperationOptions{ForceSave: new(force)})
-			return res.Model, err
+			res, err := c.PostIndexer(ctx, v, radarr.PostIndexerOptions{ForceSave: new(force)})
+			return res.Answer, err
 		},
 		update: func(ctx context.Context, id int, v radarr.IndexerResource, force bool) (*radarr.IndexerResource, error) {
-			res, err := c.PutIndexerById(ctx, id, v, radarr.PutIndexerByIdOperationOptions{ForceSave: new(force)})
-			return res.Model, err
+			res, err := c.PutIndexerById(ctx, id, v, radarr.PutIndexerByIdOptions{ForceSave: new(force)})
+			return res.Answer, err
 		},
 		remove: func(ctx context.Context, id int) error {
 			_, err := c.DeleteIndexerById(ctx, id)
@@ -50,7 +50,7 @@ func indexerKind(c *radarr.Client) *providerKind[radarr.IndexerResource] {
 		},
 		action: func(ctx context.Context, name string, v radarr.IndexerResource) (json.RawMessage, error) {
 			res, err := c.PostIndexerActionByName(ctx, name, v)
-			return res.Model, err
+			return res.Answer, err
 		},
 	}
 }
@@ -67,19 +67,19 @@ func downloadClientKind(c *radarr.Client) *providerKind[radarr.DownloadClientRes
 		begin:    func(values map[string]any) { values["enable"] = true },
 		list: func(ctx context.Context) ([]radarr.DownloadClientResource, error) {
 			res, err := c.GetDownloadClient(ctx)
-			return res.Model, err
+			return res.Answer, err
 		},
 		schema: func(ctx context.Context) ([]radarr.DownloadClientResource, error) {
 			res, err := c.GetDownloadClientSchema(ctx)
-			return res.Model, err
+			return res.Answer, err
 		},
 		create: func(ctx context.Context, v radarr.DownloadClientResource, force bool) (*radarr.DownloadClientResource, error) {
-			res, err := c.PostDownloadClient(ctx, v, radarr.PostDownloadClientOperationOptions{ForceSave: new(force)})
-			return res.Model, err
+			res, err := c.PostDownloadClient(ctx, v, radarr.PostDownloadClientOptions{ForceSave: new(force)})
+			return res.Answer, err
 		},
 		update: func(ctx context.Context, id int, v radarr.DownloadClientResource, force bool) (*radarr.DownloadClientResource, error) {
-			res, err := c.PutDownloadClientById(ctx, id, v, radarr.PutDownloadClientByIdOperationOptions{ForceSave: new(force)})
-			return res.Model, err
+			res, err := c.PutDownloadClientById(ctx, id, v, radarr.PutDownloadClientByIdOptions{ForceSave: new(force)})
+			return res.Answer, err
 		},
 		remove: func(ctx context.Context, id int) error {
 			_, err := c.DeleteDownloadClientById(ctx, id)
@@ -87,7 +87,7 @@ func downloadClientKind(c *radarr.Client) *providerKind[radarr.DownloadClientRes
 		},
 		action: func(ctx context.Context, name string, v radarr.DownloadClientResource) (json.RawMessage, error) {
 			res, err := c.PostDownloadClientActionByName(ctx, name, v)
-			return res.Model, err
+			return res.Answer, err
 		},
 	}
 }
@@ -108,19 +108,19 @@ func importListKind(c *radarr.Client) *providerKind[radarr.ImportListResource] {
 		},
 		list: func(ctx context.Context) ([]radarr.ImportListResource, error) {
 			res, err := c.GetImportList(ctx)
-			return res.Model, err
+			return res.Answer, err
 		},
 		schema: func(ctx context.Context) ([]radarr.ImportListResource, error) {
 			res, err := c.GetImportListSchema(ctx)
-			return res.Model, err
+			return res.Answer, err
 		},
 		create: func(ctx context.Context, v radarr.ImportListResource, force bool) (*radarr.ImportListResource, error) {
-			res, err := c.PostImportList(ctx, v, radarr.PostImportListOperationOptions{ForceSave: new(force)})
-			return res.Model, err
+			res, err := c.PostImportList(ctx, v, radarr.PostImportListOptions{ForceSave: new(force)})
+			return res.Answer, err
 		},
 		update: func(ctx context.Context, id int, v radarr.ImportListResource, force bool) (*radarr.ImportListResource, error) {
-			res, err := c.PutImportListById(ctx, id, v, radarr.PutImportListByIdOperationOptions{ForceSave: new(force)})
-			return res.Model, err
+			res, err := c.PutImportListById(ctx, id, v, radarr.PutImportListByIdOptions{ForceSave: new(force)})
+			return res.Answer, err
 		},
 		remove: func(ctx context.Context, id int) error {
 			_, err := c.DeleteImportListById(ctx, id)
@@ -128,15 +128,15 @@ func importListKind(c *radarr.Client) *providerKind[radarr.ImportListResource] {
 		},
 		action: func(ctx context.Context, name string, v radarr.ImportListResource) (json.RawMessage, error) {
 			res, err := c.PostImportListActionByName(ctx, name, v)
-			return res.Model, err
+			return res.Answer, err
 		},
 		test: func(ctx context.Context, v radarr.ImportListResource) (*http.Response, error) {
-			res, err := c.PostImportListTest(ctx, v, radarr.PostImportListTestOperationOptions{ForceTest: new(true)})
+			res, err := c.PostImportListTest(ctx, v, radarr.PostImportListTestOptions{ForceTest: new(true)})
 			return res.HttpResponse, err
 		},
 		testAll: func(ctx context.Context) ([]radarr.ProviderTestAllResult, error) {
 			res, err := c.PostImportListTestAll(ctx)
-			return res.Model, err
+			return res.Answer, err
 		},
 	}
 }
@@ -162,19 +162,19 @@ func notificationKind(c *radarr.Client) *providerKind[radarr.NotificationResourc
 		},
 		list: func(ctx context.Context) ([]radarr.NotificationResource, error) {
 			res, err := c.GetNotification(ctx)
-			return res.Model, err
+			return res.Answer, err
 		},
 		schema: func(ctx context.Context) ([]radarr.NotificationResource, error) {
 			res, err := c.GetNotificationSchema(ctx)
-			return res.Model, err
+			return res.Answer, err
 		},
 		create: func(ctx context.Context, v radarr.NotificationResource, force bool) (*radarr.NotificationResource, error) {
-			res, err := c.PostNotification(ctx, v, radarr.PostNotificationOperationOptions{ForceSave: new(force)})
-			return res.Model, err
+			res, err := c.PostNotification(ctx, v, radarr.PostNotificationOptions{ForceSave: new(force)})
+			return res.Answer, err
 		},
 		update: func(ctx context.Context, id int, v radarr.NotificationResource, force bool) (*radarr.NotificationResource, error) {
-			res, err := c.PutNotificationById(ctx, id, v, radarr.PutNotificationByIdOperationOptions{ForceSave: new(force)})
-			return res.Model, err
+			res, err := c.PutNotificationById(ctx, id, v, radarr.PutNotificationByIdOptions{ForceSave: new(force)})
+			return res.Answer, err
 		},
 		remove: func(ctx context.Context, id int) error {
 			_, err := c.DeleteNotificationById(ctx, id)
@@ -182,15 +182,15 @@ func notificationKind(c *radarr.Client) *providerKind[radarr.NotificationResourc
 		},
 		action: func(ctx context.Context, name string, v radarr.NotificationResource) (json.RawMessage, error) {
 			res, err := c.PostNotificationActionByName(ctx, name, v)
-			return res.Model, err
+			return res.Answer, err
 		},
 		test: func(ctx context.Context, v radarr.NotificationResource) (*http.Response, error) {
-			res, err := c.PostNotificationTest(ctx, v, radarr.PostNotificationTestOperationOptions{ForceTest: new(true)})
+			res, err := c.PostNotificationTest(ctx, v, radarr.PostNotificationTestOptions{ForceTest: new(true)})
 			return res.HttpResponse, err
 		},
 		testAll: func(ctx context.Context) ([]radarr.ProviderTestAllResult, error) {
 			res, err := c.PostNotificationTestAll(ctx)
-			return res.Model, err
+			return res.Answer, err
 		},
 	}
 }
@@ -205,27 +205,27 @@ func metadataKind(c *radarr.Client) *providerKind[radarr.MetadataResource] {
 		on:       []string{"enable"},
 		list: func(ctx context.Context) ([]radarr.MetadataResource, error) {
 			res, err := c.GetMetadata(ctx)
-			return res.Model, err
+			return res.Answer, err
 		},
 		schema: func(ctx context.Context) ([]radarr.MetadataResource, error) {
 			res, err := c.GetMetadataSchema(ctx)
-			return res.Model, err
+			return res.Answer, err
 		},
 		update: func(ctx context.Context, id int, v radarr.MetadataResource, force bool) (*radarr.MetadataResource, error) {
-			res, err := c.PutMetadataById(ctx, id, v, radarr.PutMetadataByIdOperationOptions{ForceSave: new(force)})
-			return res.Model, err
+			res, err := c.PutMetadataById(ctx, id, v, radarr.PutMetadataByIdOptions{ForceSave: new(force)})
+			return res.Answer, err
 		},
 		test: func(ctx context.Context, v radarr.MetadataResource) (*http.Response, error) {
-			res, err := c.PostMetadataTest(ctx, v, radarr.PostMetadataTestOperationOptions{ForceTest: new(true)})
+			res, err := c.PostMetadataTest(ctx, v, radarr.PostMetadataTestOptions{ForceTest: new(true)})
 			return res.HttpResponse, err
 		},
 		testAll: func(ctx context.Context) ([]radarr.ProviderTestAllResult, error) {
 			res, err := c.PostMetadataTestAll(ctx)
-			return res.Model, err
+			return res.Answer, err
 		},
 		action: func(ctx context.Context, name string, v radarr.MetadataResource) (json.RawMessage, error) {
 			res, err := c.PostMetadataActionByName(ctx, name, v)
-			return res.Model, err
+			return res.Answer, err
 		},
 	}
 }
@@ -330,14 +330,14 @@ func registerProviderFamilyTools(r *registry) (kinds map[string]kindDescriber, o
 		Name:        "importlist_movies",
 		Description: "The films the enabled import lists offer, as Radarr last read them, each with the lists it is on and whether the library holds it or an exclusion keeps it out; and when asked for, the films TMDB recommends from the library, and the ones trending or most popular there now - what Radarr's own Discover page shows. new_only leaves what the library does not hold. Radarr reads the lists again on its schedule, and when its Import List Sync task is run.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listedIn) (*mcp.CallToolResult, listedOut, error) {
-		res, err := c.GetImportListMovie(ctx, radarr.GetImportListMovieOperationOptions{IncludeRecommendations: new(in.Recommendations), IncludeTrending: new(in.Trending), IncludePopular: new(in.Popular)})
+		res, err := c.GetImportListMovie(ctx, radarr.GetImportListMovieOptions{IncludeRecommendations: new(in.Recommendations), IncludeTrending: new(in.Trending), IncludePopular: new(in.Popular)})
 		if err != nil {
 			return nil, listedOut{}, err
 		}
 		// the document does not say what this answers, so it is read as what Radarr sends
 		var films []listedFilm
-		if len(res.Model) > 0 {
-			if err := json.Unmarshal(res.Model, &films); err != nil {
+		if len(res.Answer) > 0 {
+			if err := json.Unmarshal(res.Answer, &films); err != nil {
 				return nil, listedOut{}, fmt.Errorf("reading what the import lists offer: %w", err)
 			}
 		}

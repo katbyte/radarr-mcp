@@ -4,30 +4,31 @@ package radarr
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// PostLoginOperationResponse is the result of PostLogin.
-type PostLoginOperationResponse struct {
+// PostLoginResponse is the result of PostLogin.
+type PostLoginResponse struct {
 	HttpResponse *http.Response
 }
 
-// PostLoginOperationOptions holds the query and header parameters of PostLogin.
-type PostLoginOperationOptions struct {
+// PostLoginOptions holds the query and header parameters of PostLogin.
+type PostLoginOptions struct {
 	ReturnUrl string
 }
 
 // ToHeaders returns the header parameters the options set.
-func (o PostLoginOperationOptions) ToHeaders() *client.Headers {
+func (o PostLoginOptions) ToHeaders() *client.Headers {
 	out := client.Headers{}
 	return &out
 }
 
 // ToQuery returns the query parameters the options set.
-func (o PostLoginOperationOptions) ToQuery() *client.QueryParams {
+func (o PostLoginOptions) ToQuery() *client.QueryParams {
 	out := client.QueryParams{}
 	if o.ReturnUrl != "" {
 		out.Append("returnUrl", o.ReturnUrl)
@@ -38,14 +39,24 @@ func (o PostLoginOperationOptions) ToQuery() *client.QueryParams {
 // PostLogin calls POST /login.
 //
 // input is sent as contentType, or as multipart/form-data when that is empty.
-func (c Client) PostLogin(ctx context.Context, input io.Reader, contentType string, options PostLoginOperationOptions) (result PostLoginOperationResponse, err error) {
+func (c Client) PostLogin(ctx context.Context, input io.Reader, contentType string, options ...PostLoginOptions) (result PostLoginResponse, err error) {
+	if len(options) > 1 {
+		err = fmt.Errorf("PostLogin takes one options struct at most, not %d", len(options))
+		return
+	}
+	var option PostLoginOptions
+	if len(options) == 1 {
+		option = options[0]
+	}
+
 	opts := client.RequestOptions{
 		ContentType: "multipart/form-data",
 		ExpectedStatusCodes: []int{
 			http.StatusFound,
 		},
 		HTTPMethod:    http.MethodPost,
-		OptionsObject: options,
+		Operation:     "PostLogin",
+		OptionsObject: option,
 		Path:          "/login",
 	}
 

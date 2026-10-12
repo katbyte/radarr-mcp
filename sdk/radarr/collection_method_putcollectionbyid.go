@@ -4,26 +4,50 @@ package radarr
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// PutCollectionByIdOperationResponse is the result of PutCollectionById.
-type PutCollectionByIdOperationResponse struct {
+// PutCollectionByIdResponse is the result of PutCollectionById.
+//
+// Answer is the CollectionResource answered, nil when the server answered none (a 204), which
+// Answered tells. The same record is embedded, so res.Answer.Name may be read as
+// res.Name; when nothing was answered the embedded record is a zero one, so that
+// read is empty rather than a panic. Only the method sets the two; a response built
+// by hand sets both or neither.
+type PutCollectionByIdResponse struct {
 	HttpResponse *http.Response
-	Model        *CollectionResource
+	Answer       *CollectionResource
+	*CollectionResource
+}
+
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r PutCollectionByIdResponse) Answered() bool { return r.Answer != nil }
+
+// Record is the CollectionResource answered, as a value to change and write back, or an
+// error when the server answered none.
+func (r PutCollectionByIdResponse) Record() (CollectionResource, error) {
+	if r.Answer == nil {
+		return CollectionResource{}, errors.New("PutCollectionById answered no CollectionResource")
+	}
+
+	return *r.Answer, nil
 }
 
 // PutCollectionById calls PUT /api/v3/collection/{id}.
-func (c Client) PutCollectionById(ctx context.Context, id int, input CollectionResource) (result PutCollectionByIdOperationResponse, err error) {
+func (c Client) PutCollectionById(ctx context.Context, id int, input CollectionResource) (result PutCollectionByIdResponse, err error) {
+	result.CollectionResource = &CollectionResource{}
 	opts := client.RequestOptions{
 		ContentType: "application/json",
 		ExpectedStatusCodes: []int{
 			http.StatusAccepted,
 		},
 		HTTPMethod: http.MethodPut,
+		Operation:  "PutCollectionById",
 		Path:       fmt.Sprintf("/api/v3/collection/%d", id),
 	}
 
@@ -45,11 +69,12 @@ func (c Client) PutCollectionById(ctx context.Context, id int, input CollectionR
 		return
 	}
 
-	var model CollectionResource
-	result.Model = &model
-	if err = resp.Unmarshal(result.Model); err != nil {
+	var answer CollectionResource
+	result.Answer = &answer
+	if err = resp.Unmarshal(result.Answer); err != nil {
 		return
 	}
+	result.CollectionResource = result.Answer
 
 	return
 }

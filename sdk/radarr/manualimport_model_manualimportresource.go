@@ -12,7 +12,7 @@ type ManualImportResource struct {
 	IndexerFlags      int                       `json:"indexerFlags,omitempty"`
 	Languages         []Language                `json:"languages,omitzero"`
 	Movie             *MovieResource            `json:"movie,omitempty"`
-	MovieFileId       *int                      `json:"movieFileId,omitempty"`
+	MovieFileId       *MovieFileID              `json:"movieFileId,omitempty"`
 	Name              string                    `json:"name,omitempty"`
 	Path              string                    `json:"path,omitempty"`
 	Quality           *QualityModel             `json:"quality,omitempty"`
@@ -22,3 +22,9 @@ type ManualImportResource struct {
 	ReleaseGroup      string                    `json:"releaseGroup,omitempty"`
 	Size              int64                     `json:"size,omitempty"`
 }
+
+// GetName is the record's Name, for code that handles records of several types alike.
+func (m ManualImportResource) GetName() string { return m.Name }
+
+// GetId is the record's Id, for code that handles records of several types alike.
+func (m ManualImportResource) GetId() int { return m.Id }

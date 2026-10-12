@@ -11,7 +11,8 @@
           "Name": "id",
           "Argument": "id",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieID"
           }
         }
       ],
@@ -47,7 +48,8 @@
           "Field": "TmdbId",
           "In": "Query",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "TmdbID"
           }
         },
         {
@@ -90,7 +92,8 @@
           "Name": "id",
           "Argument": "id",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieID"
           }
         }
       ],
@@ -136,7 +139,8 @@
           "Name": "id",
           "Argument": "id",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieID"
           }
         }
       ],

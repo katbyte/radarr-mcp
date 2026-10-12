@@ -8,7 +8,7 @@ type QueueResource struct {
 	CustomFormatScore                   int                            `json:"customFormatScore,omitempty"`
 	CustomFormats                       []CustomFormatResource         `json:"customFormats,omitzero"`
 	DownloadClient                      string                         `json:"downloadClient,omitempty"`
-	DownloadClientHasPostImportCategory *bool                          `json:"downloadClientHasPostImportCategory,omitempty"`
+	DownloadClientHasPostImportCategory bool                           `json:"downloadClientHasPostImportCategory"`
 	DownloadId                          string                         `json:"downloadId,omitempty"`
 	ErrorMessage                        string                         `json:"errorMessage,omitempty"`
 	EstimatedCompletionTime             string                         `json:"estimatedCompletionTime,omitempty"`
@@ -16,7 +16,7 @@ type QueueResource struct {
 	Indexer                             string                         `json:"indexer,omitempty"`
 	Languages                           []Language                     `json:"languages,omitzero"`
 	Movie                               *MovieResource                 `json:"movie,omitempty"`
-	MovieId                             *int                           `json:"movieId,omitempty"`
+	MovieId                             *MovieID                       `json:"movieId,omitempty"`
 	OutputPath                          string                         `json:"outputPath,omitempty"`
 	Protocol                            DownloadProtocol               `json:"protocol,omitempty"`
 	Quality                             *QualityModel                  `json:"quality,omitempty"`

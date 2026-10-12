@@ -4,7 +4,7 @@
 [![Go Version](https://img.shields.io/github/go-mod/go-version/katbyte/radarr-mcp?color=00ADD8)](https://github.com/katbyte/radarr-mcp/blob/main/go.mod)
 [![License](https://img.shields.io/github/license/katbyte/radarr-mcp?color=blue)](https://github.com/katbyte/radarr-mcp/blob/main/LICENSE)
 ![build](https://github.com/katbyte/radarr-mcp/actions/workflows/build.yaml/badge.svg)
-![tests](https://github.com/katbyte/radarr-mcp/actions/workflows/pr-integration.yaml/badge.svg)
+![tests](https://github.com/katbyte/radarr-mcp/actions/workflows/pr-acceptance.yaml/badge.svg)
 ![lint](https://github.com/katbyte/radarr-mcp/actions/workflows/pr-golangci-lint.yaml/badge.svg)
 [![coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/katbyte/radarr-mcp/badges/coverage.json)](https://github.com/katbyte/radarr-mcp/actions/workflows/coverage.yaml)
 
@@ -256,16 +256,18 @@ A pattern that matches no tool aborts startup and names it, so a typo cannot sil
 import "github.com/katbyte/radarr-mcp/sdk/radarr"
 
 c, err := radarr.New("http://nas:7878", os.Getenv("RADARR_TOKEN"))
-res, err := c.GetMovie(ctx, radarr.GetMovieOperationOptions{})
-for _, m := range res.Model { ... } // every film, each with its file and media info
+res, err := c.GetMovie(ctx)
+for _, m := range res.Answer { ... } // every film, each with its file and media info
 
-all, err := c.GetHistoryComplete(ctx, radarr.GetHistoryOperationOptions{PageSize: new(250)}) // every page
+all, err := c.GetHistoryComplete(ctx, radarr.GetHistoryOptions{PageSize: new(250)}) // every page
 for _, h := range all.Items { ... }
+
+done, err := c.RescanMovieAndWait(ctx, radarr.RescanMovieCommand{MovieId: m.Id}, time.Minute) // queue a command and wait for it
 ```
 
 A read is asked again when a gateway could not reach Radarr or the connection dropped, three times in all, and a write is sent once. An error says what Radarr said went wrong (`Path: Folder '/nowhere' does not exist`) rather than quoting its JSON, a redirect is refused rather than followed unless it is the answer (a login's is, and comes back as it was sent), and `radarr.New(url, key, client.WithLog(logger))` traces every request and answer with the API key hidden.
 
-It is generated from Radarr's own OpenAPI document (`api-defs/`, see [api-defs/README.md](api-defs/README.md)) by [pandorest](https://github.com/katbyte/pandorest), a generator modelled on [hashicorp/pandora](https://github.com/hashicorp/pandora) and shared with the other servers in this family: an importer normalises the spec into checked-in definitions (`api-defs/radarr-<release>/`, one file per tag) through named workarounds for the spec's known bugs, a differ reports what a spec refresh changes, and a generator writes one file per operation and model from the definitions. What is this repository's own is the service's settings and its twelve workarounds in `sdk/pandorest`, and `sdk/radarr/service.go`, the one file in the package written by hand: what is Radarr's own about being talked to, from where its API key is found to how it words a refusal. That is **a method for every one of Radarr's 237 operations**, each with typed options, a typed body, a `{Model, HttpResponse}` result, the status codes the operation answers (anything else is an error), and a `Complete` pager on every paged list. `make apicheck` proves the coverage claim against the spec, `make gencheck` (and the unit tests) fail when the generated code is stale, and the integration suite proves the shapes **against a running Radarr** - which is the only thing that catches the server changing shape underneath a spec that says otherwise.
+It is generated from Radarr's own OpenAPI document (`api-defs/`, see [api-defs/README.md](api-defs/README.md)) by [pandorest](https://github.com/katbyte/pandorest), a generator modelled on [hashicorp/pandora](https://github.com/hashicorp/pandora) and shared with the other servers in this family: an importer normalises the spec into checked-in definitions (`api-defs/radarr-<release>/`, one file per tag) through named workarounds for the spec's known bugs, a differ reports what a spec refresh changes, and a generator writes one file per operation and model from the definitions. What is this repository's own is the service's settings and its thirteen workarounds in `sdk/pandorest`, and `sdk/radarr/service.go`, the one file in the package written by hand: what is Radarr's own about being talked to, from where its API key is found to how it words a refusal. That is **a method for every one of Radarr's 237 operations**, each with typed options, a typed body, an `{Answer, HttpResponse}` result, the status codes the operation answers (anything else is an error), and a `Complete` pager on every paged list. A film's id, a film file's and TMDB's are types of their own (`MovieID`, `MovieFileID`, `TmdbID`), so one cannot be passed where another is wanted, and sixteen of Radarr's commands have a method each, with one that waits for the command to finish. `make apicheck` proves the coverage claim against the spec, `make gencheck` (and the unit tests) fail when the generated code is stale, and the SDK suite (`acceptance/radarr/`) proves the shapes **against a running Radarr** - which is the only thing that catches the server changing shape underneath a spec that says otherwise.
 
 ## Development
 
@@ -282,8 +284,8 @@ Everything else runs against **a real Radarr in Docker**, because a stub can onl
 
 | | Covers | Command |
 |---|---|---|
-| `integration/` | the `sdk/radarr` client against the server it was generated for: all 125 GETs called and decoded strictly (a field the SDK lacks fails the run), 108 of the 112 writes called - all but restart, shutdown and the two backup restores, which would take Radarr out from under the suite - with every answer checked against what the SDK declares, and bespoke tests of what the tools rely on: a release grabbed from the fake indexer into a download client, failed, blocklisted and taken off the blocklist, held back by a delay profile and grabbed from the queue, imported by hand, and a queued command cancelled | `make testacc-integration` |
-| `acceptance/` | the tools: name resolution, projections, every audit against fixtures seeded with what it exists to find, the settings tools, and journeys that chain them (a film searched for, grabbed by hand, downloaded and imported; every fixable audit fixed and re-audited; files imported by hand; writes repeated and made at once; a deleted film leaving nothing behind; lookups that must change nothing), and the built binary itself over stdio and HTTP (flags and environment reaching the server, nothing but protocol on stdout, the bearer check, clean shutdown, refusing to start without a key) | `make testacc-acceptance` |
+| `acceptance/radarr/` | the `sdk/radarr` client against the server it was generated for: all 125 GETs called and decoded strictly (a field the SDK lacks fails the run), 108 of the 112 writes called - all but restart, shutdown and the two backup restores, which would take Radarr out from under the suite - with every answer checked against what the SDK declares, and bespoke tests of what the tools rely on: a release grabbed from the fake indexer into a download client, failed, blocklisted and taken off the blocklist, held back by a delay profile and grabbed from the queue, imported by hand, and a queued command cancelled | `make testacc-integration` |
+| `acceptance/tools/` | the tools: name resolution, projections, every audit against fixtures seeded with what it exists to find, the settings tools, and journeys that chain them (a film searched for, grabbed by hand, downloaded and imported; every fixable audit fixed and re-audited; files imported by hand; writes repeated and made at once; a deleted film leaving nothing behind; lookups that must change nothing), and the built binary itself over stdio and HTTP (flags and environment reaching the server, nothing but protocol on stdout, the bearer check, clean shutdown, refusing to start without a key) | `make testacc-acceptance` |
 
 ```bash
 make testacc        # both suites, each in a throwaway container
@@ -291,16 +293,16 @@ make check-all      # build + unit + live suites + every linter
 make cover          # every suite merged into one coverage number
 ```
 
-Coverage has to span every suite or it lies: `go test -cover ./...` reports a fraction for `tools/`, because almost everything real happens in the live suites behind the `integration` tag. `make cover` runs each into its own binary coverage directory and merges them with `go tool covdata` - stdlib tooling, no third-party merger - which is what the badge reports. The generated `sdk/radarr` is left out of the number and reported on a line of its own: it is one method per operation, and the integration suite exercises the ones the tools rely on rather than all 237.
+Coverage has to span every suite or it lies: `go test -cover ./...` reports a fraction for `tools/`, because almost everything real happens in the live suites behind the `acceptance` tag. `make cover` runs each into its own binary coverage directory and merges them with `go tool covdata` - stdlib tooling, no third-party merger - which is what the badge reports. The generated `sdk/radarr` is left out of the number and reported on a line of its own: it is one method per operation, and the integration suite exercises the ones the tools rely on rather than all 237.
 
-**Every tool is exercised.** Tool coverage is enforced rather than claimed: the acceptance suite records every tool it calls and fails if the server registered one that nothing called, or one that only ever failed, so a new tool cannot ship untested.
+**Every tool is exercised.** Tool coverage is enforced rather than claimed: the tool suite records every tool it calls and fails if the server registered one that nothing called, or one that only ever failed, so a new tool cannot ship untested.
 
 **Every audit is followed to its fix.** Fifteen of the eighteen are found on the fixtures and then cleared by the tool the audit names - the film monitored, re-profiled, renamed, re-pointed at its folder, imported, excluded, added, downloaded better or let go of - with the fixture put back and the audits checked again to prove it. Three are not: no fixture can make a film's TMDB metadata incomplete (`audit_missing_metadata`) or have TMDB delete a film (`audit_removed`), and `audit_language` is cleared only by a copy with different audio, which the fake indexer does not offer. All three checks are tested against a canned library, and `audit_language` is found live as well. Radarr's own calls out to its metadata service (`api.radarr.video`) and TMDB's image CDN go through a record/replay proxy (go-kt's `test/replayproxy`, set up in `lib/testenv`) - the container is started with `HTTPS_PROXY` pointing at it and trusts its certificate authority - so neither suite needs a network:
 
 ```bash
 make record         # re-record every cassette against the real services
 make record-check   # check the cassettes still match, without rewriting them
-RADARR_TEST_RECORD=1 make testacc-acceptance   # record only the requests no cassette holds
+RADARR_TEST_RECORD=1 make testacc-tools        # record only the requests no cassette holds
 ```
 
 `record-check` compares the *shape* of live responses against the recordings - renamed fields, vanished fields, changed types - and ignores values, so it goes red when a service changes its contract rather than when a poster changes.

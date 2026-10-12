@@ -37,10 +37,10 @@ func definitionLock(id int) lock.Thing {
 // movieLocks are the films with these ids: an edit of a film holds it, so
 // that pointing it at a folder, which sends the whole film back, cannot be
 // read before the edit and written after it.
-func movieLocks(ids ...int) []lock.Thing {
+func movieLocks(ids ...radarr.MovieID) []lock.Thing {
 	things := make([]lock.Thing, 0, len(ids))
 	for _, id := range ids {
-		things = append(things, lock.ID[radarr.MovieResource](strconv.Itoa(id)))
+		things = append(things, lock.ID[radarr.MovieResource](strconv.Itoa(int(id))))
 	}
 
 	return things

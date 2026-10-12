@@ -137,11 +137,11 @@ func registerQualityProfileTools(r *registry) {
 			if err != nil {
 				return nil, profileRow{}, err
 			}
-			if blank.Model == nil {
+			if blank.Answer == nil {
 				return nil, profileRow{}, errors.New("no answer from Radarr when asked for a blank quality profile")
 			}
 
-			p = *blank.Model
+			p = *blank.Answer
 		}
 		p.Id, p.Name = 0, name
 		if err := in.apply(&p); err != nil {
@@ -162,7 +162,7 @@ func registerQualityProfileTools(r *registry) {
 			return nil, profileRow{}, err
 		}
 
-		return nil, profileOf(res.Model, 0), nil
+		return nil, profileOf(res.Answer, 0), nil
 	})
 
 	type profileDeleteIn struct {

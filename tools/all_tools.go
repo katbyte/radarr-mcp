@@ -331,9 +331,7 @@ func (r *registry) queued() *mcpregistry.Registry {
 			LogWrite:  r.writeLog,
 			// the line written for a write shows a thing's switches, a record's values and Radarr's own settings as they were sent, and blanks everything under a provider's settings
 			ShownArguments: shownArguments,
-			// and never a credential of Radarr's own, by the rule the settings tools hide one by: the registry's own rule reads how a name ends
-			SecretArguments: r.secretSettings(),
-			BlankAddresses:  radarrSaid,
+			BlankAddresses: radarrSaid,
 		})
 	}
 

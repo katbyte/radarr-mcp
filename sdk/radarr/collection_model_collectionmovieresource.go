@@ -17,6 +17,6 @@ type CollectionMovieResource struct {
 	SortTitle  string          `json:"sortTitle,omitempty"`
 	Status     MovieStatusType `json:"status,omitempty"`
 	Title      string          `json:"title,omitempty"`
-	TmdbId     int             `json:"tmdbId,omitempty"`
+	TmdbId     TmdbID          `json:"tmdbId,omitempty"`
 	Year       int             `json:"year,omitempty"`
 }

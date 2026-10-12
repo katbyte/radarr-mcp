@@ -7,8 +7,8 @@ type ExtraFileResource struct {
 	Extension    string        `json:"extension,omitempty"`
 	Id           int           `json:"id,omitempty"`
 	LanguageTags []string      `json:"languageTags,omitzero"`
-	MovieFileId  *int          `json:"movieFileId,omitempty"`
-	MovieId      int           `json:"movieId,omitempty"`
+	MovieFileId  *MovieFileID  `json:"movieFileId,omitempty"`
+	MovieId      MovieID       `json:"movieId,omitempty"`
 	RelativePath string        `json:"relativePath,omitempty"`
 	Title        string        `json:"title,omitempty"`
 	Type         ExtraFileType `json:"type,omitempty"`

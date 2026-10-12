@@ -31,6 +31,7 @@ const (
 
 // notWrapped are the operations no tool calls, and why.
 var notWrapped = map[string]string{
+	"PostCommand":     "starts any command by name; each command a tool starts has a method of its own, which names it and its fields",
 	"GetAltTitle":     "a film's alternative titles, which movie_get shows from the film itself",
 	"GetAltTitleById": oneOfAList,
 
@@ -126,8 +127,8 @@ func operations(t *testing.T) []string {
 
 	var ops []string
 	for m := range reflect.TypeFor[radarr.Client]().Methods() {
-		// a method that reads every page of a paged operation is that operation again
-		if strings.HasSuffix(m.Name, "Complete") {
+		// a method that reads every page of a paged operation, at once or one record at a time, is that operation again
+		if strings.HasSuffix(m.Name, "Complete") || strings.HasSuffix(m.Name, "Each") {
 			continue
 		}
 		if slices.ContainsFunc([]string{"Get", "Post", "Put", "Delete"}, func(verb string) bool { return strings.HasPrefix(m.Name, verb) }) {

@@ -2,6 +2,8 @@
 
 package radarr
 
+import "slices"
+
 // ColonReplacementFormat is the "ColonReplacementFormat" enum.
 type ColonReplacementFormat string
 
@@ -23,4 +25,9 @@ func PossibleValuesForColonReplacementFormat() []string {
 		string(ColonReplacementFormatSpaceDashSpace),
 		string(ColonReplacementFormatSmart),
 	}
+}
+
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v ColonReplacementFormat) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForColonReplacementFormat(), string(v))
 }

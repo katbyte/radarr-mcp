@@ -9,20 +9,25 @@ import (
 	"github.com/katbyte/pandorest/client"
 )
 
-// PostExclusionsBulkOperationResponse is the result of PostExclusionsBulk.
-type PostExclusionsBulkOperationResponse struct {
+// PostExclusionsBulkResponse is the result of PostExclusionsBulk.
+type PostExclusionsBulkResponse struct {
 	HttpResponse *http.Response
-	Model        []ImportListExclusionResource
+	Answer       []ImportListExclusionResource
 }
 
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r PostExclusionsBulkResponse) Answered() bool { return r.Answer != nil }
+
 // PostExclusionsBulk calls POST /api/v3/exclusions/bulk.
-func (c Client) PostExclusionsBulk(ctx context.Context, input []ImportListExclusionResource) (result PostExclusionsBulkOperationResponse, err error) {
+func (c Client) PostExclusionsBulk(ctx context.Context, input []ImportListExclusionResource) (result PostExclusionsBulkResponse, err error) {
 	opts := client.RequestOptions{
 		ContentType: "application/json",
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod: http.MethodPost,
+		Operation:  "PostExclusionsBulk",
 		Path:       "/api/v3/exclusions/bulk",
 	}
 
@@ -44,7 +49,7 @@ func (c Client) PostExclusionsBulk(ctx context.Context, input []ImportListExclus
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

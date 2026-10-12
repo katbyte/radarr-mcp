@@ -74,7 +74,7 @@ jobs:
       - name: Tear down
         if: always()
         run: |
-          for s in integration acceptance; do
+          for s in sdk tools; do
             RADARR_TEST_CONTAINER=radarr-mcp-$s \
               RADARR_TEST_DATA="$HOME/.cache/radarr-mcp/testenv/$s" .scripts/testenv.sh down || true
           done

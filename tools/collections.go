@@ -43,7 +43,7 @@ func collectionOf(c *radarr.CollectionResource, lk lookups, includeUnreleased bo
 		case isTrue(m.IsExisting):
 			row.Held = append(row.Held, titleYear(m.Title, m.Year))
 		case includeUnreleased || released(m.Status):
-			row.Missing = append(row.Missing, collectionMember{Title: m.Title, Year: m.Year, TmdbID: m.TmdbId, Status: string(m.Status), Excluded: isTrue(m.IsExcluded)})
+			row.Missing = append(row.Missing, collectionMember{Title: m.Title, Year: m.Year, TmdbID: int(m.TmdbId), Status: string(m.Status), Excluded: isTrue(m.IsExcluded)})
 		}
 	}
 
@@ -67,15 +67,15 @@ func released(s radarr.MovieStatusType) bool {
 
 // resolveCollection finds a collection by id, tmdb:<id> or title.
 func resolveCollection(ctx context.Context, c *radarr.Client, ref string) (*radarr.CollectionResource, error) {
-	res, err := c.GetCollection(ctx, radarr.GetCollectionOperationOptions{})
+	res, err := c.GetCollection(ctx, radarr.GetCollectionOptions{})
 	if err != nil {
 		return nil, err
 	}
 	ref = strings.TrimSpace(ref)
 	lower := strings.ToLower(ref)
 	var titles []string
-	for i := range res.Model {
-		col := &res.Model[i]
+	for i := range res.Answer {
+		col := &res.Answer[i]
 		switch {
 		case strconv.Itoa(col.Id) == ref,
 			strings.HasPrefix(lower, "tmdb:") && strings.TrimSpace(ref[5:]) == strconv.Itoa(col.TmdbId),
@@ -107,7 +107,7 @@ func registerCollectionTools(r *registry) {
 		Description: "List the TMDB collections the library's films belong to (a franchise, a trilogy), each with the films the library holds and the released ones it does not. " +
 			"A monitored collection has Radarr add its missing films on its own.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in collectionListIn) (*mcp.CallToolResult, collectionListOut, error) {
-		res, err := client.GetCollection(ctx, radarr.GetCollectionOperationOptions{})
+		res, err := client.GetCollection(ctx, radarr.GetCollectionOptions{})
 		if err != nil {
 			return nil, collectionListOut{}, err
 		}
@@ -115,9 +115,9 @@ func registerCollectionTools(r *registry) {
 		if err != nil {
 			return nil, collectionListOut{}, err
 		}
-		rows := make([]collectionRow, 0, len(res.Model))
-		for i := range res.Model {
-			row := collectionOf(&res.Model[i], lk, in.IncludeUnreleased)
+		rows := make([]collectionRow, 0, len(res.Answer))
+		for i := range res.Answer {
+			row := collectionOf(&res.Answer[i], lk, in.IncludeUnreleased)
 			if in.MissingOnly && len(row.Missing) == 0 {
 				continue
 			}
@@ -180,6 +180,6 @@ func registerCollectionTools(r *registry) {
 			return nil, collectionRow{}, err
 		}
 
-		return nil, collectionOf(after.Model, lk, false), nil
+		return nil, collectionOf(after.Answer, lk, false), nil
 	})
 }

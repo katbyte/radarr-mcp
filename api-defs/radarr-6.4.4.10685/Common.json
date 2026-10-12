@@ -745,7 +745,8 @@
           "Name": "Id",
           "JsonName": "id",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieFileID"
           }
         },
         {
@@ -781,7 +782,8 @@
           "Name": "MovieId",
           "JsonName": "movieId",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieID"
           }
         },
         {
@@ -950,7 +952,8 @@
           "Name": "Id",
           "JsonName": "id",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieID"
           }
         },
         {
@@ -1041,7 +1044,8 @@
           "Name": "MovieFileId",
           "JsonName": "movieFileId",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieFileID"
           }
         },
         {
@@ -1233,7 +1237,8 @@
           "Name": "TmdbId",
           "JsonName": "tmdbId",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "TmdbID"
           }
         },
         {
@@ -1774,7 +1779,8 @@
           "Name": "MovieId",
           "JsonName": "movieId",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieID"
           },
           "Nullable": true,
           "KeepsNull": true
@@ -2138,7 +2144,8 @@
           "Name": "MappedMovieId",
           "JsonName": "mappedMovieId",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieID"
           },
           "Nullable": true,
           "KeepsNull": true
@@ -2147,7 +2154,8 @@
           "Name": "MovieId",
           "JsonName": "movieId",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "MovieID"
           },
           "Nullable": true,
           "KeepsNull": true
@@ -2299,7 +2307,8 @@
           "Name": "TmdbId",
           "JsonName": "tmdbId",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "TmdbID"
           }
         }
       ]

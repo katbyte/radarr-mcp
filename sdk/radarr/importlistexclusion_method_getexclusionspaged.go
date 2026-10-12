@@ -4,21 +4,44 @@ package radarr
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"iter"
 	"net/http"
 	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetExclusionsPagedOperationResponse is the result of GetExclusionsPaged.
-type GetExclusionsPagedOperationResponse struct {
+// GetExclusionsPagedResponse is the result of GetExclusionsPaged.
+//
+// Answer is the ImportListExclusionResourcePagingResource answered, nil when the server answered none (a 204), which
+// Answered tells. The same record is embedded, so res.Answer.Name may be read as
+// res.Name; when nothing was answered the embedded record is a zero one, so that
+// read is empty rather than a panic. Only the method sets the two; a response built
+// by hand sets both or neither.
+type GetExclusionsPagedResponse struct {
 	HttpResponse *http.Response
-	Model        *ImportListExclusionResourcePagingResource
+	Answer       *ImportListExclusionResourcePagingResource
+	*ImportListExclusionResourcePagingResource
 }
 
-// GetExclusionsPagedOperationOptions holds the query and header parameters of GetExclusionsPaged.
-type GetExclusionsPagedOperationOptions struct {
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetExclusionsPagedResponse) Answered() bool { return r.Answer != nil }
+
+// Record is the ImportListExclusionResourcePagingResource answered, as a value to change and write back, or an
+// error when the server answered none.
+func (r GetExclusionsPagedResponse) Record() (ImportListExclusionResourcePagingResource, error) {
+	if r.Answer == nil {
+		return ImportListExclusionResourcePagingResource{}, errors.New("GetExclusionsPaged answered no ImportListExclusionResourcePagingResource")
+	}
+
+	return *r.Answer, nil
+}
+
+// GetExclusionsPagedOptions holds the query and header parameters of GetExclusionsPaged.
+type GetExclusionsPagedOptions struct {
 	Page          *int
 	PageSize      *int
 	SortKey       string
@@ -26,13 +49,13 @@ type GetExclusionsPagedOperationOptions struct {
 }
 
 // ToHeaders returns the header parameters the options set.
-func (o GetExclusionsPagedOperationOptions) ToHeaders() *client.Headers {
+func (o GetExclusionsPagedOptions) ToHeaders() *client.Headers {
 	out := client.Headers{}
 	return &out
 }
 
 // ToQuery returns the query parameters the options set.
-func (o GetExclusionsPagedOperationOptions) ToQuery() *client.QueryParams {
+func (o GetExclusionsPagedOptions) ToQuery() *client.QueryParams {
 	out := client.QueryParams{}
 	if o.Page != nil {
 		out.Append("page", strconv.Itoa(*o.Page))
@@ -50,13 +73,24 @@ func (o GetExclusionsPagedOperationOptions) ToQuery() *client.QueryParams {
 }
 
 // GetExclusionsPaged calls GET /api/v3/exclusions/paged.
-func (c Client) GetExclusionsPaged(ctx context.Context, options GetExclusionsPagedOperationOptions) (result GetExclusionsPagedOperationResponse, err error) {
+func (c Client) GetExclusionsPaged(ctx context.Context, options ...GetExclusionsPagedOptions) (result GetExclusionsPagedResponse, err error) {
+	if len(options) > 1 {
+		err = fmt.Errorf("GetExclusionsPaged takes one options struct at most, not %d", len(options))
+		return
+	}
+	var option GetExclusionsPagedOptions
+	if len(options) == 1 {
+		option = options[0]
+	}
+
+	result.ImportListExclusionResourcePagingResource = &ImportListExclusionResourcePagingResource{}
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodGet,
-		OptionsObject: options,
+		Operation:     "GetExclusionsPaged",
+		OptionsObject: option,
 		Path:          "/api/v3/exclusions/paged",
 	}
 
@@ -74,11 +108,12 @@ func (c Client) GetExclusionsPaged(ctx context.Context, options GetExclusionsPag
 		return
 	}
 
-	var model ImportListExclusionResourcePagingResource
-	result.Model = &model
-	if err = resp.Unmarshal(result.Model); err != nil {
+	var answer ImportListExclusionResourcePagingResource
+	result.Answer = &answer
+	if err = resp.Unmarshal(result.Answer); err != nil {
 		return
 	}
+	result.ImportListExclusionResourcePagingResource = result.Answer
 
 	return
 }
@@ -92,34 +127,102 @@ type GetExclusionsPagedCompleteResult struct {
 // GetExclusionsPagedComplete calls GetExclusionsPaged page by page, from the
 // page options.Page names (the first when unset), until every result is loaded.
 // options.PageSize is the page size, client.DefaultPageSize when unset.
-func (c Client) GetExclusionsPagedComplete(ctx context.Context, options GetExclusionsPagedOperationOptions) (result GetExclusionsPagedCompleteResult, err error) {
+func (c Client) GetExclusionsPagedComplete(ctx context.Context, options ...GetExclusionsPagedOptions) (result GetExclusionsPagedCompleteResult, err error) {
+	if len(options) > 1 {
+		err = fmt.Errorf("GetExclusionsPagedComplete takes one options struct at most, not %d", len(options))
+		return
+	}
+	var option GetExclusionsPagedOptions
+	if len(options) == 1 {
+		option = options[0]
+	}
+
 	limit := client.DefaultPageSize
-	if options.PageSize != nil && *options.PageSize > 0 {
-		limit = *options.PageSize
+	if option.PageSize != nil && *option.PageSize > 0 {
+		limit = *option.PageSize
 	}
-	options.PageSize = &limit
+	option.PageSize = &limit
 	number := 1
-	if options.Page != nil && *options.Page > 0 {
-		number = *options.Page
+	if option.Page != nil && *option.Page > 0 {
+		number = *option.Page
 	}
-	options.Page = &number
+	option.Page = &number
 	for {
-		var page GetExclusionsPagedOperationResponse
-		page, err = c.GetExclusionsPaged(ctx, options)
+		var page GetExclusionsPagedResponse
+		page, err = c.GetExclusionsPaged(ctx, option)
 		result.LatestHttpResponse = page.HttpResponse
 		if err != nil {
 			err = fmt.Errorf("loading results: %w", err)
 			return
 		}
-		if page.Model == nil || len(page.Model.Records) == 0 {
+		if page.Answer == nil || len(page.Answer.Records) == 0 {
 			return
 		}
-		result.Items = append(result.Items, page.Model.Records...)
+		result.Items = append(result.Items, page.Answer.Records...)
 		// a short page is the last; so is the page that reaches the total, when
 		// the server reports one
-		if len(page.Model.Records) < limit || page.Model.TotalRecords > 0 && number*limit >= page.Model.TotalRecords {
+		if len(page.Answer.Records) < limit || page.Answer.TotalRecords > 0 && number*limit >= page.Answer.TotalRecords {
 			return
 		}
 		number++
+	}
+}
+
+// GetExclusionsPagedEach calls GetExclusionsPaged page by page as its results are ranged over, so a
+// loop that stops ends the paging:
+//
+//	for item, err := range c.GetExclusionsPagedEach(ctx) {
+//		if err != nil {
+//			return err
+//		}
+//		if found(item) {
+//			break
+//		}
+//	}
+//
+// An error is the last pair handed out, with a zero ImportListExclusionResource. The pages are asked for as GetExclusionsPagedComplete asks for them.
+func (c Client) GetExclusionsPagedEach(ctx context.Context, options ...GetExclusionsPagedOptions) iter.Seq2[ImportListExclusionResource, error] {
+	return func(yield func(ImportListExclusionResource, error) bool) {
+		var zero ImportListExclusionResource
+		if len(options) > 1 {
+			yield(zero, fmt.Errorf("GetExclusionsPagedEach takes one options struct at most, not %d", len(options)))
+			return
+		}
+		var option GetExclusionsPagedOptions
+		if len(options) == 1 {
+			option = options[0]
+		}
+
+		limit := client.DefaultPageSize
+		if option.PageSize != nil && *option.PageSize > 0 {
+			limit = *option.PageSize
+		}
+		option.PageSize = &limit
+		number := 1
+		if option.Page != nil && *option.Page > 0 {
+			number = *option.Page
+		}
+		option.Page = &number
+		for {
+			page, err := c.GetExclusionsPaged(ctx, option)
+			if err != nil {
+				yield(zero, fmt.Errorf("loading results: %w", err))
+				return
+			}
+			if page.Answer == nil || len(page.Answer.Records) == 0 {
+				return
+			}
+			for _, item := range page.Answer.Records {
+				if !yield(item, nil) {
+					return
+				}
+			}
+			// a short page is the last; so is the page that reaches the total, when
+			// the server reports one
+			if len(page.Answer.Records) < limit || page.Answer.TotalRecords > 0 && number*limit >= page.Answer.TotalRecords {
+				return
+			}
+			number++
+		}
 	}
 }

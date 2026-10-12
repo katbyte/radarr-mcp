@@ -4,30 +4,52 @@ package radarr
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetMovieLookupImdbOperationResponse is the result of GetMovieLookupImdb.
-type GetMovieLookupImdbOperationResponse struct {
+// GetMovieLookupImdbResponse is the result of GetMovieLookupImdb.
+//
+// Answer is the MovieResource answered, nil when the server answered none (a 204), which
+// Answered tells. The same record is embedded, so res.Answer.Name may be read as
+// res.Name; when nothing was answered the embedded record is a zero one, so that
+// read is empty rather than a panic. Only the method sets the two; a response built
+// by hand sets both or neither.
+type GetMovieLookupImdbResponse struct {
 	HttpResponse *http.Response
-	Model        *MovieResource
+	Answer       *MovieResource
+	*MovieResource
 }
 
-// GetMovieLookupImdbOperationOptions holds the query and header parameters of GetMovieLookupImdb.
-type GetMovieLookupImdbOperationOptions struct {
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetMovieLookupImdbResponse) Answered() bool { return r.Answer != nil }
+
+// Record is the MovieResource answered, as a value to change and write back, or an
+// error when the server answered none.
+func (r GetMovieLookupImdbResponse) Record() (MovieResource, error) {
+	if r.Answer == nil {
+		return MovieResource{}, errors.New("GetMovieLookupImdb answered no MovieResource")
+	}
+
+	return *r.Answer, nil
+}
+
+// GetMovieLookupImdbOptions holds the query and header parameters of GetMovieLookupImdb.
+type GetMovieLookupImdbOptions struct {
 	ImdbId string
 }
 
 // ToHeaders returns the header parameters the options set.
-func (o GetMovieLookupImdbOperationOptions) ToHeaders() *client.Headers {
+func (o GetMovieLookupImdbOptions) ToHeaders() *client.Headers {
 	out := client.Headers{}
 	return &out
 }
 
 // ToQuery returns the query parameters the options set.
-func (o GetMovieLookupImdbOperationOptions) ToQuery() *client.QueryParams {
+func (o GetMovieLookupImdbOptions) ToQuery() *client.QueryParams {
 	out := client.QueryParams{}
 	if o.ImdbId != "" {
 		out.Append("imdbId", o.ImdbId)
@@ -36,12 +58,14 @@ func (o GetMovieLookupImdbOperationOptions) ToQuery() *client.QueryParams {
 }
 
 // GetMovieLookupImdb calls GET /api/v3/movie/lookup/imdb.
-func (c Client) GetMovieLookupImdb(ctx context.Context, options GetMovieLookupImdbOperationOptions) (result GetMovieLookupImdbOperationResponse, err error) {
+func (c Client) GetMovieLookupImdb(ctx context.Context, options GetMovieLookupImdbOptions) (result GetMovieLookupImdbResponse, err error) {
+	result.MovieResource = &MovieResource{}
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodGet,
+		Operation:     "GetMovieLookupImdb",
 		OptionsObject: options,
 		Path:          "/api/v3/movie/lookup/imdb",
 	}
@@ -60,11 +84,12 @@ func (c Client) GetMovieLookupImdb(ctx context.Context, options GetMovieLookupIm
 		return
 	}
 
-	var model MovieResource
-	result.Model = &model
-	if err = resp.Unmarshal(result.Model); err != nil {
+	var answer MovieResource
+	result.Answer = &answer
+	if err = resp.Unmarshal(result.Answer); err != nil {
 		return
 	}
+	result.MovieResource = result.Answer
 
 	return
 }

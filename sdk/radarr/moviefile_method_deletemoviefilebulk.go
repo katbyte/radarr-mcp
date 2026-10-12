@@ -9,19 +9,20 @@ import (
 	"github.com/katbyte/pandorest/client"
 )
 
-// DeleteMovieFileBulkOperationResponse is the result of DeleteMovieFileBulk.
-type DeleteMovieFileBulkOperationResponse struct {
+// DeleteMovieFileBulkResponse is the result of DeleteMovieFileBulk.
+type DeleteMovieFileBulkResponse struct {
 	HttpResponse *http.Response
 }
 
 // DeleteMovieFileBulk calls DELETE /api/v3/moviefile/bulk.
-func (c Client) DeleteMovieFileBulk(ctx context.Context, input MovieFileListResource) (result DeleteMovieFileBulkOperationResponse, err error) {
+func (c Client) DeleteMovieFileBulk(ctx context.Context, input MovieFileListResource) (result DeleteMovieFileBulkResponse, err error) {
 	opts := client.RequestOptions{
 		ContentType: "application/json",
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod: http.MethodDelete,
+		Operation:  "DeleteMovieFileBulk",
 		Path:       "/api/v3/moviefile/bulk",
 	}
 

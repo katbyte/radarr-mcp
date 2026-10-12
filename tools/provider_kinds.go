@@ -438,7 +438,7 @@ func (k *providerKind[T]) isOn(values map[string]any) bool {
 // test that fails is the answer, not an error: Radarr refuses it with what is
 // wrong, a 400 from most kinds and a 500 from one that could not be reached.
 func (k *providerKind[T]) testOne(ctx context.Context, m map[string]any) (radarr.ProviderTestAllResult, error) {
-	result := radarr.ProviderTestAllResult{Id: idOf(m), IsValid: new(true)}
+	result := radarr.ProviderTestAllResult{Id: idOf(m), IsValid: true}
 	v, err := fromMap[T](m, "the "+k.noun)
 	if err != nil {
 		return result, err
@@ -451,7 +451,7 @@ func (k *providerKind[T]) testOne(ctx context.Context, m map[string]any) (radarr
 		if status := client.StatusCode(testErr); status != http.StatusBadRequest && status < http.StatusInternalServerError {
 			return result, testErr
 		}
-		result.IsValid, result.ValidationFailures = new(false), failuresOf(resp, testErr)
+		result.IsValid, result.ValidationFailures = false, failuresOf(resp, testErr)
 	}
 
 	return result, nil

@@ -8,11 +8,11 @@ type MovieFileResource struct {
 	CustomFormats       []CustomFormatResource `json:"customFormats,omitzero"`
 	DateAdded           string                 `json:"dateAdded,omitempty"`
 	Edition             string                 `json:"edition,omitempty"`
-	Id                  int                    `json:"id,omitempty"`
+	Id                  MovieFileID            `json:"id,omitempty"`
 	IndexerFlags        *int                   `json:"indexerFlags,omitempty"`
 	Languages           []Language             `json:"languages,omitzero"`
 	MediaInfo           *MediaInfoResource     `json:"mediaInfo,omitempty"`
-	MovieId             int                    `json:"movieId,omitempty"`
+	MovieId             MovieID                `json:"movieId,omitempty"`
 	OriginalFilePath    string                 `json:"originalFilePath,omitempty"`
 	Path                string                 `json:"path,omitempty"`
 	Quality             *QualityModel          `json:"quality,omitempty"`

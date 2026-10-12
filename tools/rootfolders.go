@@ -29,8 +29,8 @@ func rootFolderRows(ctx context.Context, c *radarr.Client) ([]rootFolderRow, err
 	if err != nil {
 		return nil, err
 	}
-	out := make([]rootFolderRow, 0, len(folders.Model))
-	for _, f := range folders.Model {
+	out := make([]rootFolderRow, 0, len(folders.Answer))
+	for _, f := range folders.Answer {
 		row := rootFolderRow{ID: f.Id, Path: f.Path, Accessible: isTrue(f.Accessible), FreeSpace: val(f.FreeSpace), UnmappedFolders: len(f.UnmappedFolders)}
 		for i := range movies {
 			if inFolder(movies[i].Path, f.Path) {
@@ -88,7 +88,7 @@ func registerRootFolderTools(r *registry) {
 		if err != nil {
 			return nil, rootFolderRow{}, err
 		}
-		f := res.Model
+		f := res.Answer
 
 		return nil, rootFolderRow{ID: f.Id, Path: f.Path, Accessible: isTrue(f.Accessible), FreeSpace: val(f.FreeSpace), UnmappedFolders: len(f.UnmappedFolders)}, nil
 	})

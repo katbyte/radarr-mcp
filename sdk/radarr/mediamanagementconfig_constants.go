@@ -2,6 +2,8 @@
 
 package radarr
 
+import "slices"
+
 // FileDateType is the "FileDateType" enum.
 type FileDateType string
 
@@ -19,6 +21,11 @@ func PossibleValuesForFileDateType() []string {
 		string(FileDateTypeCinemas),
 		string(FileDateTypeRelease),
 	}
+}
+
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v FileDateType) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForFileDateType(), string(v))
 }
 
 // ProperDownloadTypes is the "ProperDownloadTypes" enum.
@@ -40,6 +47,11 @@ func PossibleValuesForProperDownloadTypes() []string {
 	}
 }
 
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v ProperDownloadTypes) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForProperDownloadTypes(), string(v))
+}
+
 // RescanAfterRefreshType is the "RescanAfterRefreshType" enum.
 type RescanAfterRefreshType string
 
@@ -57,4 +69,9 @@ func PossibleValuesForRescanAfterRefreshType() []string {
 		string(RescanAfterRefreshTypeAfterManual),
 		string(RescanAfterRefreshTypeNever),
 	}
+}
+
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v RescanAfterRefreshType) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForRescanAfterRefreshType(), string(v))
 }

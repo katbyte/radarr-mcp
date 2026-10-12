@@ -41,7 +41,7 @@ func importOf(f *radarr.ManualImportResource) importRow {
 	}
 	if f.Movie != nil {
 		row.Movie = titleYear(f.Movie.Title, f.Movie.Year)
-		row.MovieID = f.Movie.Id
+		row.MovieID = int(f.Movie.Id)
 	}
 	for _, rej := range f.Rejections {
 		row.Rejections = append(row.Rejections, rej.Reason)
@@ -99,7 +99,7 @@ func registerImportTools(r *registry) {
 		Description: "Scan a folder, a download in the queue, or a film's own folder for video files Radarr could import: each with the film and quality Radarr makes of it, and why it would refuse it (an unknown film, not an upgrade, a sample). " +
 			"import_apply imports the ones chosen. A film's folder lists only the files Radarr does not already track there.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in importScanIn) (*mcp.CallToolResult, importScanOut, error) {
-		opts := radarr.GetManualImportOperationOptions{Folder: in.Folder, DownloadId: in.DownloadID, FilterExistingFiles: new(true)}
+		opts := radarr.GetManualImportOptions{Folder: in.Folder, DownloadId: in.DownloadID, FilterExistingFiles: new(true)}
 		switch {
 		case in.Movie != "":
 			m, err := resolveMovie(ctx, client, in.Movie)
@@ -157,7 +157,7 @@ func registerImportTools(r *registry) {
 		if err != nil {
 			return nil, out, err
 		}
-		have := map[int]int{}
+		have := map[radarr.TmdbID]radarr.MovieID{}
 		for i := range library {
 			have[library[i].TmdbId] = library[i].Id
 		}
@@ -197,11 +197,7 @@ func registerImportTools(r *registry) {
 		if err != nil {
 			return nil, importApplyOut{}, err
 		}
-		body := map[string]any{"name": "ManualImport", "files": files}
-		if mode != "" {
-			body["importMode"] = mode
-		}
-		cmd, err := runCommand(ctx, client, body, defaultWait)
+		cmd, err := ran(client.ManualImportAndWait(ctx, radarr.ManualImportCommand{Files: files, ImportMode: mode}, defaultWait))
 		out := importApplyOut{Command: cmd}
 		if err != nil {
 			return nil, out, err
@@ -215,7 +211,7 @@ func registerImportTools(r *registry) {
 // importFiles builds the ManualImport command's files, and the films they go
 // to, from what a tool was given: each file as Radarr's scan of its folder
 // reads it, the quality overridden when one was given.
-func importFiles(ctx context.Context, c *radarr.Client, in []importFile) (files []map[string]any, ids []int, err error) {
+func importFiles(ctx context.Context, c *radarr.Client, in []importFile) (files []radarr.ManualImportCommandFiles, ids []radarr.MovieID, err error) {
 	library, err := allMovies(ctx, c)
 	if err != nil {
 		return nil, nil, err
@@ -246,10 +242,7 @@ func importFiles(ctx context.Context, c *radarr.Client, in []importFile) (files 
 		if len(languages) == 0 {
 			languages = []radarr.Language{{Id: 1, Name: "English"}}
 		}
-		files = append(files, map[string]any{
-			"path": f.Path, "movieId": m.Id, "quality": quality, "languages": languages,
-			"releaseGroup": s.ReleaseGroup, "downloadId": s.DownloadId, "indexerFlags": s.IndexerFlags,
-		})
+		files = append(files, radarr.ManualImportCommandFiles{Path: f.Path, MovieId: m.Id, Quality: quality, Languages: languages, ReleaseGroup: s.ReleaseGroup, DownloadId: s.DownloadId, IndexerFlags: s.IndexerFlags})
 		if !slices.Contains(ids, m.Id) {
 			ids = append(ids, m.Id)
 		}
@@ -270,7 +263,7 @@ func scanFolders(ctx context.Context, c *radarr.Client, in []importFile) (map[st
 			continue
 		}
 		done[dir] = true
-		files, err := scanImport(ctx, c, radarr.GetManualImportOperationOptions{Folder: dir, FilterExistingFiles: new(false)})
+		files, err := scanImport(ctx, c, radarr.GetManualImportOptions{Folder: dir, FilterExistingFiles: new(false)})
 		if err != nil {
 			return nil, err
 		}
@@ -284,13 +277,13 @@ func scanFolders(ctx context.Context, c *radarr.Client, in []importFile) (map[st
 
 // scanImport asks Radarr what it would make of the files in a folder or a
 // download.
-func scanImport(ctx context.Context, c *radarr.Client, opts radarr.GetManualImportOperationOptions) ([]radarr.ManualImportResource, error) {
+func scanImport(ctx context.Context, c *radarr.Client, opts radarr.GetManualImportOptions) ([]radarr.ManualImportResource, error) {
 	res, err := c.GetManualImport(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	return res.Model, nil
+	return res.Answer, nil
 }
 
 // unmappedPaths are the folders in the root folders that no film is in.
@@ -308,7 +301,7 @@ func unmappedPaths(ctx context.Context, c *radarr.Client, rootFolder string) ([]
 		return nil, err
 	}
 	var out []string
-	for _, rf := range res.Model {
+	for _, rf := range res.Answer {
 		if want != "" && rf.Path != want {
 			continue
 		}
@@ -324,10 +317,10 @@ func unmappedPaths(ctx context.Context, c *radarr.Client, rootFolder string) ([]
 // identifyFolder reads one folder: the files in it, and the films TMDB
 // offers for its name. Radarr's own lookup does the matching, so a scene
 // name, an accent or a year in the wrong place is its problem, not ours.
-func identifyFolder(ctx context.Context, c *radarr.Client, folder string, have map[int]int, candidates int) (identifyRow, error) {
+func identifyFolder(ctx context.Context, c *radarr.Client, folder string, have map[radarr.TmdbID]radarr.MovieID, candidates int) (identifyRow, error) {
 	folder = strings.TrimRight(strings.TrimSpace(folder), "/")
 	row := identifyRow{Folder: folder, Name: baseName(folder)}
-	files, err := scanImport(ctx, c, radarr.GetManualImportOperationOptions{Folder: folder, FilterExistingFiles: new(false)})
+	files, err := scanImport(ctx, c, radarr.GetManualImportOptions{Folder: folder, FilterExistingFiles: new(false)})
 	if err != nil {
 		return row, fmt.Errorf("scanning %s: %w", folder, err)
 	}

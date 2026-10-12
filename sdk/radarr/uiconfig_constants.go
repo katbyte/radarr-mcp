@@ -2,6 +2,8 @@
 
 package radarr
 
+import "slices"
+
 // MovieRuntimeFormatType is the "MovieRuntimeFormatType" enum.
 type MovieRuntimeFormatType string
 
@@ -17,4 +19,9 @@ func PossibleValuesForMovieRuntimeFormatType() []string {
 		string(MovieRuntimeFormatTypeHoursMinutes),
 		string(MovieRuntimeFormatTypeMinutes),
 	}
+}
+
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v MovieRuntimeFormatType) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForMovieRuntimeFormatType(), string(v))
 }

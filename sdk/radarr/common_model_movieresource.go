@@ -15,7 +15,7 @@ type MovieResource struct {
 	FolderName            string                     `json:"folderName,omitempty"`
 	Genres                []string                   `json:"genres,omitzero"`
 	HasFile               *bool                      `json:"hasFile,omitempty"`
-	Id                    int                        `json:"id,omitempty"`
+	Id                    MovieID                    `json:"id,omitempty"`
 	Images                []MediaCover               `json:"images,omitzero"`
 	ImdbId                string                     `json:"imdbId,omitempty"`
 	InCinemas             string                     `json:"inCinemas,omitempty"`
@@ -26,7 +26,7 @@ type MovieResource struct {
 	MinimumAvailability   MovieStatusType            `json:"minimumAvailability,omitempty"`
 	Monitored             *bool                      `json:"monitored,omitempty"`
 	MovieFile             *MovieFileResource         `json:"movieFile,omitempty"`
-	MovieFileId           int                        `json:"movieFileId,omitempty"`
+	MovieFileId           MovieFileID                `json:"movieFileId,omitempty"`
 	OriginalLanguage      *Language                  `json:"originalLanguage,omitempty"`
 	OriginalTitle         string                     `json:"originalTitle,omitempty"`
 	Overview              string                     `json:"overview,omitempty"`
@@ -50,7 +50,7 @@ type MovieResource struct {
 	Tags                  []int                      `json:"tags,omitzero"`
 	Title                 string                     `json:"title,omitempty"`
 	TitleSlug             string                     `json:"titleSlug,omitempty"`
-	TmdbId                int                        `json:"tmdbId,omitempty"`
+	TmdbId                TmdbID                     `json:"tmdbId,omitempty"`
 	Website               string                     `json:"website,omitempty"`
 	Year                  int                        `json:"year,omitempty"`
 	YouTubeTrailerId      string                     `json:"youTubeTrailerId,omitempty"`

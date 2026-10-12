@@ -28,12 +28,12 @@ import (
 // one call, each film with its file and the file's media info, which is what
 // makes a sweep over the library one request rather than one per film.
 func allMovies(ctx context.Context, c *radarr.Client) ([]radarr.MovieResource, error) {
-	res, err := c.GetMovie(ctx, radarr.GetMovieOperationOptions{})
+	res, err := c.GetMovie(ctx, radarr.GetMovieOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	return res.Model, nil
+	return res.Answer, nil
 }
 
 // cleanTitle folds a title for comparison: case, punctuation and spacing
@@ -81,7 +81,7 @@ func matchMovie(movies []radarr.MovieResource, ref string) (*radarr.MovieResourc
 			return nil, fmt.Errorf("%q: a tmdb id is a number", ref)
 		}
 		for i := range movies {
-			if movies[i].TmdbId == id {
+			if movies[i].TmdbId == radarr.TmdbID(id) {
 				return &movies[i], nil
 			}
 		}
@@ -97,7 +97,7 @@ func matchMovie(movies []radarr.MovieResource, ref string) (*radarr.MovieResourc
 	}
 	if id, err := strconv.Atoi(ref); err == nil {
 		for i := range movies {
-			if movies[i].Id == id {
+			if movies[i].Id == radarr.MovieID(id) {
 				return &movies[i], nil
 			}
 		}
@@ -140,14 +140,14 @@ func matchMovie(movies []radarr.MovieResource, ref string) (*radarr.MovieResourc
 func resolveMovie(ctx context.Context, c *radarr.Client, ref string) (*radarr.MovieResource, error) {
 	// an id is one request, not the whole library
 	if id, err := strconv.Atoi(strings.TrimSpace(ref)); err == nil {
-		res, err := c.GetMovieById(ctx, id)
+		res, err := c.GetMovieById(ctx, radarr.MovieID(id))
 		if err != nil {
 			if res.HttpResponse != nil && res.HttpResponse.StatusCode == http.StatusNotFound {
 				return nil, fmt.Errorf("no film in the library has id %d", id)
 			}
 			return nil, err
 		}
-		return res.Model, nil
+		return res.Answer, nil
 	}
 	movies, err := allMovies(ctx, c)
 	if err != nil {
@@ -167,7 +167,7 @@ func resolveMovies(ctx context.Context, c *radarr.Client, refs []string) ([]rada
 		return nil, err
 	}
 	out := make([]radarr.MovieResource, 0, len(refs))
-	seen := map[int]bool{}
+	seen := map[radarr.MovieID]bool{}
 	for _, ref := range refs {
 		m, err := matchMovie(movies, ref)
 		if err != nil {
@@ -195,14 +195,14 @@ func loadLookups(ctx context.Context, c *radarr.Client) (lookups, error) {
 	if err != nil {
 		return lk, err
 	}
-	for _, p := range profiles.Model {
+	for _, p := range profiles.Answer {
 		lk.profiles[p.Id] = p.Name
 	}
 	tags, err := c.GetTag(ctx)
 	if err != nil {
 		return lk, err
 	}
-	for _, t := range tags.Model {
+	for _, t := range tags.Answer {
 		lk.tags[t.Id] = t.Label
 	}
 
@@ -232,9 +232,9 @@ func resolveProfile(ctx context.Context, c *radarr.Client, ref string) (*radarr.
 	}
 	ref = strings.TrimSpace(ref)
 	id, idErr := strconv.Atoi(ref)
-	names := make([]string, 0, len(res.Model))
-	for i := range res.Model {
-		p := &res.Model[i]
+	names := make([]string, 0, len(res.Answer))
+	for i := range res.Answer {
+		p := &res.Answer[i]
 		if idErr == nil && p.Id == id || strings.EqualFold(p.Name, ref) {
 			return p, nil
 		}
@@ -252,13 +252,13 @@ func resolveRootFolder(ctx context.Context, c *radarr.Client, ref string) (*rada
 		return nil, err
 	}
 	ref = strings.TrimSpace(ref)
-	if ref == "" && len(res.Model) == 1 {
-		return &res.Model[0], nil
+	if ref == "" && len(res.Answer) == 1 {
+		return &res.Answer[0], nil
 	}
 	id, idErr := strconv.Atoi(ref)
-	paths := make([]string, 0, len(res.Model))
-	for i := range res.Model {
-		f := &res.Model[i]
+	paths := make([]string, 0, len(res.Answer))
+	for i := range res.Answer {
+		f := &res.Answer[i]
 		if idErr == nil && f.Id == id || strings.TrimRight(f.Path, "/") == strings.TrimRight(ref, "/") {
 			return f, nil
 		}
@@ -291,7 +291,7 @@ func resolveTags(ctx context.Context, c *radarr.Client, refs []string, create bo
 			continue
 		}
 		found := false
-		for _, t := range res.Model {
+		for _, t := range res.Answer {
 			if strings.EqualFold(t.Label, ref) || strconv.Itoa(t.Id) == ref {
 				ids = append(ids, t.Id)
 				found = true
@@ -302,8 +302,8 @@ func resolveTags(ctx context.Context, c *radarr.Client, refs []string, create bo
 			continue
 		}
 		if !create {
-			labels := make([]string, 0, len(res.Model))
-			for _, t := range res.Model {
+			labels := make([]string, 0, len(res.Answer))
+			for _, t := range res.Answer {
 				labels = append(labels, t.Label)
 			}
 			return nil, fmt.Errorf("no tag %q; the tags are %s", ref, strings.Join(labels, ", "))
@@ -323,7 +323,7 @@ func resolveTags(ctx context.Context, c *radarr.Client, refs []string, create bo
 		if err != nil {
 			return nil, fmt.Errorf("creating tag %q: %w", ref, err)
 		}
-		ids = append(ids, made.Model.Id)
+		ids = append(ids, made.Answer.Id)
 	}
 
 	return ids, nil
@@ -335,7 +335,7 @@ func tagID(ctx context.Context, c *radarr.Client, label string) (int, bool) {
 	if err != nil {
 		return 0, false
 	}
-	for _, t := range res.Model {
+	for _, t := range res.Answer {
 		if strings.EqualFold(t.Label, label) {
 			return t.Id, true
 		}
@@ -363,10 +363,10 @@ type movieRow struct {
 
 func rowOf(m *radarr.MovieResource, lk lookups) movieRow {
 	r := movieRow{
-		ID:             m.Id,
+		ID:             int(m.Id),
 		Title:          m.Title,
 		Year:           m.Year,
-		TmdbID:         m.TmdbId,
+		TmdbID:         int(m.TmdbId),
 		Monitored:      isTrue(m.Monitored),
 		HasFile:        isTrue(m.HasFile),
 		SizeOnDisk:     val(m.SizeOnDisk),
@@ -420,7 +420,7 @@ func fileOf(f *radarr.MovieFileResource) *fileInfo {
 		return nil
 	}
 	out := &fileInfo{
-		ID:                f.Id,
+		ID:                int(f.Id),
 		RelativePath:      f.RelativePath,
 		Path:              f.Path,
 		Size:              f.Size,
@@ -555,43 +555,25 @@ func finished(status radarr.CommandStatus) bool {
 	}
 }
 
-// commandPoll is how often a waiting tool asks after its command.
-var commandPoll = 500 * time.Millisecond
+// A waiting tool asks after its command twice a second.
+func init() { radarr.CommandPoll = 500 * time.Millisecond }
 
-// runCommand starts a command (its name and the fields that command reads)
-// and, with a wait, polls it until it stops or the wait runs out. A command
-// that fails is an error carrying Radarr's message; one still running when
-// the wait ends is returned as it stands, so the caller can say so.
-func runCommand(ctx context.Context, c *radarr.Client, body map[string]any, wait time.Duration) (commandOut, error) {
-	raw, err := json.Marshal(body)
-	if err != nil {
+// ran is a command as it stood when the wait for it ended. One that failed is an error carrying Radarr's message; one still running when the
+// wait ran out is an answer, so the caller can say so.
+func ran(res radarr.GetCommandByIdResponse, err error) (commandOut, error) {
+	if res.Answer == nil {
 		return commandOut{}, err
 	}
-	res, err := c.PostCommand(ctx, raw)
-	if err != nil {
-		return commandOut{}, fmt.Errorf("starting %v: %w", body["name"], err)
-	}
-	cmd := res.Model
-	deadline := time.Now().Add(wait)
-	for wait > 0 && !finished(cmd.Status) && time.Now().Before(deadline) {
-		select {
-		case <-ctx.Done():
-			return commandOf(cmd), ctx.Err()
-		case <-time.After(commandPoll):
-		}
-		got, err := c.GetCommandById(ctx, cmd.Id)
-		if err != nil {
-			return commandOf(cmd), err
-		}
-		cmd = got.Model
-	}
-	out := commandOf(cmd)
-	if cmd.Status == radarr.CommandStatusFailed {
-		msg := strings.TrimSpace(cmd.Message + " " + cmd.Exception)
-		return out, fmt.Errorf("%s failed: %s", out.Name, msg)
-	}
 
-	return out, nil
+	out := commandOf(res.Answer)
+	switch {
+	case errors.Is(err, client.ErrCommandRunning):
+		return out, nil
+	case errors.Is(err, client.ErrCommandFailed):
+		return out, fmt.Errorf("%s failed: %s", out.Name, strings.TrimSpace(res.Answer.Message+" "+res.Answer.Exception))
+	default:
+		return out, err
+	}
 }
 
 // defaultWait is how long a tool waits for the command it started: long

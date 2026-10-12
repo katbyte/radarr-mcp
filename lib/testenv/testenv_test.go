@@ -18,11 +18,11 @@ func TestEnvironment(t *testing.T) {
 	if got := DataDir(); got != "" {
 		t.Errorf("DataDir() with nothing set = %q, want \"\"", got)
 	}
-	t.Setenv("RADARR_TEST_DATA", "/x/testenv/acceptance")
-	if got := DataDir(); got != "/x/testenv/acceptance/media" {
+	t.Setenv("RADARR_TEST_DATA", "/x/testenv/tools")
+	if got := DataDir(); got != "/x/testenv/tools/media" {
 		t.Errorf("DataDir() = %q", got)
 	}
-	if got := HostPath("/media/movies/Alien (1979)"); got != "/x/testenv/acceptance/media/movies/Alien (1979)" {
+	if got := HostPath("/media/movies/Alien (1979)"); got != "/x/testenv/tools/media/movies/Alien (1979)" {
 		t.Errorf("HostPath = %q", got)
 	}
 	if got := CassetteDir(); got != "testdata/cassettes" {

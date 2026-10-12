@@ -15,3 +15,9 @@ type QualityProfileResource struct {
 	Name                  string                              `json:"name,omitempty"`
 	UpgradeAllowed        *bool                               `json:"upgradeAllowed,omitempty"`
 }
+
+// GetName is the record's Name, for code that handles records of several types alike.
+func (m QualityProfileResource) GetName() string { return m.Name }
+
+// GetId is the record's Id, for code that handles records of several types alike.
+func (m QualityProfileResource) GetId() int { return m.Id }

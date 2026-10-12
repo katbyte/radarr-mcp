@@ -5,6 +5,6 @@ package radarr
 // ProviderTestAllResult is the "ProviderTestAllResult" schema.
 type ProviderTestAllResult struct {
 	Id                 int                 `json:"id,omitempty"`
-	IsValid            *bool               `json:"isValid,omitempty"`
+	IsValid            bool                `json:"isValid"`
 	ValidationFailures []ValidationFailure `json:"validationFailures,omitzero"`
 }

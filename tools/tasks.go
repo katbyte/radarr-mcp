@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 )
 
 type taskRow struct {
@@ -18,22 +21,54 @@ type taskRow struct {
 	NextExecution   string `json:"next_execution,omitempty"`
 }
 
-// runnableTasks are the scheduled tasks and library-wide commands task_run
-// starts, with what each does. Restart, shutdown, update and restore are
-// left out on purpose: none of them belongs in a conversation.
-var runnableTasks = map[string]string{
-	"RssSync":                   "read every indexer's RSS feed and grab what qualifies",
-	"RefreshMonitoredDownloads": "ask the download clients what finished, and import it",
-	"RefreshMovie":              "refresh every film's metadata from TMDB and rescan its folder",
-	"RefreshCollections":        "refresh the TMDB collections the library's films belong to",
-	"ImportListSync":            "read the import lists and add what they name",
-	"MissingMoviesSearch":       "search the indexers for every monitored film with no file",
-	"CutOffUnmetMoviesSearch":   "search the indexers for an upgrade to every file below its profile's cutoff",
-	"CheckHealth":               "run the health checks now",
-	"Housekeeping":              "clean up the database",
-	"CleanUpRecycleBin":         "empty the recycle bin of what is older than its retention",
-	"Backup":                    "back up the database and settings",
-	"ApplicationUpdate":         "install the newest release, where Radarr updates itself; a Docker install is updated by pulling a newer image, and this does nothing there",
+// task is one thing task_run starts: what it does, in words, and the command that does it.
+type task struct {
+	does string
+	run  func(ctx context.Context, c *radarr.Client, wait time.Duration) (waited, error)
+}
+
+// waited is a command as the wait for it left it.
+type waited = radarr.GetCommandByIdResponse
+
+// runnableTasks are the scheduled tasks and library-wide commands task_run starts. Restart, shutdown, update and restore are left out on
+// purpose: none of them belongs in a conversation.
+var runnableTasks = map[string]task{
+	"RssSync": {"read every indexer's RSS feed and grab what qualifies", func(ctx context.Context, c *radarr.Client, wait time.Duration) (waited, error) {
+		return c.RssSyncAndWait(ctx, radarr.RssSyncCommand{}, wait)
+	}},
+	"RefreshMonitoredDownloads": {"ask the download clients what finished, and import it", func(ctx context.Context, c *radarr.Client, wait time.Duration) (waited, error) {
+		return c.RefreshMonitoredDownloadsAndWait(ctx, radarr.RefreshMonitoredDownloadsCommand{}, wait)
+	}},
+	"RefreshMovie": {"refresh every film's metadata from TMDB and rescan its folder", func(ctx context.Context, c *radarr.Client, wait time.Duration) (waited, error) {
+		return c.RefreshMovieAndWait(ctx, radarr.RefreshMovieCommand{}, wait)
+	}},
+	"RefreshCollections": {"refresh the TMDB collections the library's films belong to", func(ctx context.Context, c *radarr.Client, wait time.Duration) (waited, error) {
+		return c.RefreshCollectionsAndWait(ctx, radarr.RefreshCollectionsCommand{}, wait)
+	}},
+	"ImportListSync": {"read the import lists and add what they name", func(ctx context.Context, c *radarr.Client, wait time.Duration) (waited, error) {
+		return c.ImportListSyncAndWait(ctx, radarr.ImportListSyncCommand{}, wait)
+	}},
+	"MissingMoviesSearch": {"search the indexers for every monitored film with no file", func(ctx context.Context, c *radarr.Client, wait time.Duration) (waited, error) {
+		return c.MissingMoviesSearchAndWait(ctx, radarr.MissingMoviesSearchCommand{}, wait)
+	}},
+	"CutOffUnmetMoviesSearch": {"search the indexers for an upgrade to every file below its profile's cutoff", func(ctx context.Context, c *radarr.Client, wait time.Duration) (waited, error) {
+		return c.CutOffUnmetMoviesSearchAndWait(ctx, radarr.CutOffUnmetMoviesSearchCommand{}, wait)
+	}},
+	"CheckHealth": {"run the health checks now", func(ctx context.Context, c *radarr.Client, wait time.Duration) (waited, error) {
+		return c.CheckHealthAndWait(ctx, radarr.CheckHealthCommand{}, wait)
+	}},
+	"Housekeeping": {"clean up the database", func(ctx context.Context, c *radarr.Client, wait time.Duration) (waited, error) {
+		return c.HousekeepingAndWait(ctx, radarr.HousekeepingCommand{}, wait)
+	}},
+	"CleanUpRecycleBin": {"empty the recycle bin of what is older than its retention", func(ctx context.Context, c *radarr.Client, wait time.Duration) (waited, error) {
+		return c.CleanUpRecycleBinAndWait(ctx, radarr.CleanUpRecycleBinCommand{}, wait)
+	}},
+	"Backup": {"back up the database and settings", func(ctx context.Context, c *radarr.Client, wait time.Duration) (waited, error) {
+		return c.BackupAndWait(ctx, radarr.BackupCommand{}, wait)
+	}},
+	"ApplicationUpdate": {"install the newest release, where Radarr updates itself; a Docker install is updated by pulling a newer image, and this does nothing there", func(ctx context.Context, c *radarr.Client, wait time.Duration) (waited, error) {
+		return c.ApplicationUpdateAndWait(ctx, radarr.ApplicationUpdateCommand{}, wait)
+	}},
 }
 
 // taskNames lists runnableTasks sorted, for errors and descriptions.
@@ -80,8 +115,8 @@ func registerTaskTools(r *registry) {
 		if err != nil {
 			return nil, taskListOut{}, err
 		}
-		rows := make([]taskRow, 0, len(tasks.Model))
-		for _, t := range tasks.Model {
+		rows := make([]taskRow, 0, len(tasks.Answer))
+		for _, t := range tasks.Answer {
 			rows = append(rows, taskRow{
 				Name: t.Name, TaskName: t.TaskName, IntervalMinutes: t.Interval,
 				LastExecution: t.LastExecution, LastDuration: t.LastDuration, NextExecution: t.NextExecution,
@@ -98,7 +133,7 @@ func registerTaskTools(r *registry) {
 			if getErr != nil {
 				return nil, out, fmt.Errorf("command %d: %w", in.CommandID, getErr)
 			}
-			out.Commands = []commandOut{commandOf(one.Model)}
+			out.Commands = []commandOut{commandOf(one.Answer)}
 
 			return nil, out, nil
 		}
@@ -107,8 +142,8 @@ func registerTaskTools(r *registry) {
 		if err != nil {
 			return nil, out, err
 		}
-		for i := range commands.Model {
-			out.Commands = append(out.Commands, commandOf(&commands.Model[i]))
+		for i := range commands.Answer {
+			out.Commands = append(out.Commands, commandOf(&commands.Answer[i]))
 		}
 		slices.SortFunc(out.Commands, func(a, b commandOut) int { return b.ID - a.ID })
 		if len(out.Commands) > 20 {
@@ -132,12 +167,13 @@ func registerTaskTools(r *registry) {
 		Description: "Run one of Radarr's library-wide tasks now rather than waiting for its schedule - an RSS sync, checking the download clients for finished downloads, refreshing every film, searching for everything missing or below cutoff - and wait for it to finish. " +
 			"A restart and a shutdown have tools of their own (server_restart, server_shutdown), and server_updates says what there is to update to.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in taskRunIn) (*mcp.CallToolResult, taskRunOut, error) {
-		task, ok := canonicalTask(in.Task)
+		name, ok := canonicalTask(in.Task)
 		if !ok {
 			return nil, taskRunOut{}, fmt.Errorf("task %q is not one task_run starts; the tasks are %s", in.Task, strings.Join(taskNames(), ", "))
 		}
-		cmd, err := runCommand(ctx, client, map[string]any{"name": task}, waitFor(in.Wait))
+		task := runnableTasks[name]
+		cmd, err := ran(task.run(ctx, client, waitFor(in.Wait)))
 
-		return nil, taskRunOut{Task: task, Does: runnableTasks[task], Command: cmd}, err
+		return nil, taskRunOut{Task: name, Does: task.does, Command: cmd}, err
 	})
 }

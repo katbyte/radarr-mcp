@@ -42,3 +42,9 @@ type NotificationResource struct {
 	Tags                                []int                  `json:"tags,omitzero"`
 	TestCommand                         string                 `json:"testCommand,omitempty"`
 }
+
+// GetName is the record's Name, for code that handles records of several types alike.
+func (m NotificationResource) GetName() string { return m.Name }
+
+// GetId is the record's Id, for code that handles records of several types alike.
+func (m NotificationResource) GetId() int { return m.Id }

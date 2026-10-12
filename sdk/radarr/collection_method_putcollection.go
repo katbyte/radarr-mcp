@@ -9,20 +9,25 @@ import (
 	"github.com/katbyte/pandorest/client"
 )
 
-// PutCollectionOperationResponse is the result of PutCollection.
-type PutCollectionOperationResponse struct {
+// PutCollectionResponse is the result of PutCollection.
+type PutCollectionResponse struct {
 	HttpResponse *http.Response
-	Model        []CollectionResource
+	Answer       []CollectionResource
 }
 
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r PutCollectionResponse) Answered() bool { return r.Answer != nil }
+
 // PutCollection calls PUT /api/v3/collection.
-func (c Client) PutCollection(ctx context.Context, input CollectionUpdateResource) (result PutCollectionOperationResponse, err error) {
+func (c Client) PutCollection(ctx context.Context, input CollectionUpdateResource) (result PutCollectionResponse, err error) {
 	opts := client.RequestOptions{
 		ContentType: "application/json",
 		ExpectedStatusCodes: []int{
 			http.StatusAccepted,
 		},
 		HTTPMethod: http.MethodPut,
+		Operation:  "PutCollection",
 		Path:       "/api/v3/collection",
 	}
 
@@ -44,7 +49,7 @@ func (c Client) PutCollection(ctx context.Context, input CollectionUpdateResourc
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

@@ -2,6 +2,8 @@
 
 package radarr
 
+import "slices"
+
 // CalendarReleaseType is the "CalendarReleaseType" enum.
 type CalendarReleaseType string
 
@@ -19,4 +21,9 @@ func PossibleValuesForCalendarReleaseType() []string {
 		string(CalendarReleaseTypeDigitalRelease),
 		string(CalendarReleaseTypePhysicalRelease),
 	}
+}
+
+// Known reports whether the value is one the document lists, or empty; a server may answer one it does not.
+func (v CalendarReleaseType) Known() bool {
+	return v == "" || slices.Contains(PossibleValuesForCalendarReleaseType(), string(v))
 }

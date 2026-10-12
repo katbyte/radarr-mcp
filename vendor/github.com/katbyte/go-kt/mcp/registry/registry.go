@@ -12,6 +12,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"reflect"
 	"runtime/debug"
 	"slices"
@@ -80,14 +81,15 @@ type Config struct {
 	// LogError is where a handler's panic and its stack go; nil is the shared log, on stderr, since stdout carries the protocol over stdio.
 	LogError func(format string, args ...any)
 	// LogWrite is where one line goes for every call of a write or a delete tool: the tool, what it was sent with credentials blanked, and how it
-	// ended. nil is the shared log at info.
+	// ended. nil is the shared log at info, which a tool does not show at its default level: the line is there for whoever sets the log to info.
 	LogWrite func(format string, args ...any)
 	// SecretArguments are argument names, at any depth, whose values the write line blanks whole, whatever their type: a file's text, a command and
 	// its flags, an address whose path is the secret. Blanked unasked are arguments named as a credential (chttp.SecretName), everything under a
 	// free-form object such as a settings map, and in any address the sign-in, the query values and the fragment.
 	SecretArguments []string
 	// ShownArguments are, by tool, the free-form arguments that hold no credential and are written as sent: a server's own settings, checked against
-	// a list. A credential-named field under one is still blanked.
+	// a list. They are shown only for a call the tool answered: one it refused or failed was never held to that list, so it is blanked like any
+	// other. A credential-named field under one is always blanked.
 	ShownArguments map[string][]string
 	// CleanAnswers, when above 0, has every piece of text in every answer and refusal cleaned as text from outside is (outside.Text) and cut to this
 	// many characters, once, here, rather than by each tool. It stays off until a server has named what to leave as it is.
@@ -134,9 +136,11 @@ type pending struct {
 	description string
 	// arguments are the tool's argument names, in declared order
 	arguments []string
-	// loose are the free-form argument names at any depth, less those in ShownArguments; looseInput is a tool whose whole input is free-form
-	loose      map[string]bool
-	looseInput bool
+	// loose are the free-form argument names at any depth, and looseAnswered those less the ones in ShownArguments, for a call the tool answered;
+	// looseInput is a tool whose whole input is free-form
+	loose         map[string]bool
+	looseAnswered map[string]bool
+	looseInput    bool
 	// answers are the JSON names the tool answers under, however deep
 	answers  map[string]bool
 	register func(*mcp.Server)
@@ -198,19 +202,21 @@ func Add[In, Out any](r *Registry, kind Kind, t *mcp.Tool, h mcp.ToolHandlerFor[
 	}
 
 	loose := looseNames(reflect.TypeFor[In](), map[string]bool{}, map[reflect.Type]bool{})
+	looseAnswered := maps.Clone(loose)
 	for _, name := range r.cfg.ShownArguments[t.Name] {
-		delete(loose, name)
+		delete(looseAnswered, name)
 	}
 
 	r.pending = append(r.pending, pending{
-		name:        t.Name,
-		kind:        kind,
-		description: t.Description,
-		arguments:   argumentNames(reflect.TypeFor[In]()),
-		loose:       loose,
-		looseInput:  freeForm(reflect.TypeFor[In]()),
-		answers:     answerNames(reflect.TypeFor[Out](), map[string]bool{}, map[reflect.Type]bool{}),
-		register:    func(server *mcp.Server) { mcp.AddTool(server, t, wrapped) },
+		name:          t.Name,
+		kind:          kind,
+		description:   t.Description,
+		arguments:     argumentNames(reflect.TypeFor[In]()),
+		loose:         loose,
+		looseAnswered: looseAnswered,
+		looseInput:    freeForm(reflect.TypeFor[In]()),
+		answers:       answerNames(reflect.TypeFor[Out](), map[string]bool{}, map[reflect.Type]bool{}),
+		register:      func(server *mcp.Server) { mcp.AddTool(server, t, wrapped) },
 	})
 }
 
@@ -608,7 +614,7 @@ func (r *Registry) calls(tools map[string]pending) mcp.Middleware {
 func hideAddresses(res *mcp.CallToolResult) {
 	for i, c := range res.Content {
 		text, ok := c.(*mcp.TextContent)
-		if !ok {
+		if !ok || text == nil {
 			continue
 		}
 
@@ -791,7 +797,13 @@ func (r *Registry) logWrite(p pending, arguments json.RawMessage, outcome string
 		log = clog.Log.Infof
 	}
 
-	h := hider{loose: p.loose, secret: r.cfg.SecretArguments, all: p.looseInput}
+	// what a server shows is shown for a call the tool answered alone: one it refused or failed was never held to the tool's own list of names
+	loose := p.loose
+	if outcome == outcomeAnswered {
+		loose = p.looseAnswered
+	}
+
+	h := hider{loose: loose, secret: r.cfg.SecretArguments, all: p.looseInput}
 	sent := "{}"
 	if len(arguments) > 0 {
 		sent = outside.Text(h.arguments(arguments), loggedArguments)

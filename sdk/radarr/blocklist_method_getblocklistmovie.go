@@ -4,46 +4,61 @@ package radarr
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetBlocklistMovieOperationResponse is the result of GetBlocklistMovie.
-type GetBlocklistMovieOperationResponse struct {
+// GetBlocklistMovieResponse is the result of GetBlocklistMovie.
+type GetBlocklistMovieResponse struct {
 	HttpResponse *http.Response
-	Model        []BlocklistResource
+	Answer       []BlocklistResource
 }
 
-// GetBlocklistMovieOperationOptions holds the query and header parameters of GetBlocklistMovie.
-type GetBlocklistMovieOperationOptions struct {
-	MovieId *int
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetBlocklistMovieResponse) Answered() bool { return r.Answer != nil }
+
+// GetBlocklistMovieOptions holds the query and header parameters of GetBlocklistMovie.
+type GetBlocklistMovieOptions struct {
+	MovieId MovieID
 }
 
 // ToHeaders returns the header parameters the options set.
-func (o GetBlocklistMovieOperationOptions) ToHeaders() *client.Headers {
+func (o GetBlocklistMovieOptions) ToHeaders() *client.Headers {
 	out := client.Headers{}
 	return &out
 }
 
 // ToQuery returns the query parameters the options set.
-func (o GetBlocklistMovieOperationOptions) ToQuery() *client.QueryParams {
+func (o GetBlocklistMovieOptions) ToQuery() *client.QueryParams {
 	out := client.QueryParams{}
-	if o.MovieId != nil {
-		out.Append("movieId", strconv.Itoa(*o.MovieId))
+	if o.MovieId != 0 {
+		out.Append("movieId", strconv.Itoa(int(o.MovieId)))
 	}
 	return &out
 }
 
 // GetBlocklistMovie calls GET /api/v3/blocklist/movie.
-func (c Client) GetBlocklistMovie(ctx context.Context, options GetBlocklistMovieOperationOptions) (result GetBlocklistMovieOperationResponse, err error) {
+func (c Client) GetBlocklistMovie(ctx context.Context, options ...GetBlocklistMovieOptions) (result GetBlocklistMovieResponse, err error) {
+	if len(options) > 1 {
+		err = fmt.Errorf("GetBlocklistMovie takes one options struct at most, not %d", len(options))
+		return
+	}
+	var option GetBlocklistMovieOptions
+	if len(options) == 1 {
+		option = options[0]
+	}
+
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodGet,
-		OptionsObject: options,
+		Operation:     "GetBlocklistMovie",
+		OptionsObject: option,
 		Path:          "/api/v3/blocklist/movie",
 	}
 
@@ -61,7 +76,7 @@ func (c Client) GetBlocklistMovie(ctx context.Context, options GetBlocklistMovie
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

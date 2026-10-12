@@ -438,7 +438,7 @@ func TestAPanicInAToolIsAnErrorNotACrash(t *testing.T) {
 }
 
 func film(id int, title string, year int) radarr.MovieResource {
-	return radarr.MovieResource{Id: id, Title: title, Year: year, TmdbId: id * 10, Monitored: new(true), Path: "/m/" + titleYear(title, year)}
+	return radarr.MovieResource{Id: radarr.MovieID(id), Title: title, Year: year, TmdbId: radarr.TmdbID(id * 10), Monitored: new(true), Path: "/m/" + titleYear(title, year)}
 }
 
 func TestMatchMovie(t *testing.T) {
@@ -476,7 +476,7 @@ func TestMatchMovie(t *testing.T) {
 		switch {
 		case tc.err != "" && (err == nil || !strings.Contains(err.Error(), tc.err)):
 			t.Errorf("matchMovie(%q) = %v, %v; want an error containing %q", tc.ref, m, err, tc.err)
-		case tc.err == "" && (err != nil || m.Id != tc.wantID):
+		case tc.err == "" && (err != nil || int(m.Id) != tc.wantID):
 			t.Errorf("matchMovie(%q) = %v, %v; want id %d", tc.ref, m, err, tc.wantID)
 		}
 	}
@@ -616,7 +616,7 @@ func TestProfileQualities(t *testing.T) {
 func withMedia(m *radarr.MovieResource, relativePath, quality string, resolution int, mi radarr.MediaInfoResource, size int64) *radarr.MovieResource {
 	m.HasFile = new(true)
 	m.MovieFile = &radarr.MovieFileResource{
-		Id: m.Id * 100, RelativePath: relativePath, Size: size, MediaInfo: &mi,
+		Id: radarr.MovieFileID(m.Id * 100), RelativePath: relativePath, Size: size, MediaInfo: &mi,
 		Quality: &radarr.QualityModel{Quality: &radarr.Quality{Name: quality, Resolution: resolution}},
 	}
 

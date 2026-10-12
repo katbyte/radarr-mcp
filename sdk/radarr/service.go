@@ -24,9 +24,9 @@ var service = client.Service{
 	WebPageAdvice:  "check the server url and its URL base",
 	Messages:       errorMessages,
 	Note:           note,
-	// what a trace hides beside what it hides unasked. A password's confirmation ends as no credential's name does. And an indexer's key or a
-	// notification's password is sent as the value of a setting, under no name of its own, so every setting's value is hidden with it.
-	SecretNames: []string{"passwordConfirmation", "value"},
+	// what a trace hides beside what it hides unasked: an indexer's key or a notification's password is sent as the value of a setting, under no name
+	// of its own, so every setting's value is hidden.
+	SecretNames: []string{"value"},
 }
 
 // note is what is known of a failure on a Radarr.

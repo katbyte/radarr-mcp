@@ -68,7 +68,8 @@
           "In": "Query",
           "Required": true,
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "TmdbID"
           }
         }
       ],

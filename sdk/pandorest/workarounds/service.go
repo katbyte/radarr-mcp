@@ -45,6 +45,14 @@ var Services = []config.Service{{
 	PreferJSON: true,
 	// a test of every provider answers 400 with the same list of results when any of them fails
 	ExpectSameShape: true,
+	// the ids worth telling apart: a film's, a film file's and TMDB's for a film, which the tools pass side by side
+	IDs: []config.ID{
+		{Name: "MovieID", Of: []string{"MovieResource"}, Names: []string{"movieId", "movieIds", "mappedMovieId"}},
+		{Name: "MovieFileID", Of: []string{"MovieFileResource"}, Names: []string{"movieFileId", "movieFileIds"}, In: []string{"RenameFilesCommand .files"}},
+		{Name: "TmdbID", Base: "int", Names: []string{"tmdbId"}, Except: []string{"CollectionResource .tmdbId", "MovieCollectionResource .tmdbId", "GET /api/v3/collection tmdbId"}},
+	},
+	// every other name that looks like an id stays a plain number or text
+	Plain: []string{"autoTagIds", "collectionIds", "creditTmdbId", "delayProfileIds", "downloadClientId", "downloadClientIds", "downloadId", "guid", "id", "ids", "imdbId", "importListIds", "indexerId", "indexerIds", "languageId", "movieMetadataId", "notificationIds", "personTmdbId", "qualityProfileId", "releaseProfileIds", "secondaryYearSourceId", "youTubeTrailerId"},
 	// a null here means something - no size limit, no film, no score - that a zero would say wrongly
 	KeepNull: []string{
 		"CollectionUpdateResource.qualityProfileId",
@@ -106,6 +114,7 @@ var All = []pandorest.Workaround{
 	radarrAuthRedirects,
 	radarrRootPathParameter{},
 	radarrCommandBody{},
+	radarrCommands,
 	radarrStatuses,
 	radarrUndeclaredFields,
 	radarrCommandResourceBody{},

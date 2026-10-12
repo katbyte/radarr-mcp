@@ -6,30 +6,31 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// DeleteMovieByIdOperationResponse is the result of DeleteMovieById.
-type DeleteMovieByIdOperationResponse struct {
+// DeleteMovieByIdResponse is the result of DeleteMovieById.
+type DeleteMovieByIdResponse struct {
 	HttpResponse *http.Response
 }
 
-// DeleteMovieByIdOperationOptions holds the query and header parameters of DeleteMovieById.
-type DeleteMovieByIdOperationOptions struct {
+// DeleteMovieByIdOptions holds the query and header parameters of DeleteMovieById.
+type DeleteMovieByIdOptions struct {
 	DeleteFiles        *bool
 	AddImportExclusion *bool
 }
 
 // ToHeaders returns the header parameters the options set.
-func (o DeleteMovieByIdOperationOptions) ToHeaders() *client.Headers {
+func (o DeleteMovieByIdOptions) ToHeaders() *client.Headers {
 	out := client.Headers{}
 	return &out
 }
 
 // ToQuery returns the query parameters the options set.
-func (o DeleteMovieByIdOperationOptions) ToQuery() *client.QueryParams {
+func (o DeleteMovieByIdOptions) ToQuery() *client.QueryParams {
 	out := client.QueryParams{}
 	if o.DeleteFiles != nil {
 		out.Append("deleteFiles", strconv.FormatBool(*o.DeleteFiles))
@@ -41,14 +42,24 @@ func (o DeleteMovieByIdOperationOptions) ToQuery() *client.QueryParams {
 }
 
 // DeleteMovieById calls DELETE /api/v3/movie/{id}.
-func (c Client) DeleteMovieById(ctx context.Context, id int, options DeleteMovieByIdOperationOptions) (result DeleteMovieByIdOperationResponse, err error) {
+func (c Client) DeleteMovieById(ctx context.Context, id MovieID, options ...DeleteMovieByIdOptions) (result DeleteMovieByIdResponse, err error) {
+	if len(options) > 1 {
+		err = fmt.Errorf("DeleteMovieById takes one options struct at most, not %d", len(options))
+		return
+	}
+	var option DeleteMovieByIdOptions
+	if len(options) == 1 {
+		option = options[0]
+	}
+
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodDelete,
-		OptionsObject: options,
-		Path:          fmt.Sprintf("/api/v3/movie/%d", id),
+		Operation:     "DeleteMovieById",
+		OptionsObject: option,
+		Path:          fmt.Sprintf("/api/v3/movie/%s", url.PathEscape(strconv.Itoa(int(id)))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)

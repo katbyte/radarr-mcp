@@ -30,7 +30,7 @@ func namingOf(ctx context.Context, c *radarr.Client, n *radarr.NamingConfigResou
 		StandardMovieFormat:      n.StandardMovieFormat,
 		MovieFolderFormat:        n.MovieFolderFormat,
 	}
-	ex, err := c.GetConfigNamingExamples(ctx, radarr.GetConfigNamingExamplesOperationOptions{
+	ex, err := c.GetConfigNamingExamples(ctx, radarr.GetConfigNamingExamplesOptions{
 		RenameMovies:             new(true),
 		ReplaceIllegalCharacters: n.ReplaceIllegalCharacters,
 		ColonReplacementFormat:   n.ColonReplacementFormat,
@@ -65,7 +65,7 @@ func registerNamingTools(r *registry) {
 		if err != nil {
 			return nil, namingOut{}, err
 		}
-		out, err := namingOf(ctx, client, res.Model)
+		out, err := namingOf(ctx, client, res.Answer)
 
 		return nil, out, err
 	})
@@ -92,11 +92,11 @@ func registerNamingTools(r *registry) {
 		if err != nil {
 			return nil, namingOut{}, err
 		}
-		if res.Model == nil {
+		if res.Answer == nil {
 			return nil, namingOut{}, errors.New("no answer from Radarr when asked for its naming settings")
 		}
 
-		edit := *res.Model
+		edit := *res.Answer
 		if in.RenameMovies != nil {
 			edit.RenameMovies = in.RenameMovies
 		}
@@ -121,7 +121,7 @@ func registerNamingTools(r *registry) {
 		if err != nil {
 			return nil, namingOut{}, err
 		}
-		out, err := namingOf(ctx, client, after.Model)
+		out, err := namingOf(ctx, client, after.Answer)
 
 		return nil, out, err
 	})

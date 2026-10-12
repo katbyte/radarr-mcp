@@ -55,7 +55,7 @@ func historyOf(h *radarr.HistoryResource) historyRow {
 		ID:          h.Id,
 		Date:        h.Date,
 		Event:       string(h.EventType),
-		MovieID:     h.MovieId,
+		MovieID:     int(h.MovieId),
 		SourceTitle: outsideName(h.SourceTitle),
 		Quality:     qualityName(h.Quality),
 		DownloadID:  h.DownloadId,
@@ -104,7 +104,7 @@ func registerHistoryTools(r *registry) {
 		Name:        "history_list",
 		Description: "Read Radarr's history, newest first: what it grabbed and from which indexer, what it imported and where to, what failed and why, and what was renamed or deleted. Filter by film, kind of event and how many days back.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in historyListIn) (*mcp.CallToolResult, historyListOut, error) {
-		opts := radarr.GetHistoryOperationOptions{SortKey: "date", SortDirection: radarr.SortDirectionDescending, IncludeMovie: new(true)}
+		opts := radarr.GetHistoryOptions{SortKey: "date", SortDirection: radarr.SortDirectionDescending, IncludeMovie: new(true)}
 		if event := strings.TrimSpace(in.Event); event != "" {
 			id, known := historyEvents[radarr.MovieHistoryEventType(event)]
 			if !known {
@@ -117,7 +117,7 @@ func registerHistoryTools(r *registry) {
 			if err != nil {
 				return nil, historyListOut{}, err
 			}
-			opts.MovieIds = []int{m.Id}
+			opts.MovieIds = []radarr.MovieID{m.Id}
 		}
 		fetch := func(page, size int) ([]radarr.HistoryResource, int, error) {
 			opts.Page, opts.PageSize = new(page), new(size)
@@ -126,7 +126,7 @@ func registerHistoryTools(r *registry) {
 				return nil, 0, err
 			}
 
-			return res.Model.Records, res.Model.TotalRecords, nil
+			return res.Answer.Records, res.Answer.TotalRecords, nil
 		}
 
 		// with no age asked for, Radarr does the paging and says how many there are in all
@@ -211,16 +211,16 @@ func registerHistoryTools(r *registry) {
 			if err != nil {
 				return nil, blocklistListOut{}, err
 			}
-			res, err := client.GetBlocklistMovie(ctx, radarr.GetBlocklistMovieOperationOptions{MovieId: new(m.Id)})
+			res, err := client.GetBlocklistMovie(ctx, radarr.GetBlocklistMovieOptions{MovieId: m.Id})
 			if err != nil {
 				return nil, blocklistListOut{}, err
 			}
-			entries = res.Model
+			entries = res.Answer
 			for i := range entries {
 				entries[i].Movie = m
 			}
 		} else {
-			res, err := client.GetBlocklistComplete(ctx, radarr.GetBlocklistOperationOptions{SortKey: "date", SortDirection: radarr.SortDirectionDescending})
+			res, err := client.GetBlocklistComplete(ctx, radarr.GetBlocklistOptions{SortKey: "date", SortDirection: radarr.SortDirectionDescending})
 			if err != nil {
 				return nil, blocklistListOut{}, err
 			}
@@ -267,7 +267,7 @@ func findGrab(ctx context.Context, c *radarr.Client, id int, movie string) (*rad
 	if id == 0 && movie == "" {
 		return nil, errors.New("name the grab by id, or the film whose latest grab to mark")
 	}
-	var movieID int
+	var movieID radarr.MovieID
 	if movie != "" {
 		m, err := resolveMovie(ctx, c, movie)
 		if err != nil {
@@ -276,11 +276,11 @@ func findGrab(ctx context.Context, c *radarr.Client, id int, movie string) (*rad
 		movieID = m.Id
 	}
 	if movieID != 0 {
-		res, err := c.GetHistoryMovie(ctx, radarr.GetHistoryMovieOperationOptions{MovieId: new(movieID), IncludeMovie: new(true)})
+		res, err := c.GetHistoryMovie(ctx, radarr.GetHistoryMovieOptions{MovieId: movieID, IncludeMovie: new(true)})
 		if err != nil {
 			return nil, err
 		}
-		events := res.Model
+		events := res.Answer
 		slices.SortStableFunc(events, func(a, b radarr.HistoryResource) int { return strings.Compare(b.Date, a.Date) })
 		for i := range events {
 			if events[i].EventType == radarr.MovieHistoryEventTypeGrabbed && (id == 0 || events[i].Id == id) {
@@ -289,7 +289,7 @@ func findGrab(ctx context.Context, c *radarr.Client, id int, movie string) (*rad
 		}
 		return nil, fmt.Errorf("no grab in the history of film %d", movieID)
 	}
-	res, err := c.GetHistoryComplete(ctx, radarr.GetHistoryOperationOptions{IncludeMovie: new(true)})
+	res, err := c.GetHistoryComplete(ctx, radarr.GetHistoryOptions{IncludeMovie: new(true)})
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +308,7 @@ func findGrab(ctx context.Context, c *radarr.Client, id int, movie string) (*rad
 
 func blocklistOf(b *radarr.BlocklistResource) blocklistRow {
 	row := blocklistRow{
-		ID: b.Id, Date: b.Date, MovieID: b.MovieId, SourceTitle: outsideName(b.SourceTitle),
+		ID: b.Id, Date: b.Date, MovieID: int(b.MovieId), SourceTitle: outsideName(b.SourceTitle),
 		Quality: qualityName(b.Quality), Indexer: b.Indexer, Protocol: string(b.Protocol), Message: outsideProse(b.Message),
 	}
 	if b.Movie != nil {

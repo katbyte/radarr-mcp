@@ -10,39 +10,44 @@ import (
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetRenameOperationResponse is the result of GetRename.
-type GetRenameOperationResponse struct {
+// GetRenameResponse is the result of GetRename.
+type GetRenameResponse struct {
 	HttpResponse *http.Response
-	Model        []RenameMovieResource
+	Answer       []RenameMovieResource
 }
 
-// GetRenameOperationOptions holds the query and header parameters of GetRename.
-type GetRenameOperationOptions struct {
-	MovieId []int
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetRenameResponse) Answered() bool { return r.Answer != nil }
+
+// GetRenameOptions holds the query and header parameters of GetRename.
+type GetRenameOptions struct {
+	MovieId []MovieID
 }
 
 // ToHeaders returns the header parameters the options set.
-func (o GetRenameOperationOptions) ToHeaders() *client.Headers {
+func (o GetRenameOptions) ToHeaders() *client.Headers {
 	out := client.Headers{}
 	return &out
 }
 
 // ToQuery returns the query parameters the options set.
-func (o GetRenameOperationOptions) ToQuery() *client.QueryParams {
+func (o GetRenameOptions) ToQuery() *client.QueryParams {
 	out := client.QueryParams{}
 	for _, v := range o.MovieId {
-		out.Append("movieId", strconv.Itoa(v))
+		out.Append("movieId", strconv.Itoa(int(v)))
 	}
 	return &out
 }
 
 // GetRename calls GET /api/v3/rename.
-func (c Client) GetRename(ctx context.Context, options GetRenameOperationOptions) (result GetRenameOperationResponse, err error) {
+func (c Client) GetRename(ctx context.Context, options GetRenameOptions) (result GetRenameResponse, err error) {
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodGet,
+		Operation:     "GetRename",
 		OptionsObject: options,
 		Path:          "/api/v3/rename",
 	}
@@ -61,7 +66,7 @@ func (c Client) GetRename(ctx context.Context, options GetRenameOperationOptions
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

@@ -9,20 +9,25 @@ import (
 	"github.com/katbyte/pandorest/client"
 )
 
-// PostMovieImportOperationResponse is the result of PostMovieImport.
-type PostMovieImportOperationResponse struct {
+// PostMovieImportResponse is the result of PostMovieImport.
+type PostMovieImportResponse struct {
 	HttpResponse *http.Response
-	Model        []MovieResource
+	Answer       []MovieResource
 }
 
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r PostMovieImportResponse) Answered() bool { return r.Answer != nil }
+
 // PostMovieImport calls POST /api/v3/movie/import.
-func (c Client) PostMovieImport(ctx context.Context, input []MovieResource) (result PostMovieImportOperationResponse, err error) {
+func (c Client) PostMovieImport(ctx context.Context, input []MovieResource) (result PostMovieImportResponse, err error) {
 	opts := client.RequestOptions{
 		ContentType: "application/json",
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod: http.MethodPost,
+		Operation:  "PostMovieImport",
 		Path:       "/api/v3/movie/import",
 	}
 
@@ -44,7 +49,7 @@ func (c Client) PostMovieImport(ctx context.Context, input []MovieResource) (res
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

@@ -7,24 +7,31 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetMovieByIdFolderOperationResponse is the result of GetMovieByIdFolder.
-type GetMovieByIdFolderOperationResponse struct {
+// GetMovieByIdFolderResponse is the result of GetMovieByIdFolder.
+type GetMovieByIdFolderResponse struct {
 	HttpResponse *http.Response
-	Model        json.RawMessage
+	Answer       json.RawMessage
 }
 
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetMovieByIdFolderResponse) Answered() bool { return r.Answer != nil }
+
 // GetMovieByIdFolder calls GET /api/v3/movie/{id}/folder.
-func (c Client) GetMovieByIdFolder(ctx context.Context, id int) (result GetMovieByIdFolderOperationResponse, err error) {
+func (c Client) GetMovieByIdFolder(ctx context.Context, id MovieID) (result GetMovieByIdFolderResponse, err error) {
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod: http.MethodGet,
-		Path:       fmt.Sprintf("/api/v3/movie/%d/folder", id),
+		Operation:  "GetMovieByIdFolder",
+		Path:       fmt.Sprintf("/api/v3/movie/%s/folder", url.PathEscape(strconv.Itoa(int(id)))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
@@ -41,7 +48,7 @@ func (c Client) GetMovieByIdFolder(ctx context.Context, id int) (result GetMovie
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

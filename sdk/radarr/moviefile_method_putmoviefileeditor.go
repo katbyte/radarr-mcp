@@ -9,22 +9,27 @@ import (
 	"github.com/katbyte/pandorest/client"
 )
 
-// PutMovieFileEditorOperationResponse is the result of PutMovieFileEditor.
-type PutMovieFileEditorOperationResponse struct {
+// PutMovieFileEditorResponse is the result of PutMovieFileEditor.
+type PutMovieFileEditorResponse struct {
 	HttpResponse *http.Response
-	Model        []MovieFileResource
+	Answer       []MovieFileResource
 }
+
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r PutMovieFileEditorResponse) Answered() bool { return r.Answer != nil }
 
 // PutMovieFileEditor calls PUT /api/v3/moviefile/editor.
 //
 // Deprecated: the document marks this operation deprecated.
-func (c Client) PutMovieFileEditor(ctx context.Context, input MovieFileListResource) (result PutMovieFileEditorOperationResponse, err error) {
+func (c Client) PutMovieFileEditor(ctx context.Context, input MovieFileListResource) (result PutMovieFileEditorResponse, err error) {
 	opts := client.RequestOptions{
 		ContentType: "application/json",
 		ExpectedStatusCodes: []int{
 			http.StatusAccepted,
 		},
 		HTTPMethod: http.MethodPut,
+		Operation:  "PutMovieFileEditor",
 		Path:       "/api/v3/moviefile/editor",
 	}
 
@@ -46,7 +51,7 @@ func (c Client) PutMovieFileEditor(ctx context.Context, input MovieFileListResou
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

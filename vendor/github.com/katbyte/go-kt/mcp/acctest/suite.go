@@ -217,7 +217,8 @@ func (s *Suite) CoverageReport() (string, error) {
 
 // Secret has everything a tool says from now on read for a key, and hands the key back, so a test wraps a key where it gives it to the server:
 // "apiKey": suite.Secret(key). A server hands a key back where nobody thinks to test, so every call is read and LeakReport says what was shown. An
-// empty secret is reported, not ignored. Give secrets to the suite Connect returned, not to a stand-in made before it.
+// empty secret is reported, not ignored. Give secrets to the suite Connect returned, not to a stand-in made before it. A secret must be a string
+// that is nothing's name and too long to turn up by chance: a password that is also a token's name is found wherever that name is listed.
 func (s *Suite) Secret(secret string) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()

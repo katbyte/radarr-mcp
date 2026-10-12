@@ -4,32 +4,55 @@ package radarr
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// PutMovieByIdOperationResponse is the result of PutMovieById.
-type PutMovieByIdOperationResponse struct {
+// PutMovieByIdResponse is the result of PutMovieById.
+//
+// Answer is the MovieResource answered, nil when the server answered none (a 204), which
+// Answered tells. The same record is embedded, so res.Answer.Name may be read as
+// res.Name; when nothing was answered the embedded record is a zero one, so that
+// read is empty rather than a panic. Only the method sets the two; a response built
+// by hand sets both or neither.
+type PutMovieByIdResponse struct {
 	HttpResponse *http.Response
-	Model        *MovieResource
+	Answer       *MovieResource
+	*MovieResource
 }
 
-// PutMovieByIdOperationOptions holds the query and header parameters of PutMovieById.
-type PutMovieByIdOperationOptions struct {
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r PutMovieByIdResponse) Answered() bool { return r.Answer != nil }
+
+// Record is the MovieResource answered, as a value to change and write back, or an
+// error when the server answered none.
+func (r PutMovieByIdResponse) Record() (MovieResource, error) {
+	if r.Answer == nil {
+		return MovieResource{}, errors.New("PutMovieById answered no MovieResource")
+	}
+
+	return *r.Answer, nil
+}
+
+// PutMovieByIdOptions holds the query and header parameters of PutMovieById.
+type PutMovieByIdOptions struct {
 	MoveFiles *bool
 }
 
 // ToHeaders returns the header parameters the options set.
-func (o PutMovieByIdOperationOptions) ToHeaders() *client.Headers {
+func (o PutMovieByIdOptions) ToHeaders() *client.Headers {
 	out := client.Headers{}
 	return &out
 }
 
 // ToQuery returns the query parameters the options set.
-func (o PutMovieByIdOperationOptions) ToQuery() *client.QueryParams {
+func (o PutMovieByIdOptions) ToQuery() *client.QueryParams {
 	out := client.QueryParams{}
 	if o.MoveFiles != nil {
 		out.Append("moveFiles", strconv.FormatBool(*o.MoveFiles))
@@ -38,15 +61,26 @@ func (o PutMovieByIdOperationOptions) ToQuery() *client.QueryParams {
 }
 
 // PutMovieById calls PUT /api/v3/movie/{id}.
-func (c Client) PutMovieById(ctx context.Context, id int, input MovieResource, options PutMovieByIdOperationOptions) (result PutMovieByIdOperationResponse, err error) {
+func (c Client) PutMovieById(ctx context.Context, id MovieID, input MovieResource, options ...PutMovieByIdOptions) (result PutMovieByIdResponse, err error) {
+	if len(options) > 1 {
+		err = fmt.Errorf("PutMovieById takes one options struct at most, not %d", len(options))
+		return
+	}
+	var option PutMovieByIdOptions
+	if len(options) == 1 {
+		option = options[0]
+	}
+
+	result.MovieResource = &MovieResource{}
 	opts := client.RequestOptions{
 		ContentType: "application/json",
 		ExpectedStatusCodes: []int{
 			http.StatusAccepted,
 		},
 		HTTPMethod:    http.MethodPut,
-		OptionsObject: options,
-		Path:          fmt.Sprintf("/api/v3/movie/%d", id),
+		Operation:     "PutMovieById",
+		OptionsObject: option,
+		Path:          fmt.Sprintf("/api/v3/movie/%s", url.PathEscape(strconv.Itoa(int(id)))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
@@ -67,11 +101,12 @@ func (c Client) PutMovieById(ctx context.Context, id int, input MovieResource, o
 		return
 	}
 
-	var model MovieResource
-	result.Model = &model
-	if err = resp.Unmarshal(result.Model); err != nil {
+	var answer MovieResource
+	result.Answer = &answer
+	if err = resp.Unmarshal(result.Answer); err != nil {
 		return
 	}
+	result.MovieResource = result.Answer
 
 	return
 }

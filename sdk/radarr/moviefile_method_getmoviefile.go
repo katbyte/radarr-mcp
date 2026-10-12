@@ -4,50 +4,65 @@ package radarr
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetMovieFileOperationResponse is the result of GetMovieFile.
-type GetMovieFileOperationResponse struct {
+// GetMovieFileResponse is the result of GetMovieFile.
+type GetMovieFileResponse struct {
 	HttpResponse *http.Response
-	Model        []MovieFileResource
+	Answer       []MovieFileResource
 }
 
-// GetMovieFileOperationOptions holds the query and header parameters of GetMovieFile.
-type GetMovieFileOperationOptions struct {
-	MovieId      []int
-	MovieFileIds []int
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetMovieFileResponse) Answered() bool { return r.Answer != nil }
+
+// GetMovieFileOptions holds the query and header parameters of GetMovieFile.
+type GetMovieFileOptions struct {
+	MovieId      []MovieID
+	MovieFileIds []MovieFileID
 }
 
 // ToHeaders returns the header parameters the options set.
-func (o GetMovieFileOperationOptions) ToHeaders() *client.Headers {
+func (o GetMovieFileOptions) ToHeaders() *client.Headers {
 	out := client.Headers{}
 	return &out
 }
 
 // ToQuery returns the query parameters the options set.
-func (o GetMovieFileOperationOptions) ToQuery() *client.QueryParams {
+func (o GetMovieFileOptions) ToQuery() *client.QueryParams {
 	out := client.QueryParams{}
 	for _, v := range o.MovieId {
-		out.Append("movieId", strconv.Itoa(v))
+		out.Append("movieId", strconv.Itoa(int(v)))
 	}
 	for _, v := range o.MovieFileIds {
-		out.Append("movieFileIds", strconv.Itoa(v))
+		out.Append("movieFileIds", strconv.Itoa(int(v)))
 	}
 	return &out
 }
 
 // GetMovieFile calls GET /api/v3/moviefile.
-func (c Client) GetMovieFile(ctx context.Context, options GetMovieFileOperationOptions) (result GetMovieFileOperationResponse, err error) {
+func (c Client) GetMovieFile(ctx context.Context, options ...GetMovieFileOptions) (result GetMovieFileResponse, err error) {
+	if len(options) > 1 {
+		err = fmt.Errorf("GetMovieFile takes one options struct at most, not %d", len(options))
+		return
+	}
+	var option GetMovieFileOptions
+	if len(options) == 1 {
+		option = options[0]
+	}
+
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodGet,
-		OptionsObject: options,
+		Operation:     "GetMovieFile",
+		OptionsObject: option,
 		Path:          "/api/v3/moviefile",
 	}
 
@@ -65,7 +80,7 @@ func (c Client) GetMovieFile(ctx context.Context, options GetMovieFileOperationO
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

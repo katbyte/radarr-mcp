@@ -92,19 +92,19 @@ func registerReleaseTools(r *registry) {
 		if err != nil {
 			return nil, releaseSearchOut{}, err
 		}
-		res, err := client.GetRelease(ctx, radarr.GetReleaseOperationOptions{MovieId: new(m.Id)})
+		res, err := client.GetRelease(ctx, radarr.GetReleaseOptions{MovieId: m.Id})
 		if err != nil {
 			return nil, releaseSearchOut{}, err
 		}
-		out := releaseSearchOut{Total: len(res.Model)}
-		for i := range res.Model {
+		out := releaseSearchOut{Total: len(res.Answer)}
+		for i := range res.Answer {
 			if len(out.Releases) == limitOr(in.Limit, 20) {
 				break
 			}
-			if in.Approved && !isTrue(res.Model[i].Approved) {
+			if in.Approved && !isTrue(res.Answer[i].Approved) {
 				continue
 			}
-			out.Releases = append(out.Releases, releaseOf(&res.Model[i]))
+			out.Releases = append(out.Releases, releaseOf(&res.Answer[i]))
 		}
 
 		return nil, out, nil
@@ -143,7 +143,7 @@ func registerReleaseTools(r *registry) {
 		}
 		row := historyOf(grab)
 		out.Grabbed = &row
-		out.Queue, err = queueFor(ctx, client, []int{grab.MovieId})
+		out.Queue, err = queueFor(ctx, client, []radarr.MovieID{grab.MovieId})
 
 		return nil, out, err
 	})
@@ -159,11 +159,11 @@ func registerReleaseTools(r *registry) {
 		if strings.TrimSpace(in.Title) == "" {
 			return nil, parsedRow{}, errors.New("no title to parse")
 		}
-		res, err := client.GetParse(ctx, radarr.GetParseOperationOptions{Title: in.Title})
+		res, err := client.GetParse(ctx, radarr.GetParseOptions{Title: in.Title})
 		if err != nil {
 			return nil, parsedRow{}, err
 		}
-		p := res.Model
+		p := res.Answer
 		out := parsedRow{Title: in.Title, CustomFormatScore: p.CustomFormatScore}
 		for _, cf := range p.CustomFormats {
 			out.CustomFormats = append(out.CustomFormats, cf.Name)
@@ -175,7 +175,7 @@ func registerReleaseTools(r *registry) {
 			out.Edition = pi.Edition
 			out.ReleaseGroup = pi.ReleaseGroup
 			out.Languages = languageNames(pi.Languages)
-			out.TmdbID = pi.TmdbId
+			out.TmdbID = int(pi.TmdbId)
 			out.ImdbID = pi.ImdbId
 		}
 		if p.Movie != nil && p.Movie.Id != 0 {
@@ -194,17 +194,17 @@ func registerReleaseTools(r *registry) {
 // grabOf finds the history Radarr wrote for the grab of a release, by the
 // release's guid: the newest grab carrying it.
 func grabOf(ctx context.Context, c *radarr.Client, guid string) (*radarr.HistoryResource, error) {
-	res, err := c.GetHistory(ctx, radarr.GetHistoryOperationOptions{
+	res, err := c.GetHistory(ctx, radarr.GetHistoryOptions{
 		Page: new(1), PageSize: new(50), SortKey: "date", SortDirection: radarr.SortDirectionDescending, IncludeMovie: new(true),
 	})
 	if err != nil {
 		return nil, err
 	}
-	if res.Model == nil {
+	if res.Answer == nil {
 		return nil, nil
 	}
-	for i := range res.Model.Records {
-		h := &res.Model.Records[i]
+	for i := range res.Answer.Records {
+		h := &res.Answer.Records[i]
 		if h.EventType == radarr.MovieHistoryEventTypeGrabbed && h.Data["guid"] == guid {
 			return h, nil
 		}

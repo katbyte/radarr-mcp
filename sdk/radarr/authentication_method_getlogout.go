@@ -9,18 +9,19 @@ import (
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetLogoutOperationResponse is the result of GetLogout.
-type GetLogoutOperationResponse struct {
+// GetLogoutResponse is the result of GetLogout.
+type GetLogoutResponse struct {
 	HttpResponse *http.Response
 }
 
 // GetLogout calls GET /logout.
-func (c Client) GetLogout(ctx context.Context) (result GetLogoutOperationResponse, err error) {
+func (c Client) GetLogout(ctx context.Context) (result GetLogoutResponse, err error) {
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusFound,
 		},
 		HTTPMethod: http.MethodGet,
+		Operation:  "GetLogout",
 		Path:       "/logout",
 	}
 

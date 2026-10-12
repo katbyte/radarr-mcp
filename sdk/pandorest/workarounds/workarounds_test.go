@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/katbyte/pandorest/config"
+	"github.com/katbyte/pandorest/importer"
 	pandorest "github.com/katbyte/pandorest/importer/workarounds"
 	"github.com/katbyte/pandorest/openapi"
 	"github.com/katbyte/radarr-mcp/sdk/pandorest/workarounds"
@@ -33,6 +34,24 @@ func TestWorkarounds(t *testing.T) {
 
 	if err := pandorest.Verify(workarounds.All, load); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// Every kind of id reaches a place in the document, no two claim one, and every exception named is still there.
+func TestIDs(t *testing.T) {
+	t.Parallel()
+
+	spec, err := load(workarounds.Service)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pandorest.Apply(workarounds.All, workarounds.Service, spec, func(string) {}); err != nil {
+		t.Fatal(err)
+	}
+
+	svc, _ := config.Find(workarounds.Services, workarounds.Service)
+	if err := importer.VerifyIDs(svc, spec); err != nil {
+		t.Error(err)
 	}
 }
 

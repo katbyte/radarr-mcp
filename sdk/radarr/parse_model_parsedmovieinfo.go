@@ -17,6 +17,6 @@ type ParsedMovieInfo struct {
 	ReleaseHash        string        `json:"releaseHash,omitempty"`
 	ReleaseTitle       string        `json:"releaseTitle,omitempty"`
 	SimpleReleaseTitle string        `json:"simpleReleaseTitle,omitempty"`
-	TmdbId             int           `json:"tmdbId,omitempty"`
+	TmdbId             TmdbID        `json:"tmdbId,omitempty"`
 	Year               int           `json:"year,omitempty"`
 }

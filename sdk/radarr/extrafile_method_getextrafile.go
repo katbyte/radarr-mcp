@@ -4,46 +4,61 @@ package radarr
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
 
-// GetExtraFileOperationResponse is the result of GetExtraFile.
-type GetExtraFileOperationResponse struct {
+// GetExtraFileResponse is the result of GetExtraFile.
+type GetExtraFileResponse struct {
 	HttpResponse *http.Response
-	Model        []ExtraFileResource
+	Answer       []ExtraFileResource
 }
 
-// GetExtraFileOperationOptions holds the query and header parameters of GetExtraFile.
-type GetExtraFileOperationOptions struct {
-	MovieId *int
+// Answered reports whether the server answered with a body that was decoded:
+// false for a 204, or a call that failed before one came.
+func (r GetExtraFileResponse) Answered() bool { return r.Answer != nil }
+
+// GetExtraFileOptions holds the query and header parameters of GetExtraFile.
+type GetExtraFileOptions struct {
+	MovieId MovieID
 }
 
 // ToHeaders returns the header parameters the options set.
-func (o GetExtraFileOperationOptions) ToHeaders() *client.Headers {
+func (o GetExtraFileOptions) ToHeaders() *client.Headers {
 	out := client.Headers{}
 	return &out
 }
 
 // ToQuery returns the query parameters the options set.
-func (o GetExtraFileOperationOptions) ToQuery() *client.QueryParams {
+func (o GetExtraFileOptions) ToQuery() *client.QueryParams {
 	out := client.QueryParams{}
-	if o.MovieId != nil {
-		out.Append("movieId", strconv.Itoa(*o.MovieId))
+	if o.MovieId != 0 {
+		out.Append("movieId", strconv.Itoa(int(o.MovieId)))
 	}
 	return &out
 }
 
 // GetExtraFile calls GET /api/v3/extrafile.
-func (c Client) GetExtraFile(ctx context.Context, options GetExtraFileOperationOptions) (result GetExtraFileOperationResponse, err error) {
+func (c Client) GetExtraFile(ctx context.Context, options ...GetExtraFileOptions) (result GetExtraFileResponse, err error) {
+	if len(options) > 1 {
+		err = fmt.Errorf("GetExtraFile takes one options struct at most, not %d", len(options))
+		return
+	}
+	var option GetExtraFileOptions
+	if len(options) == 1 {
+		option = options[0]
+	}
+
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodGet,
-		OptionsObject: options,
+		Operation:     "GetExtraFile",
+		OptionsObject: option,
 		Path:          "/api/v3/extrafile",
 	}
 
@@ -61,7 +76,7 @@ func (c Client) GetExtraFile(ctx context.Context, options GetExtraFileOperationO
 		return
 	}
 
-	if err = resp.Unmarshal(&result.Model); err != nil {
+	if err = resp.Unmarshal(&result.Answer); err != nil {
 		return
 	}
 

@@ -38,7 +38,7 @@ func registerCalendarTools(r *registry) {
 		now := time.Now().UTC()
 		start := now.AddDate(0, 0, -limitOr(in.DaysBack, 7)).Truncate(24 * time.Hour)
 		end := now.AddDate(0, 0, limitOr(in.DaysAhead, 30)).Truncate(24 * time.Hour).Add(24 * time.Hour)
-		res, err := client.GetCalendar(ctx, radarr.GetCalendarOperationOptions{
+		res, err := client.GetCalendar(ctx, radarr.GetCalendarOptions{
 			Start: start.Format(time.RFC3339), End: end.Format(time.RFC3339), Unmonitored: new(in.Unmonitored),
 		})
 		if err != nil {
@@ -52,9 +52,9 @@ func registerCalendarTools(r *registry) {
 			t, err := time.Parse(time.RFC3339, stamp)
 			return err == nil && !t.Before(start) && t.Before(end)
 		}
-		rows := make([]calendarRow, 0, len(res.Model))
-		for i := range res.Model {
-			m := &res.Model[i]
+		rows := make([]calendarRow, 0, len(res.Answer))
+		for i := range res.Answer {
+			m := &res.Answer[i]
 			row := calendarRow{movieRow: rowOf(m, lk)}
 			for _, rel := range []struct{ kind, date string }{{"in cinemas", m.InCinemas}, {"digital", m.DigitalRelease}, {"physical", m.PhysicalRelease}} {
 				if within(rel.date) {

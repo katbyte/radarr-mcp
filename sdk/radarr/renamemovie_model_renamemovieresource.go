@@ -4,9 +4,9 @@ package radarr
 
 // RenameMovieResource is the "RenameMovieResource" schema.
 type RenameMovieResource struct {
-	ExistingPath string `json:"existingPath,omitempty"`
-	Id           int    `json:"id,omitempty"`
-	MovieFileId  int    `json:"movieFileId,omitempty"`
-	MovieId      int    `json:"movieId,omitempty"`
-	NewPath      string `json:"newPath,omitempty"`
+	ExistingPath string      `json:"existingPath,omitempty"`
+	Id           int         `json:"id,omitempty"`
+	MovieFileId  MovieFileID `json:"movieFileId,omitempty"`
+	MovieId      MovieID     `json:"movieId,omitempty"`
+	NewPath      string      `json:"newPath,omitempty"`
 }

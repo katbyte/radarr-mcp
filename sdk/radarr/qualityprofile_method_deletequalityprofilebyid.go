@@ -10,18 +10,19 @@ import (
 	"github.com/katbyte/pandorest/client"
 )
 
-// DeleteQualityProfileByIdOperationResponse is the result of DeleteQualityProfileById.
-type DeleteQualityProfileByIdOperationResponse struct {
+// DeleteQualityProfileByIdResponse is the result of DeleteQualityProfileById.
+type DeleteQualityProfileByIdResponse struct {
 	HttpResponse *http.Response
 }
 
 // DeleteQualityProfileById calls DELETE /api/v3/qualityprofile/{id}.
-func (c Client) DeleteQualityProfileById(ctx context.Context, id int) (result DeleteQualityProfileByIdOperationResponse, err error) {
+func (c Client) DeleteQualityProfileById(ctx context.Context, id int) (result DeleteQualityProfileByIdResponse, err error) {
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod: http.MethodDelete,
+		Operation:  "DeleteQualityProfileById",
 		Path:       fmt.Sprintf("/api/v3/qualityprofile/%d", id),
 	}
 

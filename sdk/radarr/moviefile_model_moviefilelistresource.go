@@ -7,7 +7,7 @@ type MovieFileListResource struct {
 	Edition      string        `json:"edition,omitempty"`
 	IndexerFlags *int          `json:"indexerFlags,omitempty"`
 	Languages    []Language    `json:"languages,omitzero"`
-	MovieFileIds []int         `json:"movieFileIds,omitzero"`
+	MovieFileIds []MovieFileID `json:"movieFileIds,omitzero"`
 	Quality      *QualityModel `json:"quality,omitempty"`
 	ReleaseGroup string        `json:"releaseGroup,omitempty"`
 	SceneName    string        `json:"sceneName,omitempty"`

@@ -142,8 +142,8 @@ func registerAdminTools(r *registry) {
 		if err != nil {
 			return stopOut{}, err
 		}
-		for i := range commands.Model {
-			if cmd := &commands.Model[i]; !finished(cmd.Status) {
+		for i := range commands.Answer {
+			if cmd := &commands.Answer[i]; !finished(cmd.Status) {
 				out.Interrupt = append(out.Interrupt, fmt.Sprintf("%s (%s)", cmd.Name, cmd.Status))
 			}
 		}
@@ -210,7 +210,7 @@ func registerAdminTools(r *registry) {
 		if err != nil {
 			return nil, updatesOut{}, err
 		}
-		out := updatesOut{Current: st.Model.Version, Mechanism: string(st.Model.PackageUpdateMechanism), Updates: []updateRow{}}
+		out := updatesOut{Current: st.Answer.Version, Mechanism: string(st.Answer.PackageUpdateMechanism), Updates: []updateRow{}}
 		res, err := c.GetUpdate(ctx)
 		if err != nil {
 			// Radarr asks its update service on every read, and answers a 500 carrying the reason when it cannot reach it
@@ -220,9 +220,9 @@ func registerAdminTools(r *registry) {
 			}
 			return nil, updatesOut{}, err
 		}
-		rows := make([]updateRow, 0, len(res.Model))
-		for _, u := range res.Model {
-			row := updateRow{Version: u.Version, Released: u.ReleaseDate, Installed: isTrue(u.Installed), Latest: isTrue(u.Latest), New: []string{}, Fixed: []string{}}
+		rows := make([]updateRow, 0, len(res.Answer))
+		for _, u := range res.Answer {
+			row := updateRow{Version: u.Version, Released: u.ReleaseDate, Installed: u.Installed, Latest: u.Latest, New: []string{}, Fixed: []string{}}
 			if u.Changes != nil {
 				for _, line := range u.Changes.New {
 					row.New = append(row.New, outsideProse(line))
@@ -231,7 +231,7 @@ func registerAdminTools(r *registry) {
 					row.Fixed = append(row.Fixed, outsideProse(line))
 				}
 			}
-			if row.Latest && !row.Installed && u.Version != st.Model.Version {
+			if row.Latest && !row.Installed && u.Version != st.Answer.Version {
 				out.UpdateAvailable = true
 			}
 			rows = append(rows, row)
@@ -260,14 +260,14 @@ func registerAdminTools(r *registry) {
 		if err != nil {
 			return nil, cancelOut{}, fmt.Errorf("command %d: %w", in.CommandID, err)
 		}
-		out := cancelOut{Command: commandOf(one.Model)}
+		out := cancelOut{Command: commandOf(one.Answer)}
 		const running = "it is already running, and Radarr only cancels a command that is still waiting its turn: this one runs to its end"
 		switch {
-		case finished(one.Model.Status):
+		case finished(one.Answer.Status):
 			out.Note = "it had already finished, so there was nothing to cancel"
 
 			return nil, out, nil
-		case one.Model.Status == radarr.CommandStatusStarted:
+		case one.Answer.Status == radarr.CommandStatusStarted:
 			out.Note = running
 
 			return nil, out, nil
@@ -309,7 +309,7 @@ func registerAdminTools(r *registry) {
 		Name:        "filesystem_browse",
 		Description: "Look at the folders, and with files the files, in a folder on the machine Radarr runs on, as Radarr sees them: for finding the folder to add as a root folder, to scan for an import, or to point a film at. It reads names and sizes only, never what is in a file.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in browseIn) (*mcp.CallToolResult, browseOut, error) {
-		res, err := c.GetFileSystem(ctx, radarr.GetFileSystemOperationOptions{Path: in.Path, IncludeFiles: new(in.Files), AllowFoldersWithoutTrailingSlashes: new(true)})
+		res, err := c.GetFileSystem(ctx, radarr.GetFileSystemOptions{Path: in.Path, IncludeFiles: new(in.Files), AllowFoldersWithoutTrailingSlashes: new(true)})
 		if err != nil {
 			return nil, browseOut{}, err
 		}
@@ -319,7 +319,7 @@ func registerAdminTools(r *registry) {
 			Directories []folderEntry `json:"directories"`
 			Files       []folderEntry `json:"files"`
 		}
-		if err := json.Unmarshal(res.Model, &body); err != nil {
+		if err := json.Unmarshal(res.Answer, &body); err != nil {
 			return nil, browseOut{}, fmt.Errorf("reading %s: %w", in.Path, err)
 		}
 		rows := make([]browseRow, 0, len(body.Directories)+len(body.Files))

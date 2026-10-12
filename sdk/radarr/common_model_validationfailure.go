@@ -7,7 +7,7 @@ type ValidationFailure struct {
 	DetailedDescription string `json:"detailedDescription,omitempty"`
 	ErrorMessage        string `json:"errorMessage,omitempty"`
 	InfoLink            string `json:"infoLink,omitempty"`
-	IsWarning           *bool  `json:"isWarning,omitempty"`
+	IsWarning           bool   `json:"isWarning"`
 	PropertyName        string `json:"propertyName,omitempty"`
 
 	// error, warning or info
