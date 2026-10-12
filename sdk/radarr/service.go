@@ -27,6 +27,9 @@ var service = client.Service{
 	// what a trace hides beside what it hides unasked: an indexer's key or a notification's password is sent as the value of a setting, under no name
 	// of its own, so every setting's value is hidden.
 	SecretNames: []string{"value"},
+	// Radarr answers a whole library in one piece, with no way to ask for a page of it, and a film is some tens of kilobytes: ten thousand films
+	// are past the shared 64 MiB.
+	MaxResponse: 1 << 30,
 }
 
 // note is what is known of a failure on a Radarr.

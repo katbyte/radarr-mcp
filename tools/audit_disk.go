@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/katbyte/radarr-mcp/sdk/radarr"
@@ -306,6 +307,7 @@ func untrackedAudit(ctx context.Context, e *auditEnv, in auditIn) (auditOut, err
 	}
 	tracked := trackedPaths(library)
 	out := auditOut{}
+	extras := 0
 	for i := range movies {
 		m := &movies[i]
 		if !isTrue(m.HasFile) {
@@ -325,6 +327,10 @@ func untrackedAudit(ctx context.Context, e *auditEnv, in auditIn) (auditOut, err
 				continue
 			}
 			row := importOf(&files[j])
+			if inExtrasFolder(row.RelativePath) {
+				extras++
+				continue
+			}
 			f := finding(m, "an untracked video file")
 			f.File = row.RelativePath
 			if len(row.Rejections) > 0 {
@@ -334,7 +340,21 @@ func untrackedAudit(ctx context.Context, e *auditEnv, in auditIn) (auditOut, err
 		}
 	}
 
+	if extras > 0 {
+		out.Note = fmt.Sprintf("%d videos in extras folders (%s) are left out: a theme or a trailer is not a copy of the film", extras, strings.Join(extrasFolders, ", "))
+	}
+
 	return out, nil
+}
+
+// extrasFolders are the folders a media server keeps a film's extras in, by the names Emby, Jellyfin, Plex and Kodi read.
+var extrasFolders = []string{"backdrops", "behind the scenes", "clips", "deleted scenes", "extras", "featurettes", "interviews", "other", "samples", "scenes", "shorts", "theme-music", "trailers"}
+
+// inExtrasFolder reports whether a file, by its path from the film's folder, sits in a folder of extras.
+func inExtrasFolder(relative string) bool {
+	folders := strings.Split(strings.ReplaceAll(relative, `\`, "/"), "/")
+
+	return slices.ContainsFunc(folders[:len(folders)-1], func(folder string) bool { return slices.Contains(extrasFolders, strings.ToLower(folder)) })
 }
 
 func registerDiskAudits(r *registry) {
@@ -369,7 +389,7 @@ func registerDiskAudits(r *registry) {
 
 	add(r, readTool, &mcp.Tool{
 		Name: "audit_untracked_files",
-		Description: "Sweep the films' folders for video files Radarr does not track - a second copy beside the one it does, a failed upgrade, a file dropped in by hand - each with why Radarr would not take it. " +
+		Description: "Sweep the films' folders for video files Radarr does not track - a second copy beside the one it does, a failed upgrade, a file dropped in by hand - each with why Radarr would not take it. A video in a folder of extras (backdrops, trailers, featurettes and the like) is left out and counted in note. " +
 			"One request a film, so slower than the other audits; import_apply imports a file chosen over the tracked one.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in auditIn) (*mcp.CallToolResult, auditOut, error) {
 		out, err := untrackedAudit(ctx, newAuditEnv(client), in)

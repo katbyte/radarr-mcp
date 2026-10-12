@@ -685,7 +685,7 @@ func TestFileChecks(t *testing.T) {
 		if !bad || !strings.Contains(detail, "named 2160p") || !strings.Contains(detail, "1280x720 (720p)") || strings.Contains(detail, "and graded") {
 			t.Errorf("a 720p file named 2160p = %q, %v", detail, bad)
 		}
-		if detail, bad := check(t, resolutionCheck, e, withMedia(new(film(3, "Contact", 1997)), "Contact (1997).mkv", "Bluray-2160p", 2160, radarr.MediaInfoResource{Resolution: "1920x1080"}, 1)); !bad || !strings.Contains(detail, "graded Bluray-2160p") {
+		if detail, bad := check(t, resolutionCheck, e, withMedia(new(film(3, "Contact", 1997)), "Contact (1997).mkv", "Bluray-2160p", 2160, radarr.MediaInfoResource{Resolution: "1920x1080"}, 1)); !bad || !strings.Contains(detail, "graded Bluray-2160p") || strings.Count(detail, "Bluray-2160p") != 1 {
 			t.Errorf("a 1080p file graded 2160p = %q, %v", detail, bad)
 		}
 		if _, bad := check(t, resolutionCheck, e, withMedia(new(film(4, "Scope", 2010)), "Scope (2010) Bluray-1080p.mkv", "Bluray-1080p", 1080, radarr.MediaInfoResource{Resolution: "1920x800"}, 1)); bad {
@@ -735,6 +735,11 @@ func TestFileChecks(t *testing.T) {
 		untagged.MovieFile = &radarr.MovieFileResource{MediaInfo: &radarr.MediaInfoResource{AudioLanguages: "eng", AudioStreamCount: 2}}
 		if _, bad := check(t, languageCheck(nil), e, &untagged); bad {
 			t.Error("a file with an untagged track said to lack a language")
+		}
+		unknown := *dub
+		unknown.MovieFile = &radarr.MovieFileResource{MediaInfo: &radarr.MediaInfoResource{AudioLanguages: "und", AudioStreamCount: 1}}
+		if detail, bad := check(t, languageCheck(nil), e, &unknown); bad {
+			t.Errorf("a file whose only track is tagged as of no known language said to lack one: %q", detail)
 		}
 	})
 }
@@ -846,6 +851,17 @@ func TestStuck(t *testing.T) {
 	} {
 		if got := stuck(&tc.q); got != tc.want {
 			t.Errorf("stuck(%s/%s/%s) = %v", tc.q.Status, tc.q.TrackedDownloadState, tc.q.TrackedDownloadStatus, got)
+		}
+	}
+}
+
+// A video in a folder a media server keeps extras in is not a second copy of the film, wherever in the film's folder that is and however it is cased.
+func TestAVideoInAnExtrasFolderIsNotUntracked(t *testing.T) {
+	t.Parallel()
+
+	for path, want := range map[string]bool{"backdrops/theme.mp4": true, "Trailers/Alien (1979).mkv": true, `extras\making of.mkv`: true, "disc 2/Featurettes/a.mkv": true, "Alien (1979).mkv": false, "backdrops.mkv": false, "trailers of 1979/a.mkv": false} {
+		if got := inExtrasFolder(path); got != want {
+			t.Errorf("%s is in an extras folder: %v, want %v", path, got, want)
 		}
 	}
 }

@@ -226,14 +226,17 @@ var resolutionCheck = withFile(func(_ context.Context, _ *auditEnv, _ *radarr.Mo
 	if f.Quality != nil && f.Quality.Quality != nil {
 		graded = f.Quality.Quality.Resolution
 	}
+	// the grade is said once: as the claim when it is the wrong one, and after the claim when it is right and the name is not
+	grade := "; Radarr graded it " + qualityName(f.Quality)
 	if graded != 0 && resolutionClass(0, graded) != actual {
 		claims = append(claims, "graded "+qualityName(f.Quality))
+		grade = ""
 	}
 	if len(claims) == 0 {
 		return "", false, nil
 	}
 
-	return fmt.Sprintf("%s, but the video is %dx%d (%s); Radarr graded it %s", strings.Join(claims, " and "), w, h, classLabel(actual), qualityName(f.Quality)), true, nil
+	return fmt.Sprintf("%s, but the video is %dx%d (%s)%s", strings.Join(claims, " and "), w, h, classLabel(actual), grade), true, nil
 })
 
 // qualityCheck flags a file below a resolution, in a legacy codec, or below
@@ -315,6 +318,11 @@ var sizeCheck = withFile(func(ctx context.Context, e *auditEnv, m *radarr.MovieR
 	}
 })
 
+// anyLanguage reports whether a track's language tag says nothing of what is spoken: undetermined, several languages, or none at all.
+func anyLanguage(tag string) bool {
+	return slices.Contains([]string{"und", "mul", "zxx"}, strings.ToLower(tag))
+}
+
 // languageCheck flags a file with no audio in any of the wanted languages,
 // by default the film's original language.
 func languageCheck(wanted []string) filmCheck {
@@ -323,9 +331,8 @@ func languageCheck(wanted []string) filmCheck {
 			return "", false, nil
 		}
 		tracks := splitList(f.MediaInfo.AudioLanguages)
-		// a track with no language tag could be anything, so a file with
-		// one is never said to lack a language
-		if len(tracks) == 0 || f.MediaInfo.AudioStreamCount > len(tracks) {
+		// a track with no language tag, or one tagged as unknown or as several, could be anything, so a file with one is never said to lack a language
+		if len(tracks) == 0 || f.MediaInfo.AudioStreamCount > len(tracks) || slices.ContainsFunc(tracks, anyLanguage) {
 			return "", false, nil
 		}
 		want, label := wanted, ""
