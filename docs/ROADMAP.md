@@ -30,9 +30,9 @@ Design rules, in priority order:
 | signing a list or a notification in | `/api/v3/{importlist,notification}/action/{name}` | Trakt, Plex and the like are set up by signing in through a browser, and the form's steps for it take what the browser comes back with as query parameters. Radarr's API document does not declare those, so the generated client cannot send them; `provider_options` runs the steps that only list choices. A tool would hand the person a link and take back what they return with |
 | restoring a backup from a file | `/api/v3/system/backup/restore/upload` | a backup kept somewhere other than Radarr's own disk; needs a way to hand a tool a file |
 
-## Before sonarr-mcp
+## Shared with the sibling servers
 
-sonarr-mcp should be a sibling project, as this one is to embyfin-mcp and abs-mcp. What the three copy between them - pandorest, the record/replay proxy, the base client, the CLI's flag, toolset and HTTP plumbing - belongs in go-kt first, so a fix lands once rather than four times.
+sonarr-mcp, prowlarr-mcp, embyfin-mcp and abs-mcp are sibling projects. What they share lives in two modules, so a fix lands once: the client generator in [pandorest](https://github.com/katbyte/pandorest), and the record/replay proxy, the base client and the CLI's flag, toolset and HTTP plumbing in [go-kt](https://github.com/katbyte/go-kt).
 
 ## Guarded / deliberately excluded
 

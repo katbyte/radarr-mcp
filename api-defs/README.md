@@ -79,4 +79,4 @@ What the suites found that no document could say. The tools work with it; anyone
 
 ## What the SDK suite leaves alone
 
-It calls every GET, and every POST, PUT and DELETE but four, which it lists in `acceptance/radarr/coverage_test.go` with why: restarting and shutting Radarr down, and restoring a backup (by id, or uploaded), which replace the database the suite is using and restart it. The restore upload also takes a multipart file the document does not declare; with nothing exercising it, no workaround adds it.
+It calls every GET, and every POST, PUT and DELETE but ten, which it lists in `acceptance/radarr/coverage_test.go` with why: restarting and shutting Radarr down, and restoring a backup (by id, or uploaded), which replace the database the suite is using and restart it; and six commands, which would search or refresh a whole library or update Radarr. The restore upload also takes a multipart file the document does not declare; with nothing exercising it, no workaround adds it.
