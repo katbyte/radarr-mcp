@@ -7,6 +7,7 @@
 - every audit that reads the whole library failed on a large one: Radarr answers all its films in one piece, and past about ten thousand films that was more than the client would hold. Fourteen of the sixteen audits `audit_all` runs answered nothing on a library of 29,000. The limit for Radarr is now 1 GiB
 - `audit_language` reported a file whose audio is tagged as of no known language (`und`) as lacking the film's language. It is now left alone, like a file with no tag at all: on that library, 735 findings where there were 5,942
 - `audit_untracked_files` reported a film's theme video, trailers and other extras as stray copies of the film. A video in a folder of extras (`backdrops`, `trailers`, `featurettes` and the like) is now left out and counted in `note`
+- `movie_lookup` read the whole library on every call to say which results it already holds: a hundred megabytes a lookup on a library of 29,000 films, and a run of lookups slowed Radarr until it stopped answering. It now asks about each result alone
 - `audit_resolution_mismatch` said the grade twice when the grade was the thing wrong: "graded WEBDL-1080p, but the video is 3840x2160 (2160p); Radarr graded it WEBDL-1080p"
 
 ## 0.3.0 (2026-10-12)

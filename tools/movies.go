@@ -209,20 +209,24 @@ func registerMovieTools(r *registry) {
 		if err != nil {
 			return nil, lookupOut{}, err
 		}
-		library, err := allMovies(ctx, client)
-		if err != nil {
-			return nil, lookupOut{}, err
+		if len(found) > limitOr(in.Limit, 10) {
+			found = found[:limitOr(in.Limit, 10)]
 		}
+
+		// each result is asked after by its TMDB id, a small answer apiece: the whole library is a hundred megabytes on a large one, too much to read for a lookup
 		have := map[radarr.TmdbID]radarr.MovieID{}
-		for i := range library {
-			m := &library[i]
-			have[m.TmdbId] = m.Id
+		for i := range found {
+			held, err := client.GetMovie(ctx, radarr.GetMovieOptions{TmdbId: found[i].TmdbId})
+			if err != nil {
+				return nil, lookupOut{}, err
+			}
+			for j := range held.Answer {
+				have[held.Answer[j].TmdbId] = held.Answer[j].Id
+			}
 		}
+
 		out := lookupOut{}
 		for i := range found {
-			if len(out.Results) == limitOr(in.Limit, 10) {
-				break
-			}
 			out.Results = append(out.Results, lookupOf(&found[i], have))
 		}
 
