@@ -334,7 +334,7 @@ func registerMovieEditTools(r *registry) {
 		byFile := map[radarr.MovieID][]radarr.MovieFileID{}
 		for i := range movies {
 			m := &movies[i]
-			res, err := client.GetRename(ctx, radarr.GetRenameOptions{MovieId: []radarr.MovieID{m.Id}})
+			res, err := client.GetRename(ctx, []radarr.MovieID{m.Id})
 			if err != nil {
 				return nil, out, err
 			}
@@ -455,7 +455,7 @@ func pointAt(ctx context.Context, c *radarr.Client, m *radarr.MovieResource, fol
 	edit := *m
 	edit.Path = path
 	edit.RootFolderPath = ""
-	if _, err := c.PutMovieById(ctx, m.Id, edit, radarr.PutMovieByIdOptions{MoveFiles: new(false)}); err != nil {
+	if _, err := c.PutMovieById(ctx, m.Id, edit, false); err != nil {
 		return movieRow{}, fmt.Errorf("pointing %s at %s: %w", titleYear(m.Title, m.Year), path, err)
 	}
 	if _, err := ran(c.RescanMovieAndWait(ctx, radarr.RescanMovieCommand{MovieId: m.Id}, defaultWait)); err != nil {
@@ -624,7 +624,7 @@ func applyEdit(ctx context.Context, c *radarr.Client, ids []radarr.MovieID, e ed
 			return nil, err
 		}
 		if tags == nil {
-			tags = []int{}
+			tags = []radarr.TagID{}
 		}
 		if _, err := c.PutMovieEditor(ctx, radarr.MovieEditorResource{MovieIds: ids, Tags: tags, ApplyTags: op.apply}); err != nil {
 			return nil, err
@@ -654,8 +654,7 @@ func waitForMove(ctx context.Context, c *radarr.Client, since time.Time) error {
 			if cmd.Name != "BulkMoveMovie" && cmd.Name != "MoveMovie" {
 				continue
 			}
-			queued, err := time.Parse(time.RFC3339, cmd.Queued)
-			if err != nil || queued.Before(since.Add(-2*time.Second)) {
+			if cmd.Queued.Before(since.Add(-2 * time.Second)) {
 				continue
 			}
 			if cmd.Status == radarr.CommandStatusFailed {

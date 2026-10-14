@@ -20,6 +20,9 @@
     "radarr-host-required",
     "radarr-put-ids"
   ],
+  "Dates": [
+    "2006-01-02T15:04:05Z07:00"
+  ],
   "IDs": [
     {
       "Name": "MovieID",
@@ -31,6 +34,26 @@
     },
     {
       "Name": "TmdbID",
+      "Base": "Integer"
+    },
+    {
+      "Name": "QualityProfileID",
+      "Base": "Integer"
+    },
+    {
+      "Name": "TagID",
+      "Base": "Integer"
+    },
+    {
+      "Name": "DownloadClientID",
+      "Base": "Integer"
+    },
+    {
+      "Name": "IndexerID",
+      "Base": "Integer"
+    },
+    {
+      "Name": "RootFolderID",
       "Base": "Integer"
     }
   ]

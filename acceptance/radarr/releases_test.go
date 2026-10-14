@@ -61,7 +61,7 @@ func TestReleases(t *testing.T) {
 	t.Cleanup(func() { _, _ = sdk.PutConfigDownloadClientById(context.WithoutCancel(ctx), dc.Id, *dc) })
 
 	before := len(hooks.received())
-	hook := must(sdk.PostNotification(ctx, webhook(t, "SDK Grab Hook"), radarr.PostNotificationOptions{})).Answer
+	hook := must(sdk.PostNotification(ctx, webhook(t, "SDK Grab Hook"))).Answer
 	removeAfter(ctx, t, "the webhook", func(ctx context.Context) (radarr.DeleteNotificationByIdResponse, error) {
 		return sdk.DeleteNotificationById(ctx, hook.Id)
 	})
@@ -78,7 +78,7 @@ func TestReleases(t *testing.T) {
 
 		// an interactive search answers every release with Radarr's
 		// decision on it
-		releases := must(sdk.GetRelease(ctx, radarr.GetReleaseOptions{MovieId: a3.Id})).Answer
+		releases := must(sdk.GetRelease(ctx, a3.Id)).Answer
 		i := slices.IndexFunc(releases, func(r radarr.ReleaseResource) bool { return r.Title == title })
 		if i < 0 {
 			t.Fatalf("the search did not find %s among %d releases", title, len(releases))
@@ -125,7 +125,7 @@ func TestReleases(t *testing.T) {
 			t.Fatalf("marking the grab of %s failed did not blocklist it", title)
 		}
 		// the film's own blocklist, which is not paged, holds the same entry
-		if byFilm := must(sdk.GetBlocklistMovie(ctx, radarr.GetBlocklistMovieOptions{MovieId: a3.Id})).Answer; !slices.ContainsFunc(byFilm, func(b radarr.BlocklistResource) bool { return b.Id == entry.Id && b.SourceTitle == title }) {
+		if byFilm := must(sdk.GetBlocklistMovie(ctx, a3.Id)).Answer; !slices.ContainsFunc(byFilm, func(b radarr.BlocklistResource) bool { return b.Id == entry.Id && b.SourceTitle == title }) {
 			t.Errorf("the blocklist of %s does not hold the grab of %s: %+v", alien3.Title, title, byFilm)
 		}
 
@@ -167,7 +167,7 @@ func TestReleases(t *testing.T) {
 		})
 		delay := must(sdk.PostDelayProfile(ctx, radarr.DelayProfileResource{
 			EnableUsenet: new(true), EnableTorrent: new(true), PreferredProtocol: radarr.DownloadProtocolUsenet,
-			UsenetDelay: 600, Tags: []int{tag.Id}, BypassIfHighestQuality: new(false), BypassIfAboveCustomFormatScore: new(false),
+			UsenetDelay: 600, Tags: []radarr.TagID{tag.Id}, BypassIfHighestQuality: new(false), BypassIfAboveCustomFormatScore: new(false),
 		})).Answer
 		removeAfter(ctx, t, "the delay profile", func(ctx context.Context) (radarr.DeleteDelayProfileByIdResponse, error) {
 			return sdk.DeleteDelayProfileById(ctx, delay.Id)
@@ -179,9 +179,9 @@ func TestReleases(t *testing.T) {
 			return sdk.DeleteMovieById(ctx, d2.Id, radarr.DeleteMovieByIdOptions{DeleteFiles: new(false)})
 		})
 		ids := []radarr.MovieID{a3.Id, d2.Id}
-		must(sdk.PutMovieEditor(ctx, radarr.MovieEditorResource{MovieIds: ids, Tags: []int{tag.Id}, ApplyTags: radarr.ApplyTagsAdd}))
+		must(sdk.PutMovieEditor(ctx, radarr.MovieEditorResource{MovieIds: ids, Tags: []radarr.TagID{tag.Id}, ApplyTags: radarr.ApplyTagsAdd}))
 		t.Cleanup(func() {
-			_, _ = sdk.PutMovieEditor(context.WithoutCancel(ctx), radarr.MovieEditorResource{MovieIds: ids[:1], Tags: []int{tag.Id}, ApplyTags: radarr.ApplyTagsRemove})
+			_, _ = sdk.PutMovieEditor(context.WithoutCancel(ctx), radarr.MovieEditorResource{MovieIds: ids[:1], Tags: []radarr.TagID{tag.Id}, ApplyTags: radarr.ApplyTagsRemove})
 		})
 		titles := map[radarr.MovieID]string{a3.Id: "Alien3.1992.1080p.BluRay.x264-PEND", d2.Id: "Dune.Part.Two.2024.1080p.BluRay.x264-PEND"}
 		for id, title := range titles {
@@ -242,7 +242,7 @@ func TestReleases(t *testing.T) {
 			t.Fatalf("the queue has %d of the watch folder's downloads, want %d", len(items), len(names))
 		}
 		// the queue read whole and its counts say the same: two downloads, neither a film Radarr knows
-		details := must(sdk.GetQueueDetails(ctx, radarr.GetQueueDetailsOptions{})).Answer
+		details := must(sdk.GetQueueDetails(ctx)).Answer
 		for _, name := range names {
 			if !slices.ContainsFunc(details, func(q radarr.QueueResource) bool { return q.Title == name && q.Id == items[name].Id }) {
 				t.Errorf("the queue's details do not hold %s: %d items", name, len(details))
@@ -271,7 +271,7 @@ func TestReleases(t *testing.T) {
 		pushed := must(sdk.PostReleasePush(ctx, radarr.ReleaseResource{
 			Title: title, Protocol: radarr.DownloadProtocolUsenet, Size: 8 << 30,
 			DownloadUrl: indexer.URL() + "/download/" + strings.ToLower(title),
-			PublishDate: time.Now().UTC().Format(time.RFC3339),
+			PublishDate: radarr.Time{Time: time.Now().UTC()},
 		})).Answer
 		if len(pushed) != 1 || !isTrue(pushed[0].Rejected) || len(pushed[0].Rejections) == 0 {
 			t.Fatalf("the push answered %+v", pushed)

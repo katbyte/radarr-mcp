@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
@@ -39,7 +41,7 @@ func (r GetRootFolderByIdResponse) Record() (RootFolderResource, error) {
 }
 
 // GetRootFolderById calls GET /api/v3/rootfolder/{id}.
-func (c Client) GetRootFolderById(ctx context.Context, id int) (result GetRootFolderByIdResponse, err error) {
+func (c Client) GetRootFolderById(ctx context.Context, id RootFolderID) (result GetRootFolderByIdResponse, err error) {
 	result.RootFolderResource = &RootFolderResource{}
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
@@ -47,7 +49,7 @@ func (c Client) GetRootFolderById(ctx context.Context, id int) (result GetRootFo
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetRootFolderById",
-		Path:       fmt.Sprintf("/api/v3/rootfolder/%d", id),
+		Path:       fmt.Sprintf("/api/v3/rootfolder/%s", url.PathEscape(strconv.Itoa(int(id)))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)

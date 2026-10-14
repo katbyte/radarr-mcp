@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
@@ -39,7 +41,7 @@ func (r PutTagByIdResponse) Record() (TagResource, error) {
 }
 
 // PutTagById calls PUT /api/v3/tag/{id}.
-func (c Client) PutTagById(ctx context.Context, id int, input TagResource) (result PutTagByIdResponse, err error) {
+func (c Client) PutTagById(ctx context.Context, id TagID, input TagResource) (result PutTagByIdResponse, err error) {
 	result.TagResource = &TagResource{}
 	opts := client.RequestOptions{
 		ContentType: "application/json",
@@ -48,7 +50,7 @@ func (c Client) PutTagById(ctx context.Context, id int, input TagResource) (resu
 		},
 		HTTPMethod: http.MethodPut,
 		Operation:  "PutTagById",
-		Path:       fmt.Sprintf("/api/v3/tag/%d", id),
+		Path:       fmt.Sprintf("/api/v3/tag/%s", url.PathEscape(strconv.Itoa(int(id)))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)

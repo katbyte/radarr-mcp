@@ -5,12 +5,12 @@ package radarr
 // MovieResource is the "MovieResource" schema.
 type MovieResource struct {
 	AddOptions            *AddMovieOptions           `json:"addOptions,omitempty"`
-	Added                 string                     `json:"added,omitempty"`
+	Added                 Time                       `json:"added,omitzero"`
 	AlternateTitles       []AlternativeTitleResource `json:"alternateTitles,omitzero"`
 	Certification         string                     `json:"certification,omitempty"`
 	CleanTitle            string                     `json:"cleanTitle,omitempty"`
 	Collection            *MovieCollectionResource   `json:"collection,omitempty"`
-	DigitalRelease        string                     `json:"digitalRelease,omitempty"`
+	DigitalRelease        Time                       `json:"digitalRelease,omitzero"`
 	Folder                string                     `json:"folder,omitempty"`
 	FolderName            string                     `json:"folderName,omitempty"`
 	Genres                []string                   `json:"genres,omitzero"`
@@ -18,11 +18,11 @@ type MovieResource struct {
 	Id                    MovieID                    `json:"id,omitempty"`
 	Images                []MediaCover               `json:"images,omitzero"`
 	ImdbId                string                     `json:"imdbId,omitempty"`
-	InCinemas             string                     `json:"inCinemas,omitempty"`
+	InCinemas             Time                       `json:"inCinemas,omitzero"`
 	IsAvailable           *bool                      `json:"isAvailable,omitempty"`
 	IsExcluded            *bool                      `json:"isExcluded,omitempty"`
 	Keywords              []string                   `json:"keywords,omitzero"`
-	LastSearchTime        string                     `json:"lastSearchTime,omitempty"`
+	LastSearchTime        Time                       `json:"lastSearchTime,omitzero"`
 	MinimumAvailability   MovieStatusType            `json:"minimumAvailability,omitempty"`
 	Monitored             *bool                      `json:"monitored,omitempty"`
 	MovieFile             *MovieFileResource         `json:"movieFile,omitempty"`
@@ -31,12 +31,12 @@ type MovieResource struct {
 	OriginalTitle         string                     `json:"originalTitle,omitempty"`
 	Overview              string                     `json:"overview,omitempty"`
 	Path                  string                     `json:"path,omitempty"`
-	PhysicalRelease       string                     `json:"physicalRelease,omitempty"`
+	PhysicalRelease       Time                       `json:"physicalRelease,omitzero"`
 	PhysicalReleaseNote   string                     `json:"physicalReleaseNote,omitempty"`
 	Popularity            float32                    `json:"popularity,omitempty"`
-	QualityProfileId      int                        `json:"qualityProfileId,omitempty"`
+	QualityProfileId      QualityProfileID           `json:"qualityProfileId,omitempty"`
 	Ratings               *Ratings                   `json:"ratings,omitempty"`
-	ReleaseDate           string                     `json:"releaseDate,omitempty"`
+	ReleaseDate           Time                       `json:"releaseDate,omitzero"`
 	RemotePoster          string                     `json:"remotePoster,omitempty"`
 	RootFolderPath        string                     `json:"rootFolderPath,omitempty"`
 	Runtime               int                        `json:"runtime,omitempty"`
@@ -47,7 +47,7 @@ type MovieResource struct {
 	Statistics            *MovieStatisticsResource   `json:"statistics,omitempty"`
 	Status                MovieStatusType            `json:"status,omitempty"`
 	Studio                string                     `json:"studio,omitempty"`
-	Tags                  []int                      `json:"tags,omitzero"`
+	Tags                  []TagID                    `json:"tags,omitzero"`
 	Title                 string                     `json:"title,omitempty"`
 	TitleSlug             string                     `json:"titleSlug,omitempty"`
 	TmdbId                TmdbID                     `json:"tmdbId,omitempty"`

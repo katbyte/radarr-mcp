@@ -6,6 +6,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
@@ -16,14 +18,14 @@ type DeleteRootFolderByIdResponse struct {
 }
 
 // DeleteRootFolderById calls DELETE /api/v3/rootfolder/{id}.
-func (c Client) DeleteRootFolderById(ctx context.Context, id int) (result DeleteRootFolderByIdResponse, err error) {
+func (c Client) DeleteRootFolderById(ctx context.Context, id RootFolderID) (result DeleteRootFolderByIdResponse, err error) {
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod: http.MethodDelete,
 		Operation:  "DeleteRootFolderById",
-		Path:       fmt.Sprintf("/api/v3/rootfolder/%d", id),
+		Path:       fmt.Sprintf("/api/v3/rootfolder/%s", url.PathEscape(strconv.Itoa(int(id)))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)

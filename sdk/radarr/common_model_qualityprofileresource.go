@@ -7,7 +7,7 @@ type QualityProfileResource struct {
 	Cutoff                int                                 `json:"cutoff,omitempty"`
 	CutoffFormatScore     int                                 `json:"cutoffFormatScore,omitempty"`
 	FormatItems           []ProfileFormatItemResource         `json:"formatItems,omitzero"`
-	Id                    int                                 `json:"id,omitempty"`
+	Id                    QualityProfileID                    `json:"id,omitempty"`
 	Items                 []QualityProfileQualityItemResource `json:"items,omitzero"`
 	Language              *Language                           `json:"language,omitempty"`
 	MinFormatScore        int                                 `json:"minFormatScore,omitempty"`
@@ -20,4 +20,4 @@ type QualityProfileResource struct {
 func (m QualityProfileResource) GetName() string { return m.Name }
 
 // GetId is the record's Id, for code that handles records of several types alike.
-func (m QualityProfileResource) GetId() int { return m.Id }
+func (m QualityProfileResource) GetId() QualityProfileID { return m.Id }

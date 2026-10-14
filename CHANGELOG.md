@@ -1,6 +1,16 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 (2026-10-14)
+
+### Breaking
+
+- the Go client's dates are real dates: every date is a `radarr.Time`, a Go time, where it was text
+- the ids of quality profiles, tags, indexers, download clients and root folders are each a type of their own in the Go client (`QualityProfileID`, `TagID`, `IndexerID`, `DownloadClientID`, `RootFolderID`), like a film's already were
+- a Go client call that takes one option takes it directly: `c.GetMovieLookup(ctx, "alien")`, not `c.GetMovieLookup(ctx, radarr.GetMovieLookupOptions{Term: "alien"})`
+
+### Added
+
+- `radarr.Operations` in the Go client lists every operation with its method and path, and whether it changes anything
 
 ### Fixed
 

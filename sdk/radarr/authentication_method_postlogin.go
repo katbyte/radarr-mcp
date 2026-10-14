@@ -39,14 +39,14 @@ func (o PostLoginOptions) ToQuery() *client.QueryParams {
 // PostLogin calls POST /login.
 //
 // input is sent as contentType, or as multipart/form-data when that is empty.
-func (c Client) PostLogin(ctx context.Context, input io.Reader, contentType string, options ...PostLoginOptions) (result PostLoginResponse, err error) {
-	if len(options) > 1 {
-		err = fmt.Errorf("PostLogin takes one options struct at most, not %d", len(options))
+func (c Client) PostLogin(ctx context.Context, input io.Reader, contentType string, returnUrl ...string) (result PostLoginResponse, err error) {
+	var option PostLoginOptions
+	if len(returnUrl) > 1 {
+		err = fmt.Errorf("PostLogin takes one returnUrl at most, not %d", len(returnUrl))
 		return
 	}
-	var option PostLoginOptions
-	if len(options) == 1 {
-		option = options[0]
+	if len(returnUrl) == 1 {
+		option.ReturnUrl = returnUrl[0]
 	}
 
 	opts := client.RequestOptions{

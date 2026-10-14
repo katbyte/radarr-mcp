@@ -11,11 +11,11 @@ type CollectionResource struct {
 	Monitored           *bool                     `json:"monitored,omitempty"`
 	Movies              []CollectionMovieResource `json:"movies,omitzero"`
 	Overview            string                    `json:"overview,omitempty"`
-	QualityProfileId    int                       `json:"qualityProfileId,omitempty"`
+	QualityProfileId    QualityProfileID          `json:"qualityProfileId,omitempty"`
 	RootFolderPath      string                    `json:"rootFolderPath,omitempty"`
 	SearchOnAdd         *bool                     `json:"searchOnAdd,omitempty"`
 	SortTitle           string                    `json:"sortTitle,omitempty"`
-	Tags                []int                     `json:"tags,omitzero"`
+	Tags                []TagID                   `json:"tags,omitzero"`
 	Title               string                    `json:"title,omitempty"`
 	TmdbId              int                       `json:"tmdbId,omitempty"`
 }

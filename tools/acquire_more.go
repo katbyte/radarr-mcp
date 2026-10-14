@@ -90,9 +90,13 @@ func registerAcquireMoreTools(r *registry) {
 		if protocol != radarr.DownloadProtocolUsenet && protocol != radarr.DownloadProtocolTorrent {
 			return nil, pushOut{}, fmt.Errorf("protocol %q: want usenet or torrent", in.Protocol)
 		}
-		published := strings.TrimSpace(in.PublishDate)
-		if published == "" {
-			published = time.Now().UTC().Format(time.RFC3339)
+		published := radarr.Time{Time: time.Now().UTC()}
+		if text := strings.TrimSpace(in.PublishDate); text != "" {
+			when, err := time.Parse(time.RFC3339, text)
+			if err != nil {
+				return nil, pushOut{}, fmt.Errorf("publish_date %q: want a date such as 2024-03-01T12:00:00Z", text)
+			}
+			published.Time = when
 		}
 		release := radarr.ReleaseResource{Title: title, DownloadUrl: link, Protocol: protocol, PublishDate: published, Size: in.Size, Indexer: strings.TrimSpace(in.Indexer)}
 		if strings.HasPrefix(strings.ToLower(link), "magnet:") {

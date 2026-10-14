@@ -6,6 +6,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
@@ -16,14 +18,14 @@ type DeleteIndexerByIdResponse struct {
 }
 
 // DeleteIndexerById calls DELETE /api/v3/indexer/{id}.
-func (c Client) DeleteIndexerById(ctx context.Context, id int) (result DeleteIndexerByIdResponse, err error) {
+func (c Client) DeleteIndexerById(ctx context.Context, id IndexerID) (result DeleteIndexerByIdResponse, err error) {
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod: http.MethodDelete,
 		Operation:  "DeleteIndexerById",
-		Path:       fmt.Sprintf("/api/v3/indexer/%d", id),
+		Path:       fmt.Sprintf("/api/v3/indexer/%s", url.PathEscape(strconv.Itoa(int(id)))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)

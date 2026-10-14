@@ -55,7 +55,7 @@ func TestManualImport(t *testing.T) {
 	}
 
 	before := len(hooks.received())
-	hook := must(sdk.PostNotification(ctx, webhook(t, "SDK Import Hook"), radarr.PostNotificationOptions{})).Answer
+	hook := must(sdk.PostNotification(ctx, webhook(t, "SDK Import Hook"))).Answer
 	removeAfter(ctx, t, "the webhook", func(ctx context.Context) (radarr.DeleteNotificationByIdResponse, error) {
 		return sdk.DeleteNotificationById(ctx, hook.Id)
 	})
@@ -100,7 +100,7 @@ func TestCommands(t *testing.T) {
 		t.Errorf("cancelling a finished command: want 409 Unable to cancel task, got %v", err)
 	}
 
-	ix := must(sdk.PostIndexer(ctx, heldIndexer(t, "SDK Held Indexer"), radarr.PostIndexerOptions{})).Answer
+	ix := must(sdk.PostIndexer(ctx, heldIndexer(t, "SDK Held Indexer"))).Answer
 	removeAfter(ctx, t, "the held indexer", func(ctx context.Context) (radarr.DeleteIndexerByIdResponse, error) {
 		return sdk.DeleteIndexerById(ctx, ix.Id)
 	})
@@ -145,7 +145,7 @@ func TestCommands(t *testing.T) {
 			t.Errorf("search %d did not finish once the indexer answered", id)
 		}
 	}
-	if got := must(sdk.GetCommandById(ctx, waiting.Id)).Answer; got.Status != radarr.CommandStatusQueued || got.Started != "" {
+	if got := must(sdk.GetCommandById(ctx, waiting.Id)).Answer; got.Status != radarr.CommandStatusQueued || !got.Started.IsZero() {
 		t.Errorf("the cancelled %s is %s, started %q; want it queued and never started", got.Name, got.Status, got.Started)
 	}
 }

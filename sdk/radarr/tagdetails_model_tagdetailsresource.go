@@ -4,14 +4,14 @@ package radarr
 
 // TagDetailsResource is the "TagDetailsResource" schema.
 type TagDetailsResource struct {
-	AutoTagIds        []int     `json:"autoTagIds,omitzero"`
-	DelayProfileIds   []int     `json:"delayProfileIds,omitzero"`
-	DownloadClientIds []int     `json:"downloadClientIds,omitzero"`
-	Id                int       `json:"id,omitempty"`
-	ImportListIds     []int     `json:"importListIds,omitzero"`
-	IndexerIds        []int     `json:"indexerIds,omitzero"`
-	Label             string    `json:"label,omitempty"`
-	MovieIds          []MovieID `json:"movieIds,omitzero"`
-	NotificationIds   []int     `json:"notificationIds,omitzero"`
-	ReleaseProfileIds []int     `json:"releaseProfileIds,omitzero"`
+	AutoTagIds        []int              `json:"autoTagIds,omitzero"`
+	DelayProfileIds   []int              `json:"delayProfileIds,omitzero"`
+	DownloadClientIds []DownloadClientID `json:"downloadClientIds,omitzero"`
+	Id                TagID              `json:"id,omitempty"`
+	ImportListIds     []int              `json:"importListIds,omitzero"`
+	IndexerIds        []IndexerID        `json:"indexerIds,omitzero"`
+	Label             string             `json:"label,omitempty"`
+	MovieIds          []MovieID          `json:"movieIds,omitzero"`
+	NotificationIds   []int              `json:"notificationIds,omitzero"`
+	ReleaseProfileIds []int              `json:"releaseProfileIds,omitzero"`
 }

@@ -31,7 +31,7 @@ func rootFolderRows(ctx context.Context, c *radarr.Client) ([]rootFolderRow, err
 	}
 	out := make([]rootFolderRow, 0, len(folders.Answer))
 	for _, f := range folders.Answer {
-		row := rootFolderRow{ID: f.Id, Path: f.Path, Accessible: isTrue(f.Accessible), FreeSpace: val(f.FreeSpace), UnmappedFolders: len(f.UnmappedFolders)}
+		row := rootFolderRow{ID: int(f.Id), Path: f.Path, Accessible: isTrue(f.Accessible), FreeSpace: val(f.FreeSpace), UnmappedFolders: len(f.UnmappedFolders)}
 		for i := range movies {
 			if inFolder(movies[i].Path, f.Path) {
 				row.Movies++
@@ -90,7 +90,7 @@ func registerRootFolderTools(r *registry) {
 		}
 		f := res.Answer
 
-		return nil, rootFolderRow{ID: f.Id, Path: f.Path, Accessible: isTrue(f.Accessible), FreeSpace: val(f.FreeSpace), UnmappedFolders: len(f.UnmappedFolders)}, nil
+		return nil, rootFolderRow{ID: int(f.Id), Path: f.Path, Accessible: isTrue(f.Accessible), FreeSpace: val(f.FreeSpace), UnmappedFolders: len(f.UnmappedFolders)}, nil
 	})
 
 	type rootFolderDeleteIn struct {
@@ -116,11 +116,11 @@ func registerRootFolderTools(r *registry) {
 			return nil, rootFolderRow{}, err
 		}
 		for _, row := range rows {
-			if row.ID == f.Id {
+			if row.ID == int(f.Id) {
 				return nil, row, nil
 			}
 		}
 
-		return nil, rootFolderRow{ID: f.Id, Path: f.Path}, nil
+		return nil, rootFolderRow{ID: int(f.Id), Path: f.Path}, nil
 	})
 }

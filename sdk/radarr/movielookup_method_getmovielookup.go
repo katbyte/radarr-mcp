@@ -40,14 +40,17 @@ func (o GetMovieLookupOptions) ToQuery() *client.QueryParams {
 }
 
 // GetMovieLookup calls GET /api/v3/movie/lookup.
-func (c Client) GetMovieLookup(ctx context.Context, options GetMovieLookupOptions) (result GetMovieLookupResponse, err error) {
+func (c Client) GetMovieLookup(ctx context.Context, term string) (result GetMovieLookupResponse, err error) {
+	var option GetMovieLookupOptions
+	option.Term = term
+
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetMovieLookup",
-		OptionsObject: options,
+		OptionsObject: option,
 		Path:          "/api/v3/movie/lookup",
 	}
 

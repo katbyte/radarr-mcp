@@ -585,7 +585,7 @@
           "Name": "Ended",
           "JsonName": "ended",
           "Type": {
-            "Type": "String"
+            "Type": "DateTime"
           },
           "Nullable": true
         },
@@ -608,7 +608,7 @@
           "Name": "LastExecutionTime",
           "JsonName": "lastExecutionTime",
           "Type": {
-            "Type": "String"
+            "Type": "DateTime"
           },
           "Nullable": true
         },
@@ -640,7 +640,7 @@
           "Name": "Queued",
           "JsonName": "queued",
           "Type": {
-            "Type": "String"
+            "Type": "DateTime"
           }
         },
         {
@@ -662,7 +662,7 @@
           "Name": "Started",
           "JsonName": "started",
           "Type": {
-            "Type": "String"
+            "Type": "DateTime"
           },
           "Nullable": true
         },
@@ -670,7 +670,7 @@
           "Name": "StateChangeTime",
           "JsonName": "stateChangeTime",
           "Type": {
-            "Type": "String"
+            "Type": "DateTime"
           },
           "Nullable": true
         },

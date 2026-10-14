@@ -588,11 +588,11 @@ func registerRecordKindTools(r *registry) map[string]kindDescriber {
 		if in.ID == 0 {
 			return nil, recordListOut{}, errors.New("give the id of the delay profile to move")
 		}
-		opts := radarr.PutDelayProfileReorderByIdOptions{}
+		var after []int
 		if in.After != 0 {
-			opts.After = new(in.After)
+			after = append(after, in.After)
 		}
-		res, err := c.PutDelayProfileReorderById(ctx, in.ID, opts)
+		res, err := c.PutDelayProfileReorderById(ctx, in.ID, after...)
 		if err != nil {
 			return nil, recordListOut{}, err
 		}

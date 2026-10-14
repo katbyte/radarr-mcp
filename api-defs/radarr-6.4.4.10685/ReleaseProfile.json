@@ -146,7 +146,8 @@
           "Name": "IndexerId",
           "JsonName": "indexerId",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "IndexerID"
           }
         },
         {
@@ -171,7 +172,8 @@
           "Type": {
             "Type": "List",
             "NestedItem": {
-              "Type": "Integer"
+              "Type": "ID",
+              "ReferenceName": "TagID"
             }
           },
           "Nullable": true

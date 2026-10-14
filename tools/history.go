@@ -53,7 +53,7 @@ var historyEvents = map[radarr.MovieHistoryEventType]int{
 func historyOf(h *radarr.HistoryResource) historyRow {
 	row := historyRow{
 		ID:          h.Id,
-		Date:        h.Date,
+		Date:        shownTime(h.Date),
 		Event:       string(h.EventType),
 		MovieID:     int(h.MovieId),
 		SourceTitle: outsideName(h.SourceTitle),
@@ -144,14 +144,14 @@ func registerHistoryTools(r *registry) {
 		}
 
 		// Radarr cannot filter by age, so the events are read newest first until the first one older than the cutoff, and paged from those
-		since := time.Now().UTC().AddDate(0, 0, -in.Days).Format(time.RFC3339)
+		since := time.Now().UTC().AddDate(0, 0, -in.Days)
 		var rows []historyRow
 		for page := 1; ; page++ {
 			records, _, err := fetch(page, historyPage)
 			if err != nil {
 				return nil, historyListOut{}, err
 			}
-			older := slices.IndexFunc(records, func(h radarr.HistoryResource) bool { return h.Date < since })
+			older := slices.IndexFunc(records, func(h radarr.HistoryResource) bool { return h.Date.Before(since) })
 			keep := len(records)
 			if older >= 0 {
 				keep = older
@@ -211,7 +211,7 @@ func registerHistoryTools(r *registry) {
 			if err != nil {
 				return nil, blocklistListOut{}, err
 			}
-			res, err := client.GetBlocklistMovie(ctx, radarr.GetBlocklistMovieOptions{MovieId: m.Id})
+			res, err := client.GetBlocklistMovie(ctx, m.Id)
 			if err != nil {
 				return nil, blocklistListOut{}, err
 			}
@@ -226,7 +226,7 @@ func registerHistoryTools(r *registry) {
 			}
 			entries = res.Items
 		}
-		slices.SortStableFunc(entries, func(a, b radarr.BlocklistResource) int { return strings.Compare(b.Date, a.Date) })
+		slices.SortStableFunc(entries, func(a, b radarr.BlocklistResource) int { return b.Date.Compare(a.Date.Time) })
 
 		page, paged := pageRows(entries, in.pageIn)
 		out := blocklistListOut{Entries: make([]blocklistRow, 0, len(page)), pageOut: paged}
@@ -281,7 +281,7 @@ func findGrab(ctx context.Context, c *radarr.Client, id int, movie string) (*rad
 			return nil, err
 		}
 		events := res.Answer
-		slices.SortStableFunc(events, func(a, b radarr.HistoryResource) int { return strings.Compare(b.Date, a.Date) })
+		slices.SortStableFunc(events, func(a, b radarr.HistoryResource) int { return b.Date.Compare(a.Date.Time) })
 		for i := range events {
 			if events[i].EventType == radarr.MovieHistoryEventTypeGrabbed && (id == 0 || events[i].Id == id) {
 				return &events[i], nil
@@ -308,7 +308,7 @@ func findGrab(ctx context.Context, c *radarr.Client, id int, movie string) (*rad
 
 func blocklistOf(b *radarr.BlocklistResource) blocklistRow {
 	row := blocklistRow{
-		ID: b.Id, Date: b.Date, MovieID: int(b.MovieId), SourceTitle: outsideName(b.SourceTitle),
+		ID: b.Id, Date: shownTime(b.Date), MovieID: int(b.MovieId), SourceTitle: outsideName(b.SourceTitle),
 		Quality: qualityName(b.Quality), Indexer: b.Indexer, Protocol: string(b.Protocol), Message: outsideProse(b.Message),
 	}
 	if b.Movie != nil {

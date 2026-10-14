@@ -13,7 +13,7 @@ type ReleaseResource struct {
 	CustomFormats       []CustomFormatResource `json:"customFormats,omitzero"`
 	DownloadAllowed     *bool                  `json:"downloadAllowed,omitempty"`
 	DownloadClient      string                 `json:"downloadClient,omitempty"`
-	DownloadClientId    *int                   `json:"downloadClientId,omitempty"`
+	DownloadClientId    *DownloadClientID      `json:"downloadClientId,omitempty"`
 	DownloadUrl         string                 `json:"downloadUrl,omitempty"`
 	Edition             string                 `json:"edition,omitempty"`
 	Guid                string                 `json:"guid,omitempty"`
@@ -21,7 +21,7 @@ type ReleaseResource struct {
 	ImdbId              int                    `json:"imdbId,omitempty"`
 	Indexer             string                 `json:"indexer,omitempty"`
 	IndexerFlags        any                    `json:"indexerFlags,omitempty"`
-	IndexerId           int                    `json:"indexerId,omitempty"`
+	IndexerId           IndexerID              `json:"indexerId,omitempty"`
 	InfoHash            string                 `json:"infoHash,omitempty"`
 	InfoUrl             string                 `json:"infoUrl,omitempty"`
 	Languages           []Language             `json:"languages,omitzero"`
@@ -32,7 +32,7 @@ type ReleaseResource struct {
 	MovieRequested      *bool                  `json:"movieRequested,omitempty"`
 	MovieTitles         []string               `json:"movieTitles,omitzero"`
 	Protocol            DownloadProtocol       `json:"protocol,omitempty"`
-	PublishDate         string                 `json:"publishDate,omitempty"`
+	PublishDate         Time                   `json:"publishDate,omitzero"`
 	Quality             *QualityModel          `json:"quality,omitempty"`
 	QualityWeight       int                    `json:"qualityWeight,omitempty"`
 	Rejected            *bool                  `json:"rejected,omitempty"`

@@ -185,12 +185,12 @@ func resolveMovies(ctx context.Context, c *radarr.Client, refs []string) ([]rada
 // lookups are the names a projection renders ids as: quality profiles and
 // tags.
 type lookups struct {
-	profiles map[int]string
-	tags     map[int]string
+	profiles map[radarr.QualityProfileID]string
+	tags     map[radarr.TagID]string
 }
 
 func loadLookups(ctx context.Context, c *radarr.Client) (lookups, error) {
-	lk := lookups{profiles: map[int]string{}, tags: map[int]string{}}
+	lk := lookups{profiles: map[radarr.QualityProfileID]string{}, tags: map[radarr.TagID]string{}}
 	profiles, err := c.GetQualityProfile(ctx)
 	if err != nil {
 		return lk, err
@@ -209,13 +209,13 @@ func loadLookups(ctx context.Context, c *radarr.Client) (lookups, error) {
 	return lk, nil
 }
 
-func (lk lookups) tagLabels(ids []int) []string {
+func (lk lookups) tagLabels(ids []radarr.TagID) []string {
 	out := make([]string, 0, len(ids))
 	for _, id := range ids {
 		if l, ok := lk.tags[id]; ok {
 			out = append(out, l)
 		} else {
-			out = append(out, strconv.Itoa(id))
+			out = append(out, strconv.Itoa(int(id)))
 		}
 	}
 	slices.Sort(out)
@@ -235,7 +235,7 @@ func resolveProfile(ctx context.Context, c *radarr.Client, ref string) (*radarr.
 	names := make([]string, 0, len(res.Answer))
 	for i := range res.Answer {
 		p := &res.Answer[i]
-		if idErr == nil && p.Id == id || strings.EqualFold(p.Name, ref) {
+		if idErr == nil && p.Id == radarr.QualityProfileID(id) || strings.EqualFold(p.Name, ref) {
 			return p, nil
 		}
 		names = append(names, fmt.Sprintf("%s (%d)", p.Name, p.Id))
@@ -259,7 +259,7 @@ func resolveRootFolder(ctx context.Context, c *radarr.Client, ref string) (*rada
 	paths := make([]string, 0, len(res.Answer))
 	for i := range res.Answer {
 		f := &res.Answer[i]
-		if idErr == nil && f.Id == id || strings.TrimRight(f.Path, "/") == strings.TrimRight(ref, "/") {
+		if idErr == nil && f.Id == radarr.RootFolderID(id) || strings.TrimRight(f.Path, "/") == strings.TrimRight(ref, "/") {
 			return f, nil
 		}
 		paths = append(paths, fmt.Sprintf("%s (%d)", f.Path, f.Id))
@@ -276,7 +276,7 @@ func resolveRootFolder(ctx context.Context, c *radarr.Client, ref string) (*rada
 
 // resolveTags turns tag labels (or ids) into ids, creating the labels that do
 // not exist yet when create is set.
-func resolveTags(ctx context.Context, c *radarr.Client, refs []string, create bool) ([]int, error) {
+func resolveTags(ctx context.Context, c *radarr.Client, refs []string, create bool) ([]radarr.TagID, error) {
 	if len(refs) == 0 {
 		return nil, nil
 	}
@@ -284,7 +284,7 @@ func resolveTags(ctx context.Context, c *radarr.Client, refs []string, create bo
 	if err != nil {
 		return nil, err
 	}
-	var ids []int
+	var ids []radarr.TagID
 	for _, ref := range refs {
 		ref = strings.TrimSpace(ref)
 		if ref == "" {
@@ -292,7 +292,7 @@ func resolveTags(ctx context.Context, c *radarr.Client, refs []string, create bo
 		}
 		found := false
 		for _, t := range res.Answer {
-			if strings.EqualFold(t.Label, ref) || strconv.Itoa(t.Id) == ref {
+			if strings.EqualFold(t.Label, ref) || strconv.Itoa(int(t.Id)) == ref {
 				ids = append(ids, t.Id)
 				found = true
 				break
@@ -330,7 +330,7 @@ func resolveTags(ctx context.Context, c *radarr.Client, refs []string, create bo
 }
 
 // tagID finds a tag's id by label.
-func tagID(ctx context.Context, c *radarr.Client, label string) (int, bool) {
+func tagID(ctx context.Context, c *radarr.Client, label string) (radarr.TagID, bool) {
 	res, err := c.GetTag(ctx)
 	if err != nil {
 		return 0, false
@@ -430,7 +430,7 @@ func fileOf(f *radarr.MovieFileResource) *fileInfo {
 		ReleaseGroup:      f.ReleaseGroup,
 		Edition:           f.Edition,
 		CustomFormatScore: val(f.CustomFormatScore),
-		DateAdded:         f.DateAdded,
+		DateAdded:         shownTime(f.DateAdded),
 	}
 	for _, cf := range f.CustomFormats {
 		out.CustomFormats = append(out.CustomFormats, cf.Name)
@@ -464,6 +464,15 @@ func val[T any](p *T) T {
 	}
 
 	return *p
+}
+
+// shownTime is one of Radarr's dates as a tool answers it, "" when there is none.
+func shownTime(t radarr.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+
+	return t.UTC().Format(time.RFC3339)
 }
 
 // qualityName is the name of a graded quality, "" when there is none.
@@ -538,9 +547,9 @@ func commandOf(c *radarr.CommandResource) commandOut {
 		Name:     c.Name,
 		Status:   string(c.Status),
 		Message:  c.Message,
-		Queued:   c.Queued,
-		Started:  c.Started,
-		Ended:    c.Ended,
+		Queued:   shownTime(c.Queued),
+		Started:  shownTime(c.Started),
+		Ended:    shownTime(c.Ended),
 		Duration: c.Duration,
 	}
 }

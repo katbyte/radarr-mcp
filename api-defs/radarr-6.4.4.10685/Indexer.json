@@ -26,7 +26,8 @@
           "Name": "id",
           "Argument": "id",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "IndexerID"
           }
         }
       ],
@@ -61,7 +62,8 @@
           "Name": "id",
           "Argument": "id",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "IndexerID"
           }
         }
       ],
@@ -234,7 +236,8 @@
           "Name": "id",
           "Argument": "id",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "IndexerID"
           }
         }
       ],
@@ -310,7 +313,8 @@
           "Type": {
             "Type": "List",
             "NestedItem": {
-              "Type": "Integer"
+              "Type": "ID",
+              "ReferenceName": "IndexerID"
             }
           },
           "Nullable": true
@@ -330,7 +334,8 @@
           "Type": {
             "Type": "List",
             "NestedItem": {
-              "Type": "Integer"
+              "Type": "ID",
+              "ReferenceName": "TagID"
             }
           },
           "Nullable": true
@@ -353,7 +358,8 @@
           "Name": "DownloadClientId",
           "JsonName": "downloadClientId",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "DownloadClientID"
           }
         },
         {
@@ -393,7 +399,8 @@
           "Name": "Id",
           "JsonName": "id",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "IndexerID"
           }
         },
         {
@@ -483,7 +490,8 @@
           "Type": {
             "Type": "List",
             "NestedItem": {
-              "Type": "Integer"
+              "Type": "ID",
+              "ReferenceName": "TagID"
             }
           },
           "Nullable": true

@@ -13,6 +13,8 @@
 package workarounds
 
 import (
+	"time"
+
 	"github.com/katbyte/pandorest/config"
 	pandorest "github.com/katbyte/pandorest/importer/workarounds"
 )
@@ -36,7 +38,10 @@ var Services = []config.Service{{
 	// how the generated New names what it is given, and says where that is found
 	Credential: "API key",
 	NewDoc:     "New returns a client for the Radarr server at baseURL (scheme and host,\nplus the URL base when Radarr is set up with one, e.g. /radarr) that\nauthenticates with the API key from Settings > General > Security.",
-	Notes:      `Dates are strings: Radarr sends RFC 3339 in UTC ("2024-03-01T00:00:00Z").`,
+	// Radarr writes every date in RFC 3339, in UTC
+	Dates: config.Dates{Send: time.RFC3339},
+	// an operation with one option takes it as the argument: GetMovieLookup(ctx, term)
+	InlineSingleOptions: true,
 	// history, the queue, the blocklist, the wanted lists, the exclusions and the log page by number, and answer a PagingResource
 	Paging: &config.Paging{Start: "page", Limit: "pageSize", Items: "records", Total: "totalRecords", ByPage: true},
 	// Radarr refuses a body without a property its document requires, an empty string included
@@ -45,14 +50,19 @@ var Services = []config.Service{{
 	PreferJSON: true,
 	// a test of every provider answers 400 with the same list of results when any of them fails
 	ExpectSameShape: true,
-	// the ids worth telling apart: a film's, a film file's and TMDB's for a film, which the tools pass side by side
+	// the ids worth telling apart, so that one cannot be passed where another was meant
 	IDs: []config.ID{
 		{Name: "MovieID", Of: []string{"MovieResource"}, Names: []string{"movieId", "movieIds", "mappedMovieId"}},
 		{Name: "MovieFileID", Of: []string{"MovieFileResource"}, Names: []string{"movieFileId", "movieFileIds"}, In: []string{"RenameFilesCommand .files"}},
 		{Name: "TmdbID", Base: "int", Names: []string{"tmdbId"}, Except: []string{"CollectionResource .tmdbId", "MovieCollectionResource .tmdbId", "GET /api/v3/collection tmdbId"}},
+		{Name: "QualityProfileID", Of: []string{"QualityProfileResource"}, Names: []string{"qualityProfileId"}},
+		{Name: "TagID", Of: []string{"TagResource", "TagDetailsResource"}, Names: []string{"tags"}, Joined: []string{"tags"}},
+		{Name: "DownloadClientID", Of: []string{"DownloadClientResource"}, Names: []string{"downloadClientId", "downloadClientIds"}, In: []string{"DownloadClientBulkResource .ids"}},
+		{Name: "IndexerID", Of: []string{"IndexerResource"}, Names: []string{"indexerId", "indexerIds"}, In: []string{"IndexerBulkResource .ids"}},
+		{Name: "RootFolderID", Of: []string{"RootFolderResource"}},
 	},
 	// every other name that looks like an id stays a plain number or text
-	Plain: []string{"autoTagIds", "collectionIds", "creditTmdbId", "delayProfileIds", "downloadClientId", "downloadClientIds", "downloadId", "guid", "id", "ids", "imdbId", "importListIds", "indexerId", "indexerIds", "languageId", "movieMetadataId", "notificationIds", "personTmdbId", "qualityProfileId", "releaseProfileIds", "secondaryYearSourceId", "youTubeTrailerId"},
+	Plain: []string{"autoTagIds", "collectionIds", "creditTmdbId", "delayProfileIds", "downloadId", "guid", "id", "ids", "imdbId", "importListIds", "languageId", "movieMetadataId", "notificationIds", "personTmdbId", "releaseProfileIds", "secondaryYearSourceId", "youTubeTrailerId"},
 	// a null here means something - no size limit, no film, no score - that a zero would say wrongly
 	KeepNull: []string{
 		"CollectionUpdateResource.qualityProfileId",

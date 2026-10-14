@@ -67,7 +67,7 @@ func TestReadSweep(t *testing.T) {
 		t.Fatal("no fixture film has an alternate title to read")
 	}
 	credits := must(sdk.GetCredit(ctx, radarr.GetCreditOptions{MovieId: a.Id})).Answer
-	collections := must(sdk.GetCollection(ctx, radarr.GetCollectionOptions{})).Answer
+	collections := must(sdk.GetCollection(ctx)).Answer
 	logs := must(sdk.GetLogFile(ctx)).Answer
 	tasks := must(sdk.GetSystemTask(ctx)).Answer
 	languages := must(sdk.GetLanguage(ctx)).Answer
@@ -98,12 +98,12 @@ func TestReadSweep(t *testing.T) {
 	t.Cleanup(func() { _, _ = sdk.DeleteAutoTaggingById(context.WithoutCancel(ctx), auto.Id) })
 	exclusion := must(sdk.PostExclusions(ctx, radarr.ImportListExclusionResource{TmdbId: 8078, MovieTitle: "Alien Resurrection", MovieYear: 1997})).Answer
 	t.Cleanup(func() { _, _ = sdk.DeleteExclusionsById(context.WithoutCancel(ctx), exclusion.Id) })
-	notification := must(sdk.PostNotification(ctx, webhook(t, "SDK Sweep"), radarr.PostNotificationOptions{})).Answer
+	notification := must(sdk.PostNotification(ctx, webhook(t, "SDK Sweep"))).Answer
 	t.Cleanup(func() { _, _ = sdk.DeleteNotificationById(context.WithoutCancel(ctx), notification.Id) })
 	// the list is switched on and read once, so that there are films a list offers to read: this Radarr's own, every one of them in the library already
 	offering := selfList("SDK Sweep")
 	offering.Enabled = new(true)
-	list := must(sdk.PostImportList(ctx, offering, radarr.PostImportListOptions{})).Answer
+	list := must(sdk.PostImportList(ctx, offering)).Answer
 	t.Cleanup(func() { _, _ = sdk.DeleteImportListById(context.WithoutCancel(ctx), list.Id) })
 	completed(t, must(sdk.ImportListSyncAndWait(ctx, radarr.ImportListSyncCommand{}, commandWait)))
 
@@ -145,20 +145,20 @@ func TestReadSweep(t *testing.T) {
 			"customfilter/id":      id(filter.Id),
 			"customformat/id":      id(format.Id),
 			"delayprofile/id":      id(delays[0].Id),
-			"downloadclient/id":    id(d.client),
+			"downloadclient/id":    id(int(d.client)),
 			"exclusions/id":        id(exclusion.Id),
 			"importlist/id":        id(list.Id),
-			"indexer/id":           id(d.indexer),
+			"indexer/id":           id(int(d.indexer)),
 			"language/id":          id(languages[1].Id),
 			"metadata/id":          id(metadata[0].Id),
 			"notification/id":      id(notification.Id),
 			"qualitydefinition/id": id(definitions[0].Id),
-			"qualityprofile/id":    id(profiles[0].Id),
+			"qualityprofile/id":    id(int(profiles[0].Id)),
 			"releaseprofile/id":    id(release.Id),
 			"remotepathmapping/id": id(mapping.Id),
-			"rootfolder/id":        id(l.roots[moviesRoot]),
-			"tag/id":               id(tag.Id),
-			"detail/id":            id(tag.Id),
+			"rootfolder/id":        id(int(l.roots[moviesRoot])),
+			"tag/id":               id(int(tag.Id)),
+			"detail/id":            id(int(tag.Id)),
 			"task/id":              id(tasks[0].Id),
 			"file/filename":        logs[0].Filename,
 			"update/filename":      updateLog,
@@ -223,9 +223,9 @@ func customFormat(name string) radarr.CustomFormatResource {
 }
 
 // autoTagging tags every horror film with a tag.
-func autoTagging(name string, tag int) radarr.AutoTaggingResource {
+func autoTagging(name string, tag radarr.TagID) radarr.AutoTaggingResource {
 	return radarr.AutoTaggingResource{
-		Name: name, RemoveTagsAutomatically: new(false), Tags: []int{tag},
+		Name: name, RemoveTagsAutomatically: new(false), Tags: []radarr.TagID{tag},
 		Specifications: []radarr.AutoTaggingSpecificationSchema{{
 			Name: "horror", Implementation: "GenreSpecification", Negate: new(false), Required: new(false),
 			Fields: []radarr.Field{{Name: "value", Value: []string{"Horror"}}},

@@ -15,7 +15,7 @@ type ImportListExclusionResource struct {
 	MovieYear          int                           `json:"movieYear,omitempty"`
 	Name               string                        `json:"name,omitempty"`
 	Presets            []ImportListExclusionResource `json:"presets,omitzero"`
-	Tags               []int                         `json:"tags,omitzero"`
+	Tags               []TagID                       `json:"tags,omitzero"`
 	TmdbId             TmdbID                        `json:"tmdbId,omitempty"`
 }
 

@@ -109,7 +109,7 @@ func registerProviderTools(r *registry) {
 		rows := make([]indexerRow, 0, len(res.Answer))
 		for _, i := range res.Answer {
 			row := indexerRow{
-				ID: i.Id, Name: outsideName(i.Name), Implementation: i.ImplementationName, Protocol: string(i.Protocol),
+				ID: int(i.Id), Name: outsideName(i.Name), Implementation: i.ImplementationName, Protocol: string(i.Protocol),
 				EnableRSS: isTrue(i.EnableRss), EnableAutomaticSearch: isTrue(i.EnableAutomaticSearch), EnableInteractiveSearch: isTrue(i.EnableInteractiveSearch),
 				Priority: i.Priority, Tags: lk.tagLabels(i.Tags),
 			}
@@ -141,8 +141,8 @@ func registerProviderTools(r *registry) {
 		names := map[int]string{}
 		var pick *radarr.IndexerResource
 		for i := range res.Answer {
-			names[res.Answer[i].Id] = res.Answer[i].Name
-			if in.Name != "" && (strings.EqualFold(res.Answer[i].Name, in.Name) || strconv.Itoa(res.Answer[i].Id) == in.Name) {
+			names[int(res.Answer[i].Id)] = res.Answer[i].Name
+			if in.Name != "" && (strings.EqualFold(res.Answer[i].Name, in.Name) || strconv.Itoa(int(res.Answer[i].Id)) == in.Name) {
 				pick = &res.Answer[i]
 			}
 		}
@@ -151,8 +151,8 @@ func registerProviderTools(r *registry) {
 		case in.Name != "" && pick == nil:
 			return nil, testOut{}, fmt.Errorf("no indexer %q; indexer_list names them", in.Name)
 		case pick != nil:
-			one, err := c.PostIndexerTest(ctx, *pick, radarr.PostIndexerTestOptions{ForceTest: new(true)})
-			results = []radarr.ProviderTestAllResult{{Id: pick.Id, IsValid: err == nil}}
+			one, err := c.PostIndexerTest(ctx, *pick, true)
+			results = []radarr.ProviderTestAllResult{{Id: int(pick.Id), IsValid: err == nil}}
 			if err != nil {
 				results[0].ValidationFailures = failuresOf(one.HttpResponse, err)
 			}
@@ -187,7 +187,7 @@ func registerProviderTools(r *registry) {
 		rows := make([]downloadClientRow, 0, len(res.Answer))
 		for _, d := range res.Answer {
 			row := downloadClientRow{
-				ID: d.Id, Name: outsideName(d.Name), Implementation: d.ImplementationName, Protocol: string(d.Protocol), Enabled: isTrue(d.Enable),
+				ID: int(d.Id), Name: outsideName(d.Name), Implementation: d.ImplementationName, Protocol: string(d.Protocol), Enabled: isTrue(d.Enable),
 				Priority: d.Priority, RemoveCompletedDownloads: isTrue(d.RemoveCompletedDownloads), RemoveFailedDownloads: isTrue(d.RemoveFailedDownloads),
 				Tags: lk.tagLabels(d.Tags),
 			}
@@ -213,8 +213,8 @@ func registerProviderTools(r *registry) {
 		names := map[int]string{}
 		var pick *radarr.DownloadClientResource
 		for i := range res.Answer {
-			names[res.Answer[i].Id] = res.Answer[i].Name
-			if in.Name != "" && (strings.EqualFold(res.Answer[i].Name, in.Name) || strconv.Itoa(res.Answer[i].Id) == in.Name) {
+			names[int(res.Answer[i].Id)] = res.Answer[i].Name
+			if in.Name != "" && (strings.EqualFold(res.Answer[i].Name, in.Name) || strconv.Itoa(int(res.Answer[i].Id)) == in.Name) {
 				pick = &res.Answer[i]
 			}
 		}
@@ -223,8 +223,8 @@ func registerProviderTools(r *registry) {
 		case in.Name != "" && pick == nil:
 			return nil, testOut{}, fmt.Errorf("no download client %q; downloadclient_list names them", in.Name)
 		case pick != nil:
-			one, err := c.PostDownloadClientTest(ctx, *pick, radarr.PostDownloadClientTestOptions{ForceTest: new(true)})
-			results = []radarr.ProviderTestAllResult{{Id: pick.Id, IsValid: err == nil}}
+			one, err := c.PostDownloadClientTest(ctx, *pick, true)
+			results = []radarr.ProviderTestAllResult{{Id: int(pick.Id), IsValid: err == nil}}
 			if err != nil {
 				results[0].ValidationFailures = failuresOf(one.HttpResponse, err)
 			}

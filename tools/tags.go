@@ -28,7 +28,7 @@ type tagRow struct {
 
 func tagOf(t *radarr.TagDetailsResource) tagRow {
 	return tagRow{
-		ID: t.Id, Label: t.Label, Movies: len(t.MovieIds), Indexers: len(t.IndexerIds), DownloadClients: len(t.DownloadClientIds),
+		ID: int(t.Id), Label: t.Label, Movies: len(t.MovieIds), Indexers: len(t.IndexerIds), DownloadClients: len(t.DownloadClientIds),
 		ImportLists: len(t.ImportListIds), Notifications: len(t.NotificationIds), DelayProfiles: len(t.DelayProfileIds),
 		ReleaseProfiles: len(t.ReleaseProfileIds), AutoTags: len(t.AutoTagIds),
 	}
@@ -44,7 +44,7 @@ func resolveTag(ctx context.Context, c *radarr.Client, ref string) (*radarr.TagD
 	labels := make([]string, 0, len(res.Answer))
 	for i := range res.Answer {
 		t := &res.Answer[i]
-		if strings.EqualFold(t.Label, ref) || strconv.Itoa(t.Id) == ref {
+		if strings.EqualFold(t.Label, ref) || strconv.Itoa(int(t.Id)) == ref {
 			return t, nil
 		}
 		labels = append(labels, t.Label)
@@ -100,7 +100,7 @@ func registerTagTools(r *registry) {
 			return nil, tagRow{}, err
 		}
 
-		return nil, tagRow{ID: res.Answer.Id, Label: res.Answer.Label}, nil
+		return nil, tagRow{ID: int(res.Answer.Id), Label: res.Answer.Label}, nil
 	})
 
 	type tagRenameIn struct {
@@ -125,7 +125,7 @@ func registerTagTools(r *registry) {
 		if _, err := client.PutTagById(ctx, t.Id, radarr.TagResource{Id: t.Id, Label: label}); err != nil {
 			return nil, tagRow{}, err
 		}
-		after, err := resolveTag(ctx, client, strconv.Itoa(t.Id))
+		after, err := resolveTag(ctx, client, strconv.Itoa(int(t.Id)))
 		if err != nil {
 			return nil, tagRow{}, err
 		}
@@ -151,7 +151,7 @@ func registerTagTools(r *registry) {
 			return nil, tagRow{}, fmt.Errorf("tag %q still limits %s; take it off those first, with each one's edit tool, since deleting it would change which films they serve", t.Label, strings.Join(users, ", "))
 		}
 		if len(t.MovieIds) > 0 {
-			if _, err := client.PutMovieEditor(ctx, radarr.MovieEditorResource{MovieIds: t.MovieIds, Tags: []int{t.Id}, ApplyTags: radarr.ApplyTagsRemove}); err != nil {
+			if _, err := client.PutMovieEditor(ctx, radarr.MovieEditorResource{MovieIds: t.MovieIds, Tags: []radarr.TagID{t.Id}, ApplyTags: radarr.ApplyTagsRemove}); err != nil {
 				return nil, tagRow{}, fmt.Errorf("taking %q off its films: %w", t.Label, err)
 			}
 		}

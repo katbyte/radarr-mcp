@@ -41,14 +41,17 @@ func (o GetRenameOptions) ToQuery() *client.QueryParams {
 }
 
 // GetRename calls GET /api/v3/rename.
-func (c Client) GetRename(ctx context.Context, options GetRenameOptions) (result GetRenameResponse, err error) {
+func (c Client) GetRename(ctx context.Context, movieId []MovieID) (result GetRenameResponse, err error) {
+	var option GetRenameOptions
+	option.MovieId = movieId
+
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetRename",
-		OptionsObject: options,
+		OptionsObject: option,
 		Path:          "/api/v3/rename",
 	}
 

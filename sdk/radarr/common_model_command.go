@@ -9,8 +9,8 @@ type Command struct {
 	IsExclusive         bool           `json:"isExclusive"`
 	IsLongRunning       bool           `json:"isLongRunning"`
 	IsTypeExclusive     bool           `json:"isTypeExclusive"`
-	LastExecutionTime   string         `json:"lastExecutionTime,omitempty"`
-	LastStartTime       string         `json:"lastStartTime,omitempty"`
+	LastExecutionTime   Time           `json:"lastExecutionTime,omitzero"`
+	LastStartTime       Time           `json:"lastStartTime,omitzero"`
 	Name                string         `json:"name,omitempty"`
 	RequiresDiskAccess  bool           `json:"requiresDiskAccess"`
 	SendUpdatesToClient bool           `json:"sendUpdatesToClient"`

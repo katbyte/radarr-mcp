@@ -67,7 +67,7 @@ func released(s radarr.MovieStatusType) bool {
 
 // resolveCollection finds a collection by id, tmdb:<id> or title.
 func resolveCollection(ctx context.Context, c *radarr.Client, ref string) (*radarr.CollectionResource, error) {
-	res, err := c.GetCollection(ctx, radarr.GetCollectionOptions{})
+	res, err := c.GetCollection(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func registerCollectionTools(r *registry) {
 		Description: "List the TMDB collections the library's films belong to (a franchise, a trilogy), each with the films the library holds and the released ones it does not. " +
 			"A monitored collection has Radarr add its missing films on its own.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in collectionListIn) (*mcp.CallToolResult, collectionListOut, error) {
-		res, err := client.GetCollection(ctx, radarr.GetCollectionOptions{})
+		res, err := client.GetCollection(ctx)
 		if err != nil {
 			return nil, collectionListOut{}, err
 		}

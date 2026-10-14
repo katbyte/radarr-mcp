@@ -61,7 +61,7 @@ func TestLogin(t *testing.T) {
 
 	// the form answers with a redirect, to where it was asked to land or back
 	// to itself, which the client hands back as it came rather than follows
-	res, err := sdk.PostLogin(ctx, &form, w.FormDataContentType(), radarr.PostLoginOptions{ReturnUrl: "/"})
+	res, err := sdk.PostLogin(ctx, &form, w.FormDataContentType(), "/")
 	if err != nil || res.HttpResponse.StatusCode != http.StatusFound {
 		t.Fatalf("a login that fails = %v, want its redirect as the answer", err)
 	}

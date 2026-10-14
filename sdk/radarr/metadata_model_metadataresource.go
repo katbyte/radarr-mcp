@@ -14,7 +14,7 @@ type MetadataResource struct {
 	Message            *ProviderMessage   `json:"message,omitempty"`
 	Name               string             `json:"name,omitempty"`
 	Presets            []MetadataResource `json:"presets,omitzero"`
-	Tags               []int              `json:"tags,omitzero"`
+	Tags               []TagID            `json:"tags,omitzero"`
 }
 
 // GetName is the record's Name, for code that handles records of several types alike.

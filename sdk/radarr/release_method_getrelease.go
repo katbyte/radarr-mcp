@@ -42,14 +42,14 @@ func (o GetReleaseOptions) ToQuery() *client.QueryParams {
 }
 
 // GetRelease calls GET /api/v3/release.
-func (c Client) GetRelease(ctx context.Context, options ...GetReleaseOptions) (result GetReleaseResponse, err error) {
-	if len(options) > 1 {
-		err = fmt.Errorf("GetRelease takes one options struct at most, not %d", len(options))
+func (c Client) GetRelease(ctx context.Context, movieId ...MovieID) (result GetReleaseResponse, err error) {
+	var option GetReleaseOptions
+	if len(movieId) > 1 {
+		err = fmt.Errorf("GetRelease takes one movieId at most, not %d", len(movieId))
 		return
 	}
-	var option GetReleaseOptions
-	if len(options) == 1 {
-		option = options[0]
+	if len(movieId) == 1 {
+		option.MovieId = movieId[0]
 	}
 
 	opts := client.RequestOptions{

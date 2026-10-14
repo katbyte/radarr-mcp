@@ -61,14 +61,14 @@ func (o PutMovieByIdOptions) ToQuery() *client.QueryParams {
 }
 
 // PutMovieById calls PUT /api/v3/movie/{id}.
-func (c Client) PutMovieById(ctx context.Context, id MovieID, input MovieResource, options ...PutMovieByIdOptions) (result PutMovieByIdResponse, err error) {
-	if len(options) > 1 {
-		err = fmt.Errorf("PutMovieById takes one options struct at most, not %d", len(options))
+func (c Client) PutMovieById(ctx context.Context, id MovieID, input MovieResource, moveFiles ...bool) (result PutMovieByIdResponse, err error) {
+	var option PutMovieByIdOptions
+	if len(moveFiles) > 1 {
+		err = fmt.Errorf("PutMovieById takes one moveFiles at most, not %d", len(moveFiles))
 		return
 	}
-	var option PutMovieByIdOptions
-	if len(options) == 1 {
-		option = options[0]
+	if len(moveFiles) == 1 {
+		option.MoveFiles = &moveFiles[0]
 	}
 
 	result.MovieResource = &MovieResource{}

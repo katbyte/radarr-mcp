@@ -8,7 +8,7 @@ type SystemResource struct {
 	AppName                       string             `json:"appName,omitempty"`
 	Authentication                AuthenticationType `json:"authentication,omitempty"`
 	Branch                        string             `json:"branch,omitempty"`
-	BuildTime                     string             `json:"buildTime,omitempty"`
+	BuildTime                     Time               `json:"buildTime,omitzero"`
 	DatabaseType                  DatabaseType       `json:"databaseType,omitempty"`
 	DatabaseVersion               string             `json:"databaseVersion,omitempty"`
 	InstanceName                  string             `json:"instanceName,omitempty"`
@@ -32,7 +32,7 @@ type SystemResource struct {
 	PackageVersion                string             `json:"packageVersion,omitempty"`
 	RuntimeName                   string             `json:"runtimeName,omitempty"`
 	RuntimeVersion                string             `json:"runtimeVersion,omitempty"`
-	StartTime                     string             `json:"startTime,omitempty"`
+	StartTime                     Time               `json:"startTime,omitzero"`
 	StartupPath                   string             `json:"startupPath,omitempty"`
 	UrlBase                       string             `json:"urlBase,omitempty"`
 	Version                       string             `json:"version,omitempty"`

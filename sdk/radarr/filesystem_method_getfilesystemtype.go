@@ -41,14 +41,17 @@ func (o GetFileSystemTypeOptions) ToQuery() *client.QueryParams {
 }
 
 // GetFileSystemType calls GET /api/v3/filesystem/type.
-func (c Client) GetFileSystemType(ctx context.Context, options GetFileSystemTypeOptions) (result GetFileSystemTypeResponse, err error) {
+func (c Client) GetFileSystemType(ctx context.Context, path string) (result GetFileSystemTypeResponse, err error) {
+	var option GetFileSystemTypeOptions
+	option.Path = path
+
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetFileSystemType",
-		OptionsObject: options,
+		OptionsObject: option,
 		Path:          "/api/v3/filesystem/type",
 	}
 

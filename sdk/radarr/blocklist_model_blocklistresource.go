@@ -5,7 +5,7 @@ package radarr
 // BlocklistResource is the "BlocklistResource" schema.
 type BlocklistResource struct {
 	CustomFormats []CustomFormatResource `json:"customFormats,omitzero"`
-	Date          string                 `json:"date,omitempty"`
+	Date          Time                   `json:"date,omitzero"`
 	Id            int                    `json:"id,omitempty"`
 	Indexer       string                 `json:"indexer,omitempty"`
 	Languages     []Language             `json:"languages,omitzero"`

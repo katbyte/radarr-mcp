@@ -395,7 +395,7 @@ func webhookURL(t *testing.T) string {
 // library is what the fixtures created: the root folders and the films, by
 // tmdb id.
 type library struct {
-	roots map[string]int
+	roots map[string]radarr.RootFolderID
 	films map[int]radarr.MovieResource
 }
 
@@ -435,7 +435,7 @@ func fixtures(t *testing.T) library {
 }
 
 func createFixtures(ctx context.Context) (library, error) {
-	l := library{roots: map[string]int{}, films: map[int]radarr.MovieResource{}}
+	l := library{roots: map[string]radarr.RootFolderID{}, films: map[int]radarr.MovieResource{}}
 
 	roots, err := sdk.GetRootFolder(ctx)
 	if err != nil {
@@ -455,7 +455,7 @@ func createFixtures(ctx context.Context) (library, error) {
 		l.roots[path] = res.Answer.Id
 	}
 
-	existing, err := sdk.GetMovie(ctx, radarr.GetMovieOptions{})
+	existing, err := sdk.GetMovie(ctx)
 	if err != nil {
 		return l, err
 	}
@@ -543,7 +543,8 @@ func removeFixtures() {
 // downloading is the fake indexer and the Usenet Blackhole, added once for
 // the tests that search, grab and import.
 type downloading struct {
-	indexer, client int
+	indexer radarr.IndexerID
+	client  radarr.DownloadClientID
 }
 
 var (
@@ -590,7 +591,7 @@ func downloads(t *testing.T) downloading {
 		if errDownloads = indexer.Offer(background); errDownloads != nil {
 			return
 		}
-		ix, err := sdk.PostIndexer(ctx, fakeIndexer(), radarr.PostIndexerOptions{})
+		ix, err := sdk.PostIndexer(ctx, fakeIndexer())
 		if err != nil {
 			errDownloads = fmt.Errorf("adding the fake indexer at %s: %w", indexer.URL(), err)
 			return
@@ -598,7 +599,7 @@ func downloads(t *testing.T) downloading {
 		dl.indexer = ix.Answer.Id
 		mediaMkdir(testenv.HostPath(nzbFolder))
 		mediaMkdir(testenv.HostPath(watchFolder))
-		c, err := sdk.PostDownloadClient(ctx, blackhole("SDK Blackhole"), radarr.PostDownloadClientOptions{})
+		c, err := sdk.PostDownloadClient(ctx, blackhole("SDK Blackhole"))
 		if err != nil {
 			errDownloads = fmt.Errorf("adding the blackhole: %w", err)
 			return

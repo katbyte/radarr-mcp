@@ -117,7 +117,7 @@ func registerServerTools(r *registry) {
 			Branch:       s.Branch,
 			Database:     strings.TrimSpace(string(s.DatabaseType) + " " + s.DatabaseVersion),
 			URLBase:      s.UrlBase,
-			StartTime:    s.StartTime,
+			StartTime:    shownTime(s.StartTime),
 			Docker:       s.IsDocker,
 		}
 
@@ -236,7 +236,7 @@ func registerServerTools(r *registry) {
 		}
 		out := logsOut{Entries: make([]logRow, 0, len(records)), pageOut: paged}
 		for _, l := range records {
-			out.Entries = append(out.Entries, logRow{Time: l.Time, Level: l.Level, Logger: l.Logger, Message: outsideProse(l.Message), Exception: firstLines(l.Exception, 5)})
+			out.Entries = append(out.Entries, logRow{Time: shownTime(l.Time), Level: l.Level, Logger: l.Logger, Message: outsideProse(l.Message), Exception: firstLines(l.Exception, 5)})
 		}
 
 		return nil, out, nil
@@ -277,7 +277,7 @@ func registerServerTools(r *registry) {
 		if in.Name == "" {
 			out := logFileOut{}
 			for _, f := range files.Answer {
-				out.Files = append(out.Files, logFileRow{Name: f.Filename, LastWriteTime: f.LastWriteTime})
+				out.Files = append(out.Files, logFileRow{Name: f.Filename, LastWriteTime: shownTime(f.LastWriteTime)})
 			}
 			return nil, out, nil
 		}
@@ -358,7 +358,7 @@ func backups(ctx context.Context, c *radarr.Client) ([]backupRow, error) {
 	}
 	out := make([]backupRow, 0, len(res.Answer))
 	for _, b := range res.Answer {
-		out = append(out, backupRow{ID: b.Id, Name: b.Name, Type: string(b.Type), Time: b.Time, Size: b.Size, Path: b.Path})
+		out = append(out, backupRow{ID: b.Id, Name: b.Name, Type: string(b.Type), Time: shownTime(b.Time), Size: b.Size, Path: b.Path})
 	}
 	slices.SortStableFunc(out, func(a, b backupRow) int { return strings.Compare(b.Time, a.Time) })
 

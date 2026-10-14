@@ -51,7 +51,7 @@ func namingAudit(ctx context.Context, e *auditEnv, in namingIn) (auditOut, error
 	if isTrue(naming.Answer.RenameMovies) {
 		for start := 0; start < len(withFiles); start += renameBatch {
 			ids := withFiles[start:min(start+renameBatch, len(withFiles))]
-			res, err := e.c.GetRename(ctx, radarr.GetRenameOptions{MovieId: ids})
+			res, err := e.c.GetRename(ctx, ids)
 			if err != nil {
 				return out, err
 			}

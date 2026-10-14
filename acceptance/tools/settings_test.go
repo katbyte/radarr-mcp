@@ -94,8 +94,8 @@ func TestTags(t *testing.T) {
 		for _, l := range []string{label, renamed} {
 			if row := settingsTag(t, l); row != nil {
 				id := acctest.Num(t, row["id"], "id")
-				_, _ = sdk.PutMovieEditor(ctx, radarr.MovieEditorResource{MovieIds: []radarr.MovieID{radarr.MovieID(alien), radarr.MovieID(aliens)}, Tags: []int{id}, ApplyTags: radarr.ApplyTagsRemove})
-				_, _ = sdk.DeleteTagById(ctx, id)
+				_, _ = sdk.PutMovieEditor(ctx, radarr.MovieEditorResource{MovieIds: []radarr.MovieID{radarr.MovieID(alien), radarr.MovieID(aliens)}, Tags: []radarr.TagID{radarr.TagID(id)}, ApplyTags: radarr.ApplyTagsRemove})
+				_, _ = sdk.DeleteTagById(ctx, radarr.TagID(id))
 			}
 		}
 	})
@@ -118,7 +118,7 @@ func TestTags(t *testing.T) {
 	}
 
 	// carried by two films, which tag_list counts and the films show
-	if _, err := sdk.PutMovieEditor(ctx, radarr.MovieEditorResource{MovieIds: []radarr.MovieID{radarr.MovieID(alien), radarr.MovieID(aliens)}, Tags: []int{id}, ApplyTags: radarr.ApplyTagsAdd}); err != nil {
+	if _, err := sdk.PutMovieEditor(ctx, radarr.MovieEditorResource{MovieIds: []radarr.MovieID{radarr.MovieID(alien), radarr.MovieID(aliens)}, Tags: []radarr.TagID{radarr.TagID(id)}, ApplyTags: radarr.ApplyTagsAdd}); err != nil {
 		t.Fatal(err)
 	}
 	if row := settingsTag(t, label); row == nil || acctest.Num(t, row["movies"], "movies") != 2 || row["indexers"] != nil {
@@ -160,10 +160,10 @@ func TestTagDeleteRefusesATagInUse(t *testing.T) {
 	const label = "acceptance-limited"
 	created := suite.Call(t, "tag_create", map[string]any{"label": label})
 	id := acctest.Num(t, created["id"], "id")
-	t.Cleanup(func() { _, _ = sdk.DeleteTagById(ctx, id) })
+	t.Cleanup(func() { _, _ = sdk.DeleteTagById(ctx, radarr.TagID(id)) })
 
 	// disabled, so Radarr saves it without asking it anything
-	tagged := settingsIndexer(t, "Tagged Indexer", "http://127.0.0.1:9", "unused", false, []int{id})
+	tagged := settingsIndexer(t, "Tagged Indexer", "http://127.0.0.1:9", "unused", false, []radarr.TagID{radarr.TagID(id)})
 	t.Cleanup(func() { _, _ = sdk.DeleteIndexerById(ctx, tagged) })
 
 	if row := settingsTag(t, label); row == nil || acctest.Num(t, row["indexers"], "indexers") != 1 {
@@ -211,7 +211,7 @@ func TestRootFolders(t *testing.T) {
 	t.Cleanup(func() {
 		for _, r := range acctest.Rows(t, suite.Call(t, "rootfolder_list", nil)["root_folders"], "root_folders") {
 			if acctest.Str(r["path"]) == extra {
-				_, _ = sdk.DeleteRootFolderById(ctx, acctest.Num(t, r["id"], "id"))
+				_, _ = sdk.DeleteRootFolderById(ctx, radarr.RootFolderID(acctest.Num(t, r["id"], "id")))
 			}
 		}
 		_ = os.RemoveAll(testenv.HostPath(extra))
@@ -422,14 +422,14 @@ func TestCustomFormats(t *testing.T) {
 // indexer meant to fail is either added disabled or broken after it is
 // added. An enabled one here is used only for interactive search, so
 // nothing else in the suite ever asks it.
-func settingsIndexer(t *testing.T, name, baseURL, key string, enabled bool, tags []int) int {
+func settingsIndexer(t *testing.T, name, baseURL, key string, enabled bool, tags []radarr.TagID) radarr.IndexerID {
 	t.Helper()
 
 	res, err := sdk.PostIndexer(ctx, radarr.IndexerResource{
 		Name: name, Implementation: "Newznab", ConfigContract: "NewznabSettings", Protocol: radarr.DownloadProtocolUsenet,
 		EnableRss: new(false), EnableAutomaticSearch: new(false), EnableInteractiveSearch: new(enabled), Priority: 50, Tags: tags,
 		Fields: []radarr.Field{{Name: "baseUrl", Value: baseURL}, {Name: "apiPath", Value: "/api"}, {Name: "apiKey", Value: key}, {Name: "categories", Value: []int{2000, 2040}}},
-	}, radarr.PostIndexerOptions{})
+	})
 	if err != nil {
 		t.Fatalf("adding %s: %v", name, err)
 	}
@@ -494,7 +494,7 @@ func TestProviders(t *testing.T) {
 		Name: "Broken Blackhole", Implementation: "UsenetBlackhole", ConfigContract: "UsenetBlackholeSettings", Protocol: radarr.DownloadProtocolUsenet,
 		Enable: new(true), Priority: 50,
 		Fields: []radarr.Field{{Name: "nzbFolder", Value: holes + "/nzb"}, {Name: "watchFolder", Value: holes + "/complete"}},
-	}, radarr.PostDownloadClientOptions{})
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

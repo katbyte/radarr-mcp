@@ -41,14 +41,17 @@ func (o GetFileSystemMediaFilesOptions) ToQuery() *client.QueryParams {
 }
 
 // GetFileSystemMediaFiles calls GET /api/v3/filesystem/mediafiles.
-func (c Client) GetFileSystemMediaFiles(ctx context.Context, options GetFileSystemMediaFilesOptions) (result GetFileSystemMediaFilesResponse, err error) {
+func (c Client) GetFileSystemMediaFiles(ctx context.Context, path string) (result GetFileSystemMediaFilesResponse, err error) {
+	var option GetFileSystemMediaFilesOptions
+	option.Path = path
+
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetFileSystemMediaFiles",
-		OptionsObject: options,
+		OptionsObject: option,
 		Path:          "/api/v3/filesystem/mediafiles",
 	}
 

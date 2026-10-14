@@ -76,7 +76,7 @@ func TestSettings(t *testing.T) {
 		renaming.RenameMovies = new(true)
 		must(sdk.PutConfigNamingById(ctx, before.Id, renaming))
 		defer func() { must(sdk.PutConfigNamingById(context.WithoutCancel(ctx), before.Id, *before)) }()
-		preview := must(sdk.GetRename(ctx, radarr.GetRenameOptions{MovieId: []radarr.MovieID{d.Id}})).Answer
+		preview := must(sdk.GetRename(ctx, []radarr.MovieID{d.Id})).Answer
 		if len(preview) != 1 || preview[0].MovieId != d.Id || !strings.Contains(preview[0].ExistingPath, "Dune (2021)") || preview[0].NewPath == "" || preview[0].NewPath == preview[0].ExistingPath {
 			t.Errorf("the rename preview of %s with renaming on = %+v, want its one file under a new name", dune1984.Title, preview)
 		}

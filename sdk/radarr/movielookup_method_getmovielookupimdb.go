@@ -58,7 +58,10 @@ func (o GetMovieLookupImdbOptions) ToQuery() *client.QueryParams {
 }
 
 // GetMovieLookupImdb calls GET /api/v3/movie/lookup/imdb.
-func (c Client) GetMovieLookupImdb(ctx context.Context, options GetMovieLookupImdbOptions) (result GetMovieLookupImdbResponse, err error) {
+func (c Client) GetMovieLookupImdb(ctx context.Context, imdbId string) (result GetMovieLookupImdbResponse, err error) {
+	var option GetMovieLookupImdbOptions
+	option.ImdbId = imdbId
+
 	result.MovieResource = &MovieResource{}
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
@@ -66,7 +69,7 @@ func (c Client) GetMovieLookupImdb(ctx context.Context, options GetMovieLookupIm
 		},
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetMovieLookupImdb",
-		OptionsObject: options,
+		OptionsObject: option,
 		Path:          "/api/v3/movie/lookup/imdb",
 	}
 

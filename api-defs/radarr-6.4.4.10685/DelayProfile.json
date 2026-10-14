@@ -220,7 +220,8 @@
           "Type": {
             "Type": "List",
             "NestedItem": {
-              "Type": "Integer"
+              "Type": "ID",
+              "ReferenceName": "TagID"
             }
           },
           "Nullable": true

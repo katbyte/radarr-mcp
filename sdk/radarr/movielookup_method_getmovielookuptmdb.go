@@ -59,7 +59,10 @@ func (o GetMovieLookupTmdbOptions) ToQuery() *client.QueryParams {
 }
 
 // GetMovieLookupTmdb calls GET /api/v3/movie/lookup/tmdb.
-func (c Client) GetMovieLookupTmdb(ctx context.Context, options GetMovieLookupTmdbOptions) (result GetMovieLookupTmdbResponse, err error) {
+func (c Client) GetMovieLookupTmdb(ctx context.Context, tmdbId TmdbID) (result GetMovieLookupTmdbResponse, err error) {
+	var option GetMovieLookupTmdbOptions
+	option.TmdbId = tmdbId
+
 	result.MovieResource = &MovieResource{}
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
@@ -67,7 +70,7 @@ func (c Client) GetMovieLookupTmdb(ctx context.Context, options GetMovieLookupTm
 		},
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetMovieLookupTmdb",
-		OptionsObject: options,
+		OptionsObject: option,
 		Path:          "/api/v3/movie/lookup/tmdb",
 	}
 

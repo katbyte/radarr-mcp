@@ -4,14 +4,14 @@ package radarr
 
 // MovieEditorResource is the "MovieEditorResource" schema.
 type MovieEditorResource struct {
-	AddImportExclusion  *bool           `json:"addImportExclusion,omitempty"`
-	ApplyTags           ApplyTags       `json:"applyTags,omitempty"`
-	DeleteFiles         *bool           `json:"deleteFiles,omitempty"`
-	MinimumAvailability MovieStatusType `json:"minimumAvailability,omitempty"`
-	Monitored           *bool           `json:"monitored,omitempty"`
-	MoveFiles           *bool           `json:"moveFiles,omitempty"`
-	MovieIds            []MovieID       `json:"movieIds,omitzero"`
-	QualityProfileId    *int            `json:"qualityProfileId,omitempty"`
-	RootFolderPath      string          `json:"rootFolderPath,omitempty"`
-	Tags                []int           `json:"tags,omitzero"`
+	AddImportExclusion  *bool             `json:"addImportExclusion,omitempty"`
+	ApplyTags           ApplyTags         `json:"applyTags,omitempty"`
+	DeleteFiles         *bool             `json:"deleteFiles,omitempty"`
+	MinimumAvailability MovieStatusType   `json:"minimumAvailability,omitempty"`
+	Monitored           *bool             `json:"monitored,omitempty"`
+	MoveFiles           *bool             `json:"moveFiles,omitempty"`
+	MovieIds            []MovieID         `json:"movieIds,omitzero"`
+	QualityProfileId    *QualityProfileID `json:"qualityProfileId,omitempty"`
+	RootFolderPath      string            `json:"rootFolderPath,omitempty"`
+	Tags                []TagID           `json:"tags,omitzero"`
 }

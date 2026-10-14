@@ -15,7 +15,8 @@
 // request body (input: the model for a JSON body, or an io.Reader and its
 // content type for raw bytes), then, when the operation has query or header
 // parameters, a <Name>Options, which may be left out when every one of them
-// is optional.
+// is optional, and which an operation with one parameter takes as the
+// parameter itself, variadic when optional.
 // Unset options are not sent: a boolean or a number is a pointer, sent when
 // set (so 0 and false can be asked for), an empty string or list is skipped,
 // and a list is sent comma-joined or as one parameter for each element, as
@@ -43,13 +44,11 @@
 //
 // # Ids
 //
-// MovieID, MovieFileID, TmdbID are kinds of id the package tells apart, each a bare named type over
+// MovieID, MovieFileID, TmdbID, QualityProfileID, TagID, DownloadClientID, IndexerID, RootFolderID are kinds of id the package tells apart, each a bare named type over
 // the int or string the document declares, so that one kind where another goes
 // does not compile. Where an id sits among the options it is held by value and
 // sent when not zero. int(id) and SeriesID(n) convert one value, client.IDs and
 // client.StringIDs a list.
-//
-// Dates are strings: Radarr sends RFC 3339 in UTC ("2024-03-01T00:00:00Z").
 //
 // # Workarounds
 //

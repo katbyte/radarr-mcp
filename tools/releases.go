@@ -33,7 +33,7 @@ type releaseRow struct {
 func releaseOf(r *radarr.ReleaseResource) releaseRow {
 	row := releaseRow{
 		GUID:              r.Guid,
-		IndexerID:         r.IndexerId,
+		IndexerID:         int(r.IndexerId),
 		Indexer:           r.Indexer,
 		Title:             outsideName(r.Title),
 		Quality:           qualityName(r.Quality),
@@ -92,7 +92,7 @@ func registerReleaseTools(r *registry) {
 		if err != nil {
 			return nil, releaseSearchOut{}, err
 		}
-		res, err := client.GetRelease(ctx, radarr.GetReleaseOptions{MovieId: m.Id})
+		res, err := client.GetRelease(ctx, m.Id)
 		if err != nil {
 			return nil, releaseSearchOut{}, err
 		}
@@ -128,7 +128,7 @@ func registerReleaseTools(r *registry) {
 		if in.GUID == "" || in.IndexerID == 0 {
 			return nil, releaseGrabOut{}, errors.New("guid and indexer_id are both required: release_search gives them")
 		}
-		if _, err := client.PostRelease(ctx, radarr.ReleaseResource{Guid: in.GUID, IndexerId: in.IndexerID}); err != nil {
+		if _, err := client.PostRelease(ctx, radarr.ReleaseResource{Guid: in.GUID, IndexerId: radarr.IndexerID(in.IndexerID)}); err != nil {
 			if strings.Contains(err.Error(), "404") || strings.Contains(strings.ToLower(err.Error()), "cache") {
 				return nil, releaseGrabOut{}, fmt.Errorf("Radarr no longer has that release from a search; run release_search again first: %w", err) //nolint:staticcheck // Radarr is a name
 			}
@@ -159,7 +159,7 @@ func registerReleaseTools(r *registry) {
 		if strings.TrimSpace(in.Title) == "" {
 			return nil, parsedRow{}, errors.New("no title to parse")
 		}
-		res, err := client.GetParse(ctx, radarr.GetParseOptions{Title: in.Title})
+		res, err := client.GetParse(ctx, in.Title)
 		if err != nil {
 			return nil, parsedRow{}, err
 		}

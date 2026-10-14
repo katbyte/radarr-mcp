@@ -58,7 +58,10 @@ func (o GetParseOptions) ToQuery() *client.QueryParams {
 }
 
 // GetParse calls GET /api/v3/parse.
-func (c Client) GetParse(ctx context.Context, options GetParseOptions) (result GetParseResponse, err error) {
+func (c Client) GetParse(ctx context.Context, title string) (result GetParseResponse, err error) {
+	var option GetParseOptions
+	option.Title = title
+
 	result.ParseResource = &ParseResource{}
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
@@ -66,7 +69,7 @@ func (c Client) GetParse(ctx context.Context, options GetParseOptions) (result G
 		},
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetParse",
-		OptionsObject: options,
+		OptionsObject: option,
 		Path:          "/api/v3/parse",
 	}
 

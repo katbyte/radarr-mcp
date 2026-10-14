@@ -4,11 +4,11 @@ package radarr
 
 // IndexerBulkResource is the "IndexerBulkResource" schema.
 type IndexerBulkResource struct {
-	ApplyTags               ApplyTags `json:"applyTags,omitempty"`
-	EnableAutomaticSearch   *bool     `json:"enableAutomaticSearch,omitempty"`
-	EnableInteractiveSearch *bool     `json:"enableInteractiveSearch,omitempty"`
-	EnableRss               *bool     `json:"enableRss,omitempty"`
-	Ids                     []int     `json:"ids,omitzero"`
-	Priority                *int      `json:"priority,omitempty"`
-	Tags                    []int     `json:"tags,omitzero"`
+	ApplyTags               ApplyTags   `json:"applyTags,omitempty"`
+	EnableAutomaticSearch   *bool       `json:"enableAutomaticSearch,omitempty"`
+	EnableInteractiveSearch *bool       `json:"enableInteractiveSearch,omitempty"`
+	EnableRss               *bool       `json:"enableRss,omitempty"`
+	Ids                     []IndexerID `json:"ids,omitzero"`
+	Priority                *int        `json:"priority,omitempty"`
+	Tags                    []TagID     `json:"tags,omitzero"`
 }

@@ -13,3 +13,23 @@ type MovieFileID int
 // TmdbID is a kind of id the service tells apart, which the compiler keeps from every other kind;
 // int(id) and TmdbID(n) convert one value, client.IDs a list.
 type TmdbID int
+
+// QualityProfileID is a kind of id the service tells apart, which the compiler keeps from every other kind;
+// int(id) and QualityProfileID(n) convert one value, client.IDs a list.
+type QualityProfileID int
+
+// TagID is a kind of id the service tells apart, which the compiler keeps from every other kind;
+// int(id) and TagID(n) convert one value, client.IDs a list.
+type TagID int
+
+// DownloadClientID is a kind of id the service tells apart, which the compiler keeps from every other kind;
+// int(id) and DownloadClientID(n) convert one value, client.IDs a list.
+type DownloadClientID int
+
+// IndexerID is a kind of id the service tells apart, which the compiler keeps from every other kind;
+// int(id) and IndexerID(n) convert one value, client.IDs a list.
+type IndexerID int
+
+// RootFolderID is a kind of id the service tells apart, which the compiler keeps from every other kind;
+// int(id) and RootFolderID(n) convert one value, client.IDs a list.
+type RootFolderID int

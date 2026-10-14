@@ -42,14 +42,14 @@ func (o GetCollectionOptions) ToQuery() *client.QueryParams {
 }
 
 // GetCollection calls GET /api/v3/collection.
-func (c Client) GetCollection(ctx context.Context, options ...GetCollectionOptions) (result GetCollectionResponse, err error) {
-	if len(options) > 1 {
-		err = fmt.Errorf("GetCollection takes one options struct at most, not %d", len(options))
+func (c Client) GetCollection(ctx context.Context, tmdbId ...int) (result GetCollectionResponse, err error) {
+	var option GetCollectionOptions
+	if len(tmdbId) > 1 {
+		err = fmt.Errorf("GetCollection takes one tmdbId at most, not %d", len(tmdbId))
 		return
 	}
-	var option GetCollectionOptions
-	if len(options) == 1 {
-		option = options[0]
+	if len(tmdbId) == 1 {
+		option.TmdbId = &tmdbId[0]
 	}
 
 	opts := client.RequestOptions{

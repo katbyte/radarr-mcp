@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
@@ -39,7 +41,7 @@ func (r GetQualityProfileByIdResponse) Record() (QualityProfileResource, error) 
 }
 
 // GetQualityProfileById calls GET /api/v3/qualityprofile/{id}.
-func (c Client) GetQualityProfileById(ctx context.Context, id int) (result GetQualityProfileByIdResponse, err error) {
+func (c Client) GetQualityProfileById(ctx context.Context, id QualityProfileID) (result GetQualityProfileByIdResponse, err error) {
 	result.QualityProfileResource = &QualityProfileResource{}
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
@@ -47,7 +49,7 @@ func (c Client) GetQualityProfileById(ctx context.Context, id int) (result GetQu
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetQualityProfileById",
-		Path:       fmt.Sprintf("/api/v3/qualityprofile/%d", id),
+		Path:       fmt.Sprintf("/api/v3/qualityprofile/%s", url.PathEscape(strconv.Itoa(int(id)))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)

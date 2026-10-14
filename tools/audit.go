@@ -71,7 +71,7 @@ type auditEnv struct {
 	c *radarr.Client
 
 	movies      []radarr.MovieResource
-	profiles    map[int]*radarr.QualityProfileResource
+	profiles    map[radarr.QualityProfileID]*radarr.QualityProfileResource
 	definitions map[string]definitionRow
 }
 
@@ -89,13 +89,13 @@ func (e *auditEnv) allMovies(ctx context.Context) ([]radarr.MovieResource, error
 	return e.movies, nil
 }
 
-func (e *auditEnv) profile(ctx context.Context, id int) (*radarr.QualityProfileResource, error) {
+func (e *auditEnv) profile(ctx context.Context, id radarr.QualityProfileID) (*radarr.QualityProfileResource, error) {
 	if e.profiles == nil {
 		res, err := e.c.GetQualityProfile(ctx)
 		if err != nil {
 			return nil, err
 		}
-		e.profiles = map[int]*radarr.QualityProfileResource{}
+		e.profiles = map[radarr.QualityProfileID]*radarr.QualityProfileResource{}
 		for i := range res.Answer {
 			e.profiles[res.Answer[i].Id] = &res.Answer[i]
 		}
@@ -135,7 +135,7 @@ func (e *auditEnv) scope(ctx context.Context, in auditIn) ([]radarr.MovieResourc
 		}
 		root = f.Path
 	}
-	tag := -1
+	tag := radarr.TagID(-1)
 	if in.Tag != "" {
 		ids, err := resolveTags(ctx, e.c, []string{in.Tag}, false)
 		if err != nil {
@@ -219,8 +219,8 @@ var filmAudits = []filmAudit{
 				return "", false, true, nil
 			}
 			detail := "monitored and available (" + string(m.MinimumAvailability) + "), no file"
-			if m.LastSearchTime != "" {
-				detail += "; last searched " + m.LastSearchTime
+			if !m.LastSearchTime.IsZero() {
+				detail += "; last searched " + shownTime(m.LastSearchTime)
 			} else {
 				detail += "; never searched"
 			}

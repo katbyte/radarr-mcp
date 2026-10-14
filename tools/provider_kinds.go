@@ -96,15 +96,15 @@ func fieldsOf(values map[string]any) ([]radarr.Field, error) {
 }
 
 // tagIDsOf are the ids of the tags a record read as a map carries.
-func tagIDsOf(values map[string]any) []int {
+func tagIDsOf(values map[string]any) []radarr.TagID {
 	list, ok := values["tags"].([]any)
 	if !ok {
 		return nil
 	}
-	ids := make([]int, 0, len(list))
+	ids := make([]radarr.TagID, 0, len(list))
 	for _, v := range list {
 		if id, ok := v.(float64); ok {
-			ids = append(ids, int(id))
+			ids = append(ids, radarr.TagID(id))
 		}
 	}
 
@@ -331,7 +331,7 @@ func saveError(hint string, err error) error {
 
 // editTags is the tags an edit leaves a record with: the ones given in place
 // of what it had, or what it had with some added and some taken away.
-func editTags(have, set, add, remove []int, replace bool) []int {
+func editTags(have, set, add, remove []radarr.TagID, replace bool) []radarr.TagID {
 	out := slices.Clone(have)
 	if replace {
 		out = slices.Clone(set)
@@ -341,9 +341,9 @@ func editTags(have, set, add, remove []int, replace bool) []int {
 			out = append(out, id)
 		}
 	}
-	out = slices.DeleteFunc(out, func(id int) bool { return slices.Contains(remove, id) })
+	out = slices.DeleteFunc(out, func(id radarr.TagID) bool { return slices.Contains(remove, id) })
 	if out == nil {
-		out = []int{}
+		out = []radarr.TagID{}
 	}
 
 	return out

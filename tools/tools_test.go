@@ -751,7 +751,7 @@ func TestFilmAudits(t *testing.T) {
 	for _, a := range filmAudits {
 		byName[a.name] = a.check
 	}
-	e := &auditEnv{profiles: map[int]*radarr.QualityProfileResource{4: profile()}}
+	e := &auditEnv{profiles: map[radarr.QualityProfileID]*radarr.QualityProfileResource{4: profile()}}
 
 	missing := film(1, "Alien³", 1992)
 	missing.IsAvailable = new(true)

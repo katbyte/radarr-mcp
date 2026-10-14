@@ -6,7 +6,7 @@ package radarr
 type RootFolderResource struct {
 	Accessible      *bool            `json:"accessible,omitempty"`
 	FreeSpace       *int64           `json:"freeSpace,omitempty"`
-	Id              int              `json:"id,omitempty"`
+	Id              RootFolderID     `json:"id,omitempty"`
 	Path            string           `json:"path,omitempty"`
 	UnmappedFolders []UnmappedFolder `json:"unmappedFolders,omitzero"`
 }

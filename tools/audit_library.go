@@ -79,7 +79,7 @@ type gapsIn struct {
 
 // gapsAudit lists the collections the library holds some but not all of.
 func gapsAudit(ctx context.Context, e *auditEnv, in gapsIn) (auditOut, error) {
-	res, err := e.c.GetCollection(ctx, radarr.GetCollectionOptions{})
+	res, err := e.c.GetCollection(ctx)
 	if err != nil {
 		return auditOut{}, err
 	}

@@ -133,7 +133,7 @@
           "Name": "LastExecutionTime",
           "JsonName": "lastExecutionTime",
           "Type": {
-            "Type": "String"
+            "Type": "DateTime"
           },
           "Nullable": true
         },
@@ -141,7 +141,7 @@
           "Name": "LastStartTime",
           "JsonName": "lastStartTime",
           "Type": {
-            "Type": "String"
+            "Type": "DateTime"
           },
           "Nullable": true
         },
@@ -518,7 +518,7 @@
           "Name": "LastWriteTime",
           "JsonName": "lastWriteTime",
           "Type": {
-            "Type": "String"
+            "Type": "DateTime"
           }
         }
       ]
@@ -730,7 +730,7 @@
           "Name": "DateAdded",
           "JsonName": "dateAdded",
           "Type": {
-            "Type": "String"
+            "Type": "DateTime"
           }
         },
         {
@@ -866,7 +866,7 @@
           "Name": "Added",
           "JsonName": "added",
           "Type": {
-            "Type": "String"
+            "Type": "DateTime"
           }
         },
         {
@@ -909,7 +909,7 @@
           "Name": "DigitalRelease",
           "JsonName": "digitalRelease",
           "Type": {
-            "Type": "String"
+            "Type": "DateTime"
           },
           "Nullable": true
         },
@@ -980,7 +980,7 @@
           "Name": "InCinemas",
           "JsonName": "inCinemas",
           "Type": {
-            "Type": "String"
+            "Type": "DateTime"
           },
           "Nullable": true
         },
@@ -1013,7 +1013,7 @@
           "Name": "LastSearchTime",
           "JsonName": "lastSearchTime",
           "Type": {
-            "Type": "String"
+            "Type": "DateTime"
           },
           "Nullable": true
         },
@@ -1084,7 +1084,7 @@
           "Name": "PhysicalRelease",
           "JsonName": "physicalRelease",
           "Type": {
-            "Type": "String"
+            "Type": "DateTime"
           },
           "Nullable": true
         },
@@ -1107,7 +1107,8 @@
           "Name": "QualityProfileId",
           "JsonName": "qualityProfileId",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "QualityProfileID"
           }
         },
         {
@@ -1122,7 +1123,7 @@
           "Name": "ReleaseDate",
           "JsonName": "releaseDate",
           "Type": {
-            "Type": "String"
+            "Type": "DateTime"
           },
           "Nullable": true
         },
@@ -1212,7 +1213,8 @@
           "Type": {
             "Type": "List",
             "NestedItem": {
-              "Type": "Integer"
+              "Type": "ID",
+              "ReferenceName": "TagID"
             }
           },
           "Nullable": true
@@ -1599,7 +1601,8 @@
           "Name": "Id",
           "JsonName": "id",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "QualityProfileID"
           }
         },
         {
@@ -1678,7 +1681,7 @@
           "Name": "Added",
           "JsonName": "added",
           "Type": {
-            "Type": "String"
+            "Type": "DateTime"
           },
           "Nullable": true
         },
@@ -1736,7 +1739,7 @@
           "Name": "EstimatedCompletionTime",
           "JsonName": "estimatedCompletionTime",
           "Type": {
-            "Type": "String"
+            "Type": "DateTime"
           },
           "Nullable": true
         },
@@ -2029,7 +2032,8 @@
           "Name": "DownloadClientId",
           "JsonName": "downloadClientId",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "DownloadClientID"
           },
           "Nullable": true,
           "KeepsNull": true
@@ -2092,7 +2096,8 @@
           "Name": "IndexerId",
           "JsonName": "indexerId",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "IndexerID"
           }
         },
         {
@@ -2190,7 +2195,7 @@
           "Name": "PublishDate",
           "JsonName": "publishDate",
           "Type": {
-            "Type": "String"
+            "Type": "DateTime"
           }
         },
         {

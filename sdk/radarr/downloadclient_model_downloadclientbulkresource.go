@@ -4,11 +4,11 @@ package radarr
 
 // DownloadClientBulkResource is the "DownloadClientBulkResource" schema.
 type DownloadClientBulkResource struct {
-	ApplyTags                ApplyTags `json:"applyTags,omitempty"`
-	Enable                   *bool     `json:"enable,omitempty"`
-	Ids                      []int     `json:"ids,omitzero"`
-	Priority                 *int      `json:"priority,omitempty"`
-	RemoveCompletedDownloads *bool     `json:"removeCompletedDownloads,omitempty"`
-	RemoveFailedDownloads    *bool     `json:"removeFailedDownloads,omitempty"`
-	Tags                     []int     `json:"tags,omitzero"`
+	ApplyTags                ApplyTags          `json:"applyTags,omitempty"`
+	Enable                   *bool              `json:"enable,omitempty"`
+	Ids                      []DownloadClientID `json:"ids,omitzero"`
+	Priority                 *int               `json:"priority,omitempty"`
+	RemoveCompletedDownloads *bool              `json:"removeCompletedDownloads,omitempty"`
+	RemoveFailedDownloads    *bool              `json:"removeFailedDownloads,omitempty"`
+	Tags                     []TagID            `json:"tags,omitzero"`
 }

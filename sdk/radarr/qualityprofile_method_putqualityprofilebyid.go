@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
@@ -39,7 +41,7 @@ func (r PutQualityProfileByIdResponse) Record() (QualityProfileResource, error) 
 }
 
 // PutQualityProfileById calls PUT /api/v3/qualityprofile/{id}.
-func (c Client) PutQualityProfileById(ctx context.Context, id int, input QualityProfileResource) (result PutQualityProfileByIdResponse, err error) {
+func (c Client) PutQualityProfileById(ctx context.Context, id QualityProfileID, input QualityProfileResource) (result PutQualityProfileByIdResponse, err error) {
 	result.QualityProfileResource = &QualityProfileResource{}
 	opts := client.RequestOptions{
 		ContentType: "application/json",
@@ -48,7 +50,7 @@ func (c Client) PutQualityProfileById(ctx context.Context, id int, input Quality
 		},
 		HTTPMethod: http.MethodPut,
 		Operation:  "PutQualityProfileById",
-		Path:       fmt.Sprintf("/api/v3/qualityprofile/%d", id),
+		Path:       fmt.Sprintf("/api/v3/qualityprofile/%s", url.PathEscape(strconv.Itoa(int(id)))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)

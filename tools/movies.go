@@ -179,7 +179,7 @@ func registerMovieTools(r *registry) {
 			return nil, out, err
 		}
 		events := history.Answer
-		slices.SortStableFunc(events, func(a, b radarr.HistoryResource) int { return strings.Compare(b.Date, a.Date) })
+		slices.SortStableFunc(events, func(a, b radarr.HistoryResource) int { return b.Date.Compare(a.Date.Time) })
 		for i := range events {
 			if len(out.History) == 5 {
 				break
@@ -187,7 +187,7 @@ func registerMovieTools(r *registry) {
 			out.History = append(out.History, historyOf(&events[i]))
 		}
 
-		extras, err := client.GetExtraFile(ctx, radarr.GetExtraFileOptions{MovieId: m.Id})
+		extras, err := client.GetExtraFile(ctx, m.Id)
 		if err != nil {
 			return nil, out, err
 		}
@@ -295,7 +295,7 @@ func crewRank(c radarr.CreditResource) int {
 // the profile, root folder and tag names first so an unknown one is an
 // error rather than an empty list.
 func movieFilter(ctx context.Context, c *radarr.Client, in movieListIn) (func(*radarr.MovieResource) bool, error) {
-	profile := 0
+	profile := radarr.QualityProfileID(0)
 	if in.QualityProfile != "" {
 		p, err := resolveProfile(ctx, c, in.QualityProfile)
 		if err != nil {
@@ -311,7 +311,7 @@ func movieFilter(ctx context.Context, c *radarr.Client, in movieListIn) (func(*r
 		}
 		root = strings.TrimRight(f.Path, "/")
 	}
-	tag := -1
+	tag := radarr.TagID(-1)
 	if in.Tag != "" {
 		ids, err := resolveTags(ctx, c, []string{in.Tag}, false)
 		if err != nil {
@@ -354,7 +354,7 @@ func sortMovies(movies []radarr.MovieResource, key string, descending bool) erro
 	case "year":
 		cmpFn = func(a, b *radarr.MovieResource) int { return cmp.Compare(a.Year, b.Year) }
 	case "added":
-		cmpFn = func(a, b *radarr.MovieResource) int { return cmp.Compare(a.Added, b.Added) }
+		cmpFn = func(a, b *radarr.MovieResource) int { return a.Added.Compare(b.Added.Time) }
 	case "size":
 		cmpFn = func(a, b *radarr.MovieResource) int { return cmp.Compare(val(a.SizeOnDisk), val(b.SizeOnDisk)) }
 	case "rating":
@@ -405,11 +405,11 @@ func detailOf(m *radarr.MovieResource, lk lookups) movieDetail {
 		Studio:              m.Studio,
 		MinimumAvailability: string(m.MinimumAvailability),
 		IsAvailable:         isTrue(m.IsAvailable),
-		InCinemas:           m.InCinemas,
-		DigitalRelease:      m.DigitalRelease,
-		PhysicalRelease:     m.PhysicalRelease,
+		InCinemas:           shownTime(m.InCinemas),
+		DigitalRelease:      shownTime(m.DigitalRelease),
+		PhysicalRelease:     shownTime(m.PhysicalRelease),
 		RootFolder:          m.RootFolderPath,
-		Added:               m.Added,
+		Added:               shownTime(m.Added),
 		File:                fileOf(m.MovieFile),
 	}
 	if m.OriginalLanguage != nil {
@@ -463,7 +463,7 @@ func lookupMovies(ctx context.Context, c *radarr.Client, term string) ([]radarr.
 		if err != nil {
 			return nil, fmt.Errorf("%q: a tmdb id is a number", term)
 		}
-		res, err := c.GetMovieLookupTmdb(ctx, radarr.GetMovieLookupTmdbOptions{TmdbId: radarr.TmdbID(id)})
+		res, err := c.GetMovieLookupTmdb(ctx, radarr.TmdbID(id))
 		if err != nil {
 			return nil, fmt.Errorf("looking up tmdb:%d: %w", id, err)
 		}
@@ -473,7 +473,7 @@ func lookupMovies(ctx context.Context, c *radarr.Client, term string) ([]radarr.
 
 		return []radarr.MovieResource{*res.Answer}, nil
 	case strings.HasPrefix(lower, "imdb:"):
-		res, err := c.GetMovieLookupImdb(ctx, radarr.GetMovieLookupImdbOptions{ImdbId: strings.TrimSpace(term[5:])})
+		res, err := c.GetMovieLookupImdb(ctx, strings.TrimSpace(term[5:]))
 		if err != nil {
 			return nil, fmt.Errorf("looking up %s: %w", term, err)
 		}
@@ -483,7 +483,7 @@ func lookupMovies(ctx context.Context, c *radarr.Client, term string) ([]radarr.
 
 		return []radarr.MovieResource{*res.Answer}, nil
 	default:
-		res, err := c.GetMovieLookup(ctx, radarr.GetMovieLookupOptions{Term: term})
+		res, err := c.GetMovieLookup(ctx, term)
 		if err != nil {
 			return nil, err
 		}

@@ -7,7 +7,7 @@ type HistoryResource struct {
 	CustomFormatScore   int                    `json:"customFormatScore,omitempty"`
 	CustomFormats       []CustomFormatResource `json:"customFormats,omitzero"`
 	Data                map[string]string      `json:"data,omitzero"`
-	Date                string                 `json:"date,omitempty"`
+	Date                Time                   `json:"date,omitzero"`
 	DownloadId          string                 `json:"downloadId,omitempty"`
 	EventType           MovieHistoryEventType  `json:"eventType,omitempty"`
 	Id                  int                    `json:"id,omitempty"`

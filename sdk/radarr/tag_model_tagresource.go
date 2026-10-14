@@ -4,6 +4,6 @@ package radarr
 
 // TagResource is the "TagResource" schema.
 type TagResource struct {
-	Id    int    `json:"id,omitempty"`
+	Id    TagID  `json:"id,omitempty"`
 	Label string `json:"label,omitempty"`
 }

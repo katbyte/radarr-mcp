@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
@@ -39,7 +41,7 @@ func (r GetDownloadClientByIdResponse) Record() (DownloadClientResource, error) 
 }
 
 // GetDownloadClientById calls GET /api/v3/downloadclient/{id}.
-func (c Client) GetDownloadClientById(ctx context.Context, id int) (result GetDownloadClientByIdResponse, err error) {
+func (c Client) GetDownloadClientById(ctx context.Context, id DownloadClientID) (result GetDownloadClientByIdResponse, err error) {
 	result.DownloadClientResource = &DownloadClientResource{}
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
@@ -47,7 +49,7 @@ func (c Client) GetDownloadClientById(ctx context.Context, id int) (result GetDo
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetDownloadClientById",
-		Path:       fmt.Sprintf("/api/v3/downloadclient/%d", id),
+		Path:       fmt.Sprintf("/api/v3/downloadclient/%s", url.PathEscape(strconv.Itoa(int(id)))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)

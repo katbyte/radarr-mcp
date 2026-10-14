@@ -58,7 +58,7 @@ func profileQualities(p *radarr.QualityProfileResource) (allowed []string, cutof
 func profileOf(p *radarr.QualityProfileResource, movies int) profileRow {
 	allowed, cutoff := profileQualities(p)
 	row := profileRow{
-		ID: p.Id, Name: p.Name, Cutoff: cutoff, UpgradeAllowed: isTrue(p.UpgradeAllowed), Allowed: allowed,
+		ID: int(p.Id), Name: p.Name, Cutoff: cutoff, UpgradeAllowed: isTrue(p.UpgradeAllowed), Allowed: allowed,
 		MinFormatScore: p.MinFormatScore, MinUpgradeFormatScore: p.MinUpgradeFormatScore, CutoffFormatScore: p.CutoffFormatScore, Movies: movies,
 	}
 	for _, f := range p.FormatItems {
@@ -119,7 +119,7 @@ func registerQualityTools(r *registry) {
 		if err != nil {
 			return nil, profileListOut{}, err
 		}
-		counts := map[int]int{}
+		counts := map[radarr.QualityProfileID]int{}
 		for i := range movies {
 			m := &movies[i]
 			counts[m.QualityProfileId]++

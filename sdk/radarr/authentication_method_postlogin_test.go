@@ -14,9 +14,7 @@ func TestOperationPostLogin(t *testing.T) {
 	t.Parallel()
 
 	c, s := newOperationServer(t, 302, "", "")
-	result, err := c.PostLogin(t.Context(), strings.NewReader("raw bytes"), "multipart/form-data", PostLoginOptions{
-		ReturnUrl: "v-ReturnUrl",
-	})
+	result, err := c.PostLogin(t.Context(), strings.NewReader("raw bytes"), "multipart/form-data", "v-ReturnUrl")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,19 +33,21 @@ func TestOperationPostLogin(t *testing.T) {
 
 	// a status the operation does not document is an error, with the response
 	c, _ = newOperationServer(t, 418, "text/plain", "no")
-	result, err = c.PostLogin(t.Context(), strings.NewReader("raw bytes"), "multipart/form-data", PostLoginOptions{
-		ReturnUrl: "v-ReturnUrl",
-	})
+	result, err = c.PostLogin(t.Context(), strings.NewReader("raw bytes"), "multipart/form-data", "v-ReturnUrl")
 	if client.StatusCode(err) != 418 || result.HttpResponse == nil {
 		t.Errorf("an undocumented status = %v, %+v", err, result.HttpResponse)
 	}
 
-	// the options may be left out, and two are refused before any request
+	// the option may be left out, and then nothing is sent for it
 	c, s = newOperationServer(t, 302, "", "")
 	if _, err = c.PostLogin(t.Context(), strings.NewReader("raw bytes"), "multipart/form-data"); err != nil {
-		t.Errorf("without options = %v", err)
+		t.Errorf("without the option = %v", err)
 	}
-	if _, err = c.PostLogin(t.Context(), strings.NewReader("raw bytes"), "multipart/form-data", PostLoginOptions{}, PostLoginOptions{}); err == nil || len(s.requests) != 1 {
-		t.Errorf("two options structs = %v, %d requests", err, len(s.requests))
+	if r, _ := s.only(t); r.URL.RawQuery != "" || r.Header.Get("returnUrl") != "" {
+		t.Errorf("without the option, sent %q and %q", r.URL.RawQuery, r.Header.Get("returnUrl"))
+	}
+	// two values are refused before any request
+	if _, err = c.PostLogin(t.Context(), strings.NewReader("raw bytes"), "multipart/form-data", "v-ReturnUrl", "v-ReturnUrl"); err == nil || len(s.requests) != 1 {
+		t.Errorf("two values = %v, %d requests", err, len(s.requests))
 	}
 }

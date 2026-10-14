@@ -152,7 +152,7 @@ func TestDelayProfiles(t *testing.T) {
 		})
 		p := must(sdk.PostDelayProfile(ctx, radarr.DelayProfileResource{
 			EnableUsenet: new(true), EnableTorrent: new(true), PreferredProtocol: radarr.DownloadProtocolUsenet,
-			UsenetDelay: 60, Tags: []int{tag.Id}, BypassIfHighestQuality: new(false), BypassIfAboveCustomFormatScore: new(false),
+			UsenetDelay: 60, Tags: []radarr.TagID{tag.Id}, BypassIfHighestQuality: new(false), BypassIfAboveCustomFormatScore: new(false),
 		})).Answer
 		removeAfter(ctx, t, label, func(ctx context.Context) (radarr.DeleteDelayProfileByIdResponse, error) {
 			return sdk.DeleteDelayProfileById(ctx, p.Id)
@@ -169,7 +169,7 @@ func TestDelayProfiles(t *testing.T) {
 
 	// the newer profile is ordered after the older; moving the older after
 	// the newer swaps them, and the answer is every profile in its new order
-	order := must(sdk.PutDelayProfileReorderById(ctx, a.Id, radarr.PutDelayProfileReorderByIdOptions{After: new(b.Id)})).Answer
+	order := must(sdk.PutDelayProfileReorderById(ctx, a.Id, b.Id)).Answer
 	ids := make([]int, 0, len(order))
 	for _, p := range slices.SortedFunc(slices.Values(order), func(x, y radarr.DelayProfileResource) int { return x.Order - y.Order }) {
 		ids = append(ids, p.Id)

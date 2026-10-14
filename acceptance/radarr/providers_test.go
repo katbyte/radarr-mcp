@@ -95,11 +95,11 @@ func TestIndexers(t *testing.T) {
 	d := downloads(t)
 
 	// two more of the fake indexer: one to delete by id, one in bulk
-	ids := make([]int, 0, 2)
+	ids := make([]radarr.IndexerID, 0, 2)
 	for _, name := range []string{"SDK Indexer B", "SDK Indexer C"} {
 		ix := fakeIndexer()
 		ix.Name = name
-		created := must(sdk.PostIndexer(ctx, ix, radarr.PostIndexerOptions{})).Answer
+		created := must(sdk.PostIndexer(ctx, ix)).Answer
 		removeAfter(ctx, t, name, func(ctx context.Context) (radarr.DeleteIndexerByIdResponse, error) {
 			return sdk.DeleteIndexerById(ctx, created.Id)
 		})
@@ -109,15 +109,15 @@ func TestIndexers(t *testing.T) {
 
 	edit := *b
 	edit.Priority = 30
-	b = must(sdk.PutIndexerById(ctx, b.Id, edit, radarr.PutIndexerByIdOptions{})).Answer
+	b = must(sdk.PutIndexerById(ctx, b.Id, edit)).Answer
 	if b.Priority != 30 {
 		t.Errorf("priority %d after the update, want 30", b.Priority)
 	}
 
-	must(sdk.PostIndexerTest(ctx, *b, radarr.PostIndexerTestOptions{}))
+	must(sdk.PostIndexerTest(ctx, *b))
 	all := must(sdk.PostIndexerTestAll(ctx)).Answer
-	for _, id := range []int{d.indexer, ids[0], ids[1]} {
-		if r := testResult(t, all, id); !r.IsValid {
+	for _, id := range []radarr.IndexerID{d.indexer, ids[0], ids[1]} {
+		if r := testResult(t, all, int(id)); !r.IsValid {
 			t.Errorf("indexer %d failed its test: %+v", id, r.ValidationFailures)
 		}
 	}
@@ -149,7 +149,7 @@ func TestDownloadClients(t *testing.T) {
 
 	// two more blackholes, each on folders of its own: two watching one
 	// folder would each report every download in it
-	ids := make([]int, 0, 2)
+	ids := make([]radarr.DownloadClientID, 0, 2)
 	for _, name := range []string{"b", "c"} {
 		c := blackhole("SDK Blackhole " + strings.ToUpper(name))
 		folders := "/media/downloads/sdk-" + name
@@ -157,7 +157,7 @@ func TestDownloadClients(t *testing.T) {
 		mediaMkdir(testenv.HostPath(folders + "/nzb"))
 		mediaMkdir(testenv.HostPath(folders + "/watch"))
 		t.Cleanup(func() { _ = os.RemoveAll(testenv.HostPath(folders)) })
-		created := must(sdk.PostDownloadClient(ctx, c, radarr.PostDownloadClientOptions{})).Answer
+		created := must(sdk.PostDownloadClient(ctx, c)).Answer
 		removeAfter(ctx, t, c.Name, func(ctx context.Context) (radarr.DeleteDownloadClientByIdResponse, error) {
 			return sdk.DeleteDownloadClientById(ctx, created.Id)
 		})
@@ -167,12 +167,12 @@ func TestDownloadClients(t *testing.T) {
 
 	edit := *b
 	edit.Priority = 5
-	b = must(sdk.PutDownloadClientById(ctx, b.Id, edit, radarr.PutDownloadClientByIdOptions{})).Answer
+	b = must(sdk.PutDownloadClientById(ctx, b.Id, edit)).Answer
 	if b.Priority != 5 {
 		t.Errorf("priority %d after the update, want 5", b.Priority)
 	}
 
-	must(sdk.PostDownloadClientTest(ctx, *b, radarr.PostDownloadClientTestOptions{}))
+	must(sdk.PostDownloadClientTest(ctx, *b))
 	for _, r := range must(sdk.PostDownloadClientTestAll(ctx)).Answer {
 		if !r.IsValid {
 			t.Errorf("download client %d failed its test: %+v", r.Id, r.ValidationFailures)
@@ -189,16 +189,16 @@ func TestDownloadClients(t *testing.T) {
 		t.Fatalf("a test of every client with one failing: want 400 and its results, got %v", err)
 	}
 	results := res.Answer
-	if r := testResult(t, results, ids[1]); r.IsValid || len(r.ValidationFailures) == 0 || r.ValidationFailures[0].Severity != "error" {
+	if r := testResult(t, results, int(ids[1])); r.IsValid || len(r.ValidationFailures) == 0 || r.ValidationFailures[0].Severity != "error" {
 		t.Errorf("the client without folders: %+v", r)
 	}
-	if r := testResult(t, results, ids[0]); !r.IsValid {
+	if r := testResult(t, results, int(ids[0])); !r.IsValid {
 		t.Errorf("the client with folders failed too: %+v", r.ValidationFailures)
 	}
 	// and a test of the one client answers 400 with its failures, which
 	// say whether each is only a warning
 	c := must(sdk.GetDownloadClientById(ctx, ids[1])).Answer
-	one, err := sdk.PostDownloadClientTest(ctx, *c, radarr.PostDownloadClientTestOptions{})
+	one, err := sdk.PostDownloadClientTest(ctx, *c)
 	if client.StatusCode(err) != http.StatusBadRequest {
 		t.Fatalf("a test of the client without folders: want 400, got %v", err)
 	}
@@ -235,7 +235,7 @@ func TestImportLists(t *testing.T) {
 		// enabled, so a test of every list includes it; nothing is added
 		// automatically
 		l.Enabled = new(true)
-		created := must(sdk.PostImportList(ctx, l, radarr.PostImportListOptions{})).Answer
+		created := must(sdk.PostImportList(ctx, l)).Answer
 		removeAfter(ctx, t, name, func(ctx context.Context) (radarr.DeleteImportListByIdResponse, error) {
 			return sdk.DeleteImportListById(ctx, created.Id)
 		})
@@ -245,12 +245,12 @@ func TestImportLists(t *testing.T) {
 
 	edit := *b
 	edit.Name = "SDK List B Renamed"
-	b = must(sdk.PutImportListById(ctx, b.Id, edit, radarr.PutImportListByIdOptions{})).Answer
+	b = must(sdk.PutImportListById(ctx, b.Id, edit)).Answer
 	if b.Name != edit.Name {
 		t.Errorf("named %q after the update", b.Name)
 	}
 
-	must(sdk.PostImportListTest(ctx, *b, radarr.PostImportListTestOptions{}))
+	must(sdk.PostImportListTest(ctx, *b))
 	all := must(sdk.PostImportListTestAll(ctx)).Answer
 	for _, id := range ids {
 		if r := testResult(t, all, id); !r.IsValid {
@@ -285,7 +285,7 @@ func TestNotifications(t *testing.T) {
 	// Radarr tests a notification before saving it, which sends the
 	// webhook a test event
 	before := len(hooks.received())
-	n := must(sdk.PostNotification(ctx, webhook(t, "SDK Hook"), radarr.PostNotificationOptions{})).Answer
+	n := must(sdk.PostNotification(ctx, webhook(t, "SDK Hook"))).Answer
 	removeAfter(ctx, t, "the webhook", func(ctx context.Context) (radarr.DeleteNotificationByIdResponse, error) {
 		return sdk.DeleteNotificationById(ctx, n.Id)
 	})
@@ -297,13 +297,13 @@ func TestNotifications(t *testing.T) {
 	edit := *n
 	edit.Name = "SDK Hook Renamed"
 	edit.OnGrab = new(false)
-	n = must(sdk.PutNotificationById(ctx, n.Id, edit, radarr.PutNotificationByIdOptions{})).Answer
+	n = must(sdk.PutNotificationById(ctx, n.Id, edit)).Answer
 	if n.Name != edit.Name || isTrue(n.OnGrab) {
 		t.Errorf("named %q, on grab %v after the update", n.Name, isTrue(n.OnGrab))
 	}
 
 	sent := tests()
-	must(sdk.PostNotificationTest(ctx, *n, radarr.PostNotificationTestOptions{}))
+	must(sdk.PostNotificationTest(ctx, *n))
 	if !poll(10*time.Second, func() bool { return tests() > sent }) {
 		t.Error("a test of the webhook sent it nothing")
 	}
@@ -339,7 +339,7 @@ func TestMetadataConsumers(t *testing.T) {
 	fresh.Id = 0
 	fresh.Name = "SDK Metadata"
 	fresh.Enable = new(true)
-	m := must(sdk.PostMetadata(ctx, fresh, radarr.PostMetadataOptions{})).Answer
+	m := must(sdk.PostMetadata(ctx, fresh)).Answer
 	removeAfter(ctx, t, "the consumer", func(ctx context.Context) (radarr.DeleteMetadataByIdResponse, error) {
 		return sdk.DeleteMetadataById(ctx, m.Id)
 	})
@@ -349,12 +349,12 @@ func TestMetadataConsumers(t *testing.T) {
 
 	edit := *m
 	edit.Name = "SDK Metadata Renamed"
-	m = must(sdk.PutMetadataById(ctx, m.Id, edit, radarr.PutMetadataByIdOptions{})).Answer
+	m = must(sdk.PutMetadataById(ctx, m.Id, edit)).Answer
 	if m.Name != edit.Name {
 		t.Errorf("named %q after the update", m.Name)
 	}
 
-	must(sdk.PostMetadataTest(ctx, *m, radarr.PostMetadataTestOptions{}))
+	must(sdk.PostMetadataTest(ctx, *m))
 	if r := testResult(t, must(sdk.PostMetadataTestAll(ctx)).Answer, m.Id); !r.IsValid {
 		t.Errorf("the consumer failed its test: %+v", r.ValidationFailures)
 	}

@@ -37,15 +37,15 @@ func indexerKind(c *radarr.Client) *providerKind[radarr.IndexerResource] {
 			return res.Answer, err
 		},
 		create: func(ctx context.Context, v radarr.IndexerResource, force bool) (*radarr.IndexerResource, error) {
-			res, err := c.PostIndexer(ctx, v, radarr.PostIndexerOptions{ForceSave: new(force)})
+			res, err := c.PostIndexer(ctx, v, force)
 			return res.Answer, err
 		},
 		update: func(ctx context.Context, id int, v radarr.IndexerResource, force bool) (*radarr.IndexerResource, error) {
-			res, err := c.PutIndexerById(ctx, id, v, radarr.PutIndexerByIdOptions{ForceSave: new(force)})
+			res, err := c.PutIndexerById(ctx, radarr.IndexerID(id), v, force)
 			return res.Answer, err
 		},
 		remove: func(ctx context.Context, id int) error {
-			_, err := c.DeleteIndexerById(ctx, id)
+			_, err := c.DeleteIndexerById(ctx, radarr.IndexerID(id))
 			return err
 		},
 		action: func(ctx context.Context, name string, v radarr.IndexerResource) (json.RawMessage, error) {
@@ -74,15 +74,15 @@ func downloadClientKind(c *radarr.Client) *providerKind[radarr.DownloadClientRes
 			return res.Answer, err
 		},
 		create: func(ctx context.Context, v radarr.DownloadClientResource, force bool) (*radarr.DownloadClientResource, error) {
-			res, err := c.PostDownloadClient(ctx, v, radarr.PostDownloadClientOptions{ForceSave: new(force)})
+			res, err := c.PostDownloadClient(ctx, v, force)
 			return res.Answer, err
 		},
 		update: func(ctx context.Context, id int, v radarr.DownloadClientResource, force bool) (*radarr.DownloadClientResource, error) {
-			res, err := c.PutDownloadClientById(ctx, id, v, radarr.PutDownloadClientByIdOptions{ForceSave: new(force)})
+			res, err := c.PutDownloadClientById(ctx, radarr.DownloadClientID(id), v, force)
 			return res.Answer, err
 		},
 		remove: func(ctx context.Context, id int) error {
-			_, err := c.DeleteDownloadClientById(ctx, id)
+			_, err := c.DeleteDownloadClientById(ctx, radarr.DownloadClientID(id))
 			return err
 		},
 		action: func(ctx context.Context, name string, v radarr.DownloadClientResource) (json.RawMessage, error) {
@@ -115,11 +115,11 @@ func importListKind(c *radarr.Client) *providerKind[radarr.ImportListResource] {
 			return res.Answer, err
 		},
 		create: func(ctx context.Context, v radarr.ImportListResource, force bool) (*radarr.ImportListResource, error) {
-			res, err := c.PostImportList(ctx, v, radarr.PostImportListOptions{ForceSave: new(force)})
+			res, err := c.PostImportList(ctx, v, force)
 			return res.Answer, err
 		},
 		update: func(ctx context.Context, id int, v radarr.ImportListResource, force bool) (*radarr.ImportListResource, error) {
-			res, err := c.PutImportListById(ctx, id, v, radarr.PutImportListByIdOptions{ForceSave: new(force)})
+			res, err := c.PutImportListById(ctx, id, v, force)
 			return res.Answer, err
 		},
 		remove: func(ctx context.Context, id int) error {
@@ -131,7 +131,7 @@ func importListKind(c *radarr.Client) *providerKind[radarr.ImportListResource] {
 			return res.Answer, err
 		},
 		test: func(ctx context.Context, v radarr.ImportListResource) (*http.Response, error) {
-			res, err := c.PostImportListTest(ctx, v, radarr.PostImportListTestOptions{ForceTest: new(true)})
+			res, err := c.PostImportListTest(ctx, v, true)
 			return res.HttpResponse, err
 		},
 		testAll: func(ctx context.Context) ([]radarr.ProviderTestAllResult, error) {
@@ -169,11 +169,11 @@ func notificationKind(c *radarr.Client) *providerKind[radarr.NotificationResourc
 			return res.Answer, err
 		},
 		create: func(ctx context.Context, v radarr.NotificationResource, force bool) (*radarr.NotificationResource, error) {
-			res, err := c.PostNotification(ctx, v, radarr.PostNotificationOptions{ForceSave: new(force)})
+			res, err := c.PostNotification(ctx, v, force)
 			return res.Answer, err
 		},
 		update: func(ctx context.Context, id int, v radarr.NotificationResource, force bool) (*radarr.NotificationResource, error) {
-			res, err := c.PutNotificationById(ctx, id, v, radarr.PutNotificationByIdOptions{ForceSave: new(force)})
+			res, err := c.PutNotificationById(ctx, id, v, force)
 			return res.Answer, err
 		},
 		remove: func(ctx context.Context, id int) error {
@@ -185,7 +185,7 @@ func notificationKind(c *radarr.Client) *providerKind[radarr.NotificationResourc
 			return res.Answer, err
 		},
 		test: func(ctx context.Context, v radarr.NotificationResource) (*http.Response, error) {
-			res, err := c.PostNotificationTest(ctx, v, radarr.PostNotificationTestOptions{ForceTest: new(true)})
+			res, err := c.PostNotificationTest(ctx, v, true)
 			return res.HttpResponse, err
 		},
 		testAll: func(ctx context.Context) ([]radarr.ProviderTestAllResult, error) {
@@ -212,11 +212,11 @@ func metadataKind(c *radarr.Client) *providerKind[radarr.MetadataResource] {
 			return res.Answer, err
 		},
 		update: func(ctx context.Context, id int, v radarr.MetadataResource, force bool) (*radarr.MetadataResource, error) {
-			res, err := c.PutMetadataById(ctx, id, v, radarr.PutMetadataByIdOptions{ForceSave: new(force)})
+			res, err := c.PutMetadataById(ctx, id, v, force)
 			return res.Answer, err
 		},
 		test: func(ctx context.Context, v radarr.MetadataResource) (*http.Response, error) {
-			res, err := c.PostMetadataTest(ctx, v, radarr.PostMetadataTestOptions{ForceTest: new(true)})
+			res, err := c.PostMetadataTest(ctx, v, true)
 			return res.HttpResponse, err
 		},
 		testAll: func(ctx context.Context) ([]radarr.ProviderTestAllResult, error) {

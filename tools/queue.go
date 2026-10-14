@@ -49,13 +49,13 @@ func queueOf(q *radarr.QueueResource) queueRow {
 		Size:                int64(q.Size),
 		SizeLeft:            int64(q.Sizeleft),
 		TimeLeft:            q.Timeleft,
-		EstimatedCompletion: q.EstimatedCompletionTime,
+		EstimatedCompletion: shownTime(q.EstimatedCompletionTime),
 		Protocol:            string(q.Protocol),
 		DownloadClient:      q.DownloadClient,
 		Indexer:             q.Indexer,
 		OutputPath:          q.OutputPath,
 		DownloadID:          q.DownloadId,
-		Added:               q.Added,
+		Added:               shownTime(q.Added),
 	}
 	if q.Movie != nil {
 		row.Movie = titleYear(q.Movie.Title, q.Movie.Year)

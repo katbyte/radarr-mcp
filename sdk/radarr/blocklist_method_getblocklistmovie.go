@@ -42,14 +42,14 @@ func (o GetBlocklistMovieOptions) ToQuery() *client.QueryParams {
 }
 
 // GetBlocklistMovie calls GET /api/v3/blocklist/movie.
-func (c Client) GetBlocklistMovie(ctx context.Context, options ...GetBlocklistMovieOptions) (result GetBlocklistMovieResponse, err error) {
-	if len(options) > 1 {
-		err = fmt.Errorf("GetBlocklistMovie takes one options struct at most, not %d", len(options))
+func (c Client) GetBlocklistMovie(ctx context.Context, movieId ...MovieID) (result GetBlocklistMovieResponse, err error) {
+	var option GetBlocklistMovieOptions
+	if len(movieId) > 1 {
+		err = fmt.Errorf("GetBlocklistMovie takes one movieId at most, not %d", len(movieId))
 		return
 	}
-	var option GetBlocklistMovieOptions
-	if len(options) == 1 {
-		option = options[0]
+	if len(movieId) == 1 {
+		option.MovieId = movieId[0]
 	}
 
 	opts := client.RequestOptions{

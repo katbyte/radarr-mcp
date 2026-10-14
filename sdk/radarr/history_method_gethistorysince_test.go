@@ -5,6 +5,7 @@ package radarr
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/katbyte/pandorest/client"
 )
@@ -14,7 +15,7 @@ func TestOperationGetHistorySince(t *testing.T) {
 
 	c, s := newOperationServer(t, 200, "application/json", "[{}]")
 	result, err := c.GetHistorySince(t.Context(), GetHistorySinceOptions{
-		Date:         "v-Date",
+		Date:         Time{Time: time.Date(2024, time.March, 4, 5, 6, 7, 0, time.UTC)},
 		EventType:    MovieHistoryEventTypeUnknown,
 		IncludeMovie: new(true),
 	})
@@ -24,7 +25,7 @@ func TestOperationGetHistorySince(t *testing.T) {
 	r, body := s.only(t)
 	_ = body
 	expectRequest(t, r, http.MethodGet, "/api/v3/history/since")
-	expectQuery(t, r, "date", "v-Date")
+	expectQuery(t, r, "date", "2024-03-04T05:06:07Z")
 	expectQuery(t, r, "eventType", "unknown")
 	expectQuery(t, r, "includeMovie", "true")
 	if result.HttpResponse == nil || result.HttpResponse.StatusCode != 200 {
@@ -37,7 +38,7 @@ func TestOperationGetHistorySince(t *testing.T) {
 	// an answer that does not decode is an error, with the response
 	c, _ = newOperationServer(t, 200, "application/json", "<html>")
 	result, err = c.GetHistorySince(t.Context(), GetHistorySinceOptions{
-		Date:         "v-Date",
+		Date:         Time{Time: time.Date(2024, time.March, 4, 5, 6, 7, 0, time.UTC)},
 		EventType:    MovieHistoryEventTypeUnknown,
 		IncludeMovie: new(true),
 	})
@@ -48,7 +49,7 @@ func TestOperationGetHistorySince(t *testing.T) {
 	// a status the operation does not document is an error, with the response
 	c, _ = newOperationServer(t, 418, "text/plain", "no")
 	result, err = c.GetHistorySince(t.Context(), GetHistorySinceOptions{
-		Date:         "v-Date",
+		Date:         Time{Time: time.Date(2024, time.March, 4, 5, 6, 7, 0, time.UTC)},
 		EventType:    MovieHistoryEventTypeUnknown,
 		IncludeMovie: new(true),
 	})

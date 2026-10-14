@@ -25,8 +25,8 @@ const namingLock = "naming"
 
 // profileLock is the quality profile with this id, for an edit that has
 // resolved it and not yet read the record it will send back.
-func profileLock(id int) lock.Thing {
-	return lock.ID[radarr.QualityProfileResource](strconv.Itoa(id))
+func profileLock(id radarr.QualityProfileID) lock.Thing {
+	return lock.ID[radarr.QualityProfileResource](strconv.Itoa(int(id)))
 }
 
 // definitionLock is the size limits of the quality with this definition id.

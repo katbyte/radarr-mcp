@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
@@ -39,7 +41,7 @@ func (r GetTagByIdResponse) Record() (TagResource, error) {
 }
 
 // GetTagById calls GET /api/v3/tag/{id}.
-func (c Client) GetTagById(ctx context.Context, id int) (result GetTagByIdResponse, err error) {
+func (c Client) GetTagById(ctx context.Context, id TagID) (result GetTagByIdResponse, err error) {
 	result.TagResource = &TagResource{}
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
@@ -47,7 +49,7 @@ func (c Client) GetTagById(ctx context.Context, id int) (result GetTagByIdRespon
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetTagById",
-		Path:       fmt.Sprintf("/api/v3/tag/%d", id),
+		Path:       fmt.Sprintf("/api/v3/tag/%s", url.PathEscape(strconv.Itoa(int(id)))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)

@@ -18,7 +18,7 @@ func TestOperationGetFeedV3CalendarRadarrIcs(t *testing.T) {
 	result, err := c.GetFeedV3CalendarRadarrIcs(t.Context(), GetFeedV3CalendarRadarrIcsOptions{
 		PastDays:     new(7),
 		FutureDays:   new(7),
-		Tags:         "v-Tags",
+		Tags:         []TagID{TagID(1), TagID(2)},
 		Unmonitored:  new(true),
 		ReleaseTypes: []CalendarReleaseType{CalendarReleaseTypeCinemaRelease, CalendarReleaseTypePhysicalRelease},
 	})
@@ -30,7 +30,7 @@ func TestOperationGetFeedV3CalendarRadarrIcs(t *testing.T) {
 	expectRequest(t, r, http.MethodGet, "/feed/v3/calendar/radarr.ics")
 	expectQuery(t, r, "pastDays", "7")
 	expectQuery(t, r, "futureDays", "7")
-	expectQuery(t, r, "tags", "v-Tags")
+	expectQuery(t, r, "tags", "1,2")
 	expectQuery(t, r, "unmonitored", "true")
 	expectQuery(t, r, "releaseTypes", "cinemaRelease", "physicalRelease")
 	if got := r.Header.Get("Accept"); !strings.HasPrefix(got, "text/calendar") {
@@ -49,7 +49,7 @@ func TestOperationGetFeedV3CalendarRadarrIcs(t *testing.T) {
 	result, err = c.GetFeedV3CalendarRadarrIcs(t.Context(), GetFeedV3CalendarRadarrIcsOptions{
 		PastDays:     new(7),
 		FutureDays:   new(7),
-		Tags:         "v-Tags",
+		Tags:         []TagID{TagID(1), TagID(2)},
 		Unmonitored:  new(true),
 		ReleaseTypes: []CalendarReleaseType{CalendarReleaseTypeCinemaRelease, CalendarReleaseTypePhysicalRelease},
 	})
@@ -63,7 +63,7 @@ func TestOperationGetFeedV3CalendarRadarrIcs(t *testing.T) {
 	result, err = c.GetFeedV3CalendarRadarrIcs(t.Context(), GetFeedV3CalendarRadarrIcsOptions{
 		PastDays:     new(7),
 		FutureDays:   new(7),
-		Tags:         "v-Tags",
+		Tags:         []TagID{TagID(1), TagID(2)},
 		Unmonitored:  new(true),
 		ReleaseTypes: []CalendarReleaseType{CalendarReleaseTypeCinemaRelease, CalendarReleaseTypePhysicalRelease},
 	})
@@ -89,7 +89,7 @@ func TestOperationGetFeedV3CalendarRadarrIcs(t *testing.T) {
 	result, err = c.GetFeedV3CalendarRadarrIcs(t.Context(), GetFeedV3CalendarRadarrIcsOptions{
 		PastDays:     new(7),
 		FutureDays:   new(7),
-		Tags:         "v-Tags",
+		Tags:         []TagID{TagID(1), TagID(2)},
 		Unmonitored:  new(true),
 		ReleaseTypes: []CalendarReleaseType{CalendarReleaseTypeCinemaRelease, CalendarReleaseTypePhysicalRelease},
 	})

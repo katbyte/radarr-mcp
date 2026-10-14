@@ -119,7 +119,7 @@ func registerTaskTools(r *registry) {
 		for _, t := range tasks.Answer {
 			rows = append(rows, taskRow{
 				Name: t.Name, TaskName: t.TaskName, IntervalMinutes: t.Interval,
-				LastExecution: t.LastExecution, LastDuration: t.LastDuration, NextExecution: t.NextExecution,
+				LastExecution: shownTime(t.LastExecution), LastDuration: t.LastDuration, NextExecution: shownTime(t.NextExecution),
 			})
 		}
 		slices.SortFunc(rows, func(a, b taskRow) int { return strings.Compare(a.Name, b.Name) })

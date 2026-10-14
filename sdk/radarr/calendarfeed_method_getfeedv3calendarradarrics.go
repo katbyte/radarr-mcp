@@ -82,7 +82,7 @@ func (r GetFeedV3CalendarRadarrIcsResponse) Bytes(max int64) ([]byte, error) {
 type GetFeedV3CalendarRadarrIcsOptions struct {
 	PastDays     *int
 	FutureDays   *int
-	Tags         string
+	Tags         []TagID
 	Unmonitored  *bool
 	ReleaseTypes []CalendarReleaseType
 }
@@ -102,8 +102,8 @@ func (o GetFeedV3CalendarRadarrIcsOptions) ToQuery() *client.QueryParams {
 	if o.FutureDays != nil {
 		out.Append("futureDays", strconv.Itoa(*o.FutureDays))
 	}
-	if o.Tags != "" {
-		out.Append("tags", o.Tags)
+	if len(o.Tags) > 0 {
+		out.Append("tags", client.Joined(o.Tags))
 	}
 	if o.Unmonitored != nil {
 		out.Append("unmonitored", strconv.FormatBool(*o.Unmonitored))

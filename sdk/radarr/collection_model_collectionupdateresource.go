@@ -4,11 +4,11 @@ package radarr
 
 // CollectionUpdateResource is the "CollectionUpdateResource" schema.
 type CollectionUpdateResource struct {
-	CollectionIds       []int           `json:"collectionIds,omitzero"`
-	MinimumAvailability MovieStatusType `json:"minimumAvailability,omitempty"`
-	MonitorMovies       *bool           `json:"monitorMovies,omitempty"`
-	Monitored           *bool           `json:"monitored,omitempty"`
-	QualityProfileId    *int            `json:"qualityProfileId,omitempty"`
-	RootFolderPath      string          `json:"rootFolderPath,omitempty"`
-	SearchOnAdd         *bool           `json:"searchOnAdd,omitempty"`
+	CollectionIds       []int             `json:"collectionIds,omitzero"`
+	MinimumAvailability MovieStatusType   `json:"minimumAvailability,omitempty"`
+	MonitorMovies       *bool             `json:"monitorMovies,omitempty"`
+	Monitored           *bool             `json:"monitored,omitempty"`
+	QualityProfileId    *QualityProfileID `json:"qualityProfileId,omitempty"`
+	RootFolderPath      string            `json:"rootFolderPath,omitempty"`
+	SearchOnAdd         *bool             `json:"searchOnAdd,omitempty"`
 }

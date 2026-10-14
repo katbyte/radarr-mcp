@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
@@ -39,7 +41,7 @@ func (r GetIndexerByIdResponse) Record() (IndexerResource, error) {
 }
 
 // GetIndexerById calls GET /api/v3/indexer/{id}.
-func (c Client) GetIndexerById(ctx context.Context, id int) (result GetIndexerByIdResponse, err error) {
+func (c Client) GetIndexerById(ctx context.Context, id IndexerID) (result GetIndexerByIdResponse, err error) {
 	result.IndexerResource = &IndexerResource{}
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
@@ -47,7 +49,7 @@ func (c Client) GetIndexerById(ctx context.Context, id int) (result GetIndexerBy
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetIndexerById",
-		Path:       fmt.Sprintf("/api/v3/indexer/%d", id),
+		Path:       fmt.Sprintf("/api/v3/indexer/%s", url.PathEscape(strconv.Itoa(int(id)))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)

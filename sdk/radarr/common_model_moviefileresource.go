@@ -6,7 +6,7 @@ package radarr
 type MovieFileResource struct {
 	CustomFormatScore   *int                   `json:"customFormatScore,omitempty"`
 	CustomFormats       []CustomFormatResource `json:"customFormats,omitzero"`
-	DateAdded           string                 `json:"dateAdded,omitempty"`
+	DateAdded           Time                   `json:"dateAdded,omitzero"`
 	Edition             string                 `json:"edition,omitempty"`
 	Id                  MovieFileID            `json:"id,omitempty"`
 	IndexerFlags        *int                   `json:"indexerFlags,omitempty"`

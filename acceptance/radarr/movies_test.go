@@ -73,7 +73,7 @@ func TestMovies(t *testing.T) {
 		edit := *m
 		edit.Monitored = new(false)
 		edit.MinimumAvailability = radarr.MovieStatusTypeInCinemas
-		got := must(sdk.PutMovieById(ctx, m.Id, edit, radarr.PutMovieByIdOptions{MoveFiles: new(false)})).Answer
+		got := must(sdk.PutMovieById(ctx, m.Id, edit, false)).Answer
 		if isTrue(got.Monitored) || got.MinimumAvailability != radarr.MovieStatusTypeInCinemas {
 			t.Errorf("monitored %v, available when %s after the update", isTrue(got.Monitored), got.MinimumAvailability)
 		}
@@ -216,7 +216,7 @@ func TestCollections(t *testing.T) {
 	fixtures(t)
 
 	// the Alien films bring their collection with them
-	cols := must(sdk.GetCollection(ctx, radarr.GetCollectionOptions{})).Answer
+	cols := must(sdk.GetCollection(ctx)).Answer
 	i := slices.IndexFunc(cols, func(c radarr.CollectionResource) bool { return c.TmdbId == 8091 })
 	if i < 0 {
 		t.Fatal("no Alien collection")

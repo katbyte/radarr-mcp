@@ -222,7 +222,7 @@ func registerAdminTools(r *registry) {
 		}
 		rows := make([]updateRow, 0, len(res.Answer))
 		for _, u := range res.Answer {
-			row := updateRow{Version: u.Version, Released: u.ReleaseDate, Installed: u.Installed, Latest: u.Latest, New: []string{}, Fixed: []string{}}
+			row := updateRow{Version: u.Version, Released: shownTime(u.ReleaseDate), Installed: u.Installed, Latest: u.Latest, New: []string{}, Fixed: []string{}}
 			if u.Changes != nil {
 				for _, line := range u.Changes.New {
 					row.New = append(row.New, outsideProse(line))

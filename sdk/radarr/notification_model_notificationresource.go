@@ -39,7 +39,7 @@ type NotificationResource struct {
 	SupportsOnMovieFileDeleteForUpgrade *bool                  `json:"supportsOnMovieFileDeleteForUpgrade,omitempty"`
 	SupportsOnRename                    *bool                  `json:"supportsOnRename,omitempty"`
 	SupportsOnUpgrade                   *bool                  `json:"supportsOnUpgrade,omitempty"`
-	Tags                                []int                  `json:"tags,omitzero"`
+	Tags                                []TagID                `json:"tags,omitzero"`
 	TestCommand                         string                 `json:"testCommand,omitempty"`
 }
 

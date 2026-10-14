@@ -29,7 +29,8 @@
           "Name": "id",
           "Argument": "id",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "TagID"
           }
         }
       ],
@@ -78,7 +79,8 @@
           "Type": {
             "Type": "List",
             "NestedItem": {
-              "Type": "Integer"
+              "Type": "ID",
+              "ReferenceName": "DownloadClientID"
             }
           },
           "Nullable": true
@@ -87,7 +89,8 @@
           "Name": "Id",
           "JsonName": "id",
           "Type": {
-            "Type": "Integer"
+            "Type": "ID",
+            "ReferenceName": "TagID"
           }
         },
         {
@@ -107,7 +110,8 @@
           "Type": {
             "Type": "List",
             "NestedItem": {
-              "Type": "Integer"
+              "Type": "ID",
+              "ReferenceName": "IndexerID"
             }
           },
           "Nullable": true

@@ -5,12 +5,12 @@ package radarr
 // IndexerResource is the "IndexerResource" schema.
 type IndexerResource struct {
 	ConfigContract          string            `json:"configContract,omitempty"`
-	DownloadClientId        int               `json:"downloadClientId,omitempty"`
+	DownloadClientId        DownloadClientID  `json:"downloadClientId,omitempty"`
 	EnableAutomaticSearch   *bool             `json:"enableAutomaticSearch,omitempty"`
 	EnableInteractiveSearch *bool             `json:"enableInteractiveSearch,omitempty"`
 	EnableRss               *bool             `json:"enableRss,omitempty"`
 	Fields                  []Field           `json:"fields,omitzero"`
-	Id                      int               `json:"id,omitempty"`
+	Id                      IndexerID         `json:"id,omitempty"`
 	Implementation          string            `json:"implementation,omitempty"`
 	ImplementationName      string            `json:"implementationName,omitempty"`
 	InfoLink                string            `json:"infoLink,omitempty"`
@@ -21,11 +21,11 @@ type IndexerResource struct {
 	Protocol                DownloadProtocol  `json:"protocol,omitempty"`
 	SupportsRss             *bool             `json:"supportsRss,omitempty"`
 	SupportsSearch          *bool             `json:"supportsSearch,omitempty"`
-	Tags                    []int             `json:"tags,omitzero"`
+	Tags                    []TagID           `json:"tags,omitzero"`
 }
 
 // GetName is the record's Name, for code that handles records of several types alike.
 func (m IndexerResource) GetName() string { return m.Name }
 
 // GetId is the record's Id, for code that handles records of several types alike.
-func (m IndexerResource) GetId() int { return m.Id }
+func (m IndexerResource) GetId() IndexerID { return m.Id }

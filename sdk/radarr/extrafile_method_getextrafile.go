@@ -42,14 +42,14 @@ func (o GetExtraFileOptions) ToQuery() *client.QueryParams {
 }
 
 // GetExtraFile calls GET /api/v3/extrafile.
-func (c Client) GetExtraFile(ctx context.Context, options ...GetExtraFileOptions) (result GetExtraFileResponse, err error) {
-	if len(options) > 1 {
-		err = fmt.Errorf("GetExtraFile takes one options struct at most, not %d", len(options))
+func (c Client) GetExtraFile(ctx context.Context, movieId ...MovieID) (result GetExtraFileResponse, err error) {
+	var option GetExtraFileOptions
+	if len(movieId) > 1 {
+		err = fmt.Errorf("GetExtraFile takes one movieId at most, not %d", len(movieId))
 		return
 	}
-	var option GetExtraFileOptions
-	if len(options) == 1 {
-		option = options[0]
+	if len(movieId) == 1 {
+		option.MovieId = movieId[0]
 	}
 
 	opts := client.RequestOptions{
