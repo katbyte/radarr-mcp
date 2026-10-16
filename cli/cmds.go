@@ -7,21 +7,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/katbyte/go-kt/text"
 	"github.com/katbyte/go-kt/version"
 	"github.com/katbyte/radarr-mcp/tools"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
-
-// firstSentence trims a tool description to its opening sentence, so the list
-// stays one line per tool.
-func firstSentence(s string) string {
-	if i := strings.Index(s, ". "); i > 0 {
-		return s[:i+1]
-	}
-
-	return s
-}
 
 func ValidateParams(params []string) func(cmd *cobra.Command, args []string) error {
 	return func(_ *cobra.Command, _ []string) error {
@@ -119,7 +110,7 @@ Needs no server: it reports what would be registered, not what a server accepts.
 				}
 				_, _ = fmt.Fprintf(out, "\n%s (%d)\n", set, len(in))
 				for _, t := range in {
-					_, _ = fmt.Fprintf(out, "  %-32s %-6s %s\n", t.Name, t.Kind, firstSentence(t.Description))
+					_, _ = fmt.Fprintf(out, "  %-32s %-6s %s\n", t.Name, t.Kind, text.FirstSentence(t.Description))
 				}
 			}
 			_, _ = fmt.Fprintf(out, "\n%d tools: %d read, %d write, %d delete\n",

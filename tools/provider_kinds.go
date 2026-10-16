@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/katbyte/go-kt/lock"
+	"github.com/katbyte/go-kt/text"
 	"github.com/katbyte/pandorest/client"
 	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -567,7 +568,7 @@ func registerProviderWrites[T any](r *registry, k *providerKind[T]) kindDescribe
 	if !k.fixed {
 		add(r, writeTool, &mcp.Tool{
 			Name:        k.family + "_add",
-			Description: fmt.Sprintf("Add %s: %s Name its kind (%s; provider_kinds lists them and what each takes), its settings by name, and its switches (%s). Left alone, it starts %s, as in Radarr's own form. Radarr tests one that is switched on before saving it and refuses one that fails, unless force is set; off adds it switched off.", article(k.noun), k.does, k.kinds, k.switches, k.starts),
+			Description: fmt.Sprintf("Add %s: %s Name its kind (%s; provider_kinds lists them and what each takes), its settings by name, and its switches (%s). Left alone, it starts %s, as in Radarr's own form. Radarr tests one that is switched on before saving it and refuses one that fails, unless force is set; off adds it switched off.", text.Article(k.noun)+" "+k.noun, k.does, k.kinds, k.switches, k.starts),
 		}, func(ctx context.Context, _ *mcp.CallToolRequest, in providerAddIn) (*mcp.CallToolResult, providerRow, error) {
 			m, err := k.blank(ctx, in.Kind)
 			if err != nil {
@@ -640,7 +641,7 @@ func registerProviderWrites[T any](r *registry, k *providerKind[T]) kindDescribe
 
 	add(r, writeTool, &mcp.Tool{
 		Name:        k.family + "_edit",
-		Description: fmt.Sprintf("Change %s: its name, its settings by name, its switches (%s), or its tags. Radarr tests one that is switched on before saving the change, unless force is set.", article(k.noun), k.switches),
+		Description: fmt.Sprintf("Change %s: its name, its settings by name, its switches (%s), or its tags. Radarr tests one that is switched on before saving the change, unless force is set.", text.Article(k.noun)+" "+k.noun, k.switches),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in providerEditIn) (*mcp.CallToolResult, providerRow, error) {
 		found, err := k.find(ctx, in.Name)
 		if err != nil {
@@ -704,7 +705,7 @@ func registerProviderWrites[T any](r *registry, k *providerKind[T]) kindDescribe
 	if !k.fixed {
 		add(r, deleteTool, &mcp.Tool{
 			Name:        k.family + "_delete",
-			Description: fmt.Sprintf("Delete %s from Radarr: %s. Without confirm nothing changes and the answer says what would go.", article(k.noun), k.loses),
+			Description: fmt.Sprintf("Delete %s from Radarr: %s. Without confirm nothing changes and the answer says what would go.", text.Article(k.noun)+" "+k.noun, k.loses),
 		}, func(ctx context.Context, _ *mcp.CallToolRequest, in providerDeleteIn) (*mcp.CallToolResult, deletedOut, error) {
 			m, err := k.find(ctx, in.Name)
 			if err != nil {
@@ -718,13 +719,4 @@ func registerProviderWrites[T any](r *registry, k *providerKind[T]) kindDescribe
 	}
 
 	return k.describe
-}
-
-// article is a noun with the article it takes: an indexer, a notification.
-func article(noun string) string {
-	if strings.ContainsRune("aeiou", rune(noun[0])) {
-		return "an " + noun
-	}
-
-	return "a " + noun
 }

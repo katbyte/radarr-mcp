@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- moved to go-kt v0.9.0 and pandorest v0.11.0. Five small helpers that were radarr's own (limits, paging, waits, "a" or "an", and the first sentence of a description) are now the shared ones
+- `radarr-mcp tools` cuts a description at its first real sentence: a full stop in an abbreviation such as "e.g." no longer ends it
+
 ## 0.4.0 (2026-10-14)
 
 ### Breaking

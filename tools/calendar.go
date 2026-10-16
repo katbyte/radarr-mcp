@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	mcpregistry "github.com/katbyte/go-kt/mcp/registry"
 	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -36,8 +37,8 @@ func registerCalendarTools(r *registry) {
 		Description: "List the library's films released in cinemas, digitally or on disc in a window around today (default the last week and the next month), soonest first: what Radarr is about to start looking for.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in calendarIn) (*mcp.CallToolResult, calendarOut, error) {
 		now := time.Now().UTC()
-		start := now.AddDate(0, 0, -limitOr(in.DaysBack, 7)).Truncate(24 * time.Hour)
-		end := now.AddDate(0, 0, limitOr(in.DaysAhead, 30)).Truncate(24 * time.Hour).Add(24 * time.Hour)
+		start := now.AddDate(0, 0, -mcpregistry.LimitOr(in.DaysBack, 7)).Truncate(24 * time.Hour)
+		end := now.AddDate(0, 0, mcpregistry.LimitOr(in.DaysAhead, 30)).Truncate(24 * time.Hour).Add(24 * time.Hour)
 		res, err := client.GetCalendar(ctx, radarr.GetCalendarOptions{
 			Start: radarr.Time{Time: start}, End: radarr.Time{Time: end}, Unmonitored: new(in.Unmonitored),
 		})

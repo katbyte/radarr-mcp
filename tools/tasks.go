@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	mcpregistry "github.com/katbyte/go-kt/mcp/registry"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/katbyte/radarr-mcp/sdk/radarr"
@@ -172,7 +173,7 @@ func registerTaskTools(r *registry) {
 			return nil, taskRunOut{}, fmt.Errorf("task %q is not one task_run starts; the tasks are %s", in.Task, strings.Join(taskNames(), ", "))
 		}
 		task := runnableTasks[name]
-		cmd, err := ran(task.run(ctx, client, waitFor(in.Wait)))
+		cmd, err := ran(task.run(ctx, client, mcpregistry.WaitFor(in.Wait, defaultWait)))
 
 		return nil, taskRunOut{Task: name, Does: task.does, Command: cmd}, err
 	})

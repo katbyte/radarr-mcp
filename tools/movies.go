@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	mcpregistry "github.com/katbyte/go-kt/mcp/registry"
 	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -209,8 +210,8 @@ func registerMovieTools(r *registry) {
 		if err != nil {
 			return nil, lookupOut{}, err
 		}
-		if len(found) > limitOr(in.Limit, 10) {
-			found = found[:limitOr(in.Limit, 10)]
+		if len(found) > mcpregistry.LimitOr(in.Limit, 10) {
+			found = found[:mcpregistry.LimitOr(in.Limit, 10)]
 		}
 
 		// each result is asked after by its TMDB id, a small answer apiece: the whole library is a hundred megabytes on a large one, too much to read for a lookup
@@ -265,7 +266,7 @@ func registerMovieTools(r *registry) {
 			return a.Order - b.Order
 		})
 		out := creditsOut{Movie: titleYear(m.Title, m.Year)}
-		limit := limitOr(in.Limit, 20)
+		limit := mcpregistry.LimitOr(in.Limit, 20)
 		for _, c := range credits {
 			switch {
 			case c.Type == radarr.CreditTypeCast && kind != "crew" && len(out.Cast) < limit:

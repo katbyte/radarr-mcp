@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/katbyte/go-kt/lock"
+	"github.com/katbyte/go-kt/text"
 	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -425,7 +426,7 @@ func registerRecordTools[T any](r *registry, k *recordKind[T]) {
 
 	adding := &mcp.Tool{
 		Name:        k.family + "_add",
-		Description: fmt.Sprintf("Add %s: %s Its values, by name: %s.", article(k.noun), k.does, k.takes),
+		Description: fmt.Sprintf("Add %s: %s Its values, by name: %s.", text.Article(k.noun)+" "+k.noun, k.does, k.takes),
 	}
 	create := func(ctx context.Context, in recordArgs) (recordOut, error) {
 		if len(in.Values) == 0 && in.Conditions == nil {
@@ -449,7 +450,7 @@ func registerRecordTools[T any](r *registry, k *recordKind[T]) {
 
 	editing := &mcp.Tool{
 		Name:        k.family + "_edit",
-		Description: fmt.Sprintf("Change %s, named by its id%s: any of %s.", article(k.noun), orName(k.nameKey), k.takes),
+		Description: fmt.Sprintf("Change %s, named by its id%s: any of %s.", text.Article(k.noun)+" "+k.noun, orName(k.nameKey), k.takes),
 	}
 	change := func(ctx context.Context, in recordArgs) (recordOut, error) {
 		found, err := k.find(ctx, in.ID)
@@ -504,7 +505,7 @@ func registerRecordTools[T any](r *registry, k *recordKind[T]) {
 
 	add(r, deleteTool, &mcp.Tool{
 		Name:        k.family + "_delete",
-		Description: fmt.Sprintf("Delete %s, named by its id%s: %s. Without confirm nothing changes and the answer says what would go.", article(k.noun), orName(k.nameKey), k.loses),
+		Description: fmt.Sprintf("Delete %s, named by its id%s: %s. Without confirm nothing changes and the answer says what would go.", text.Article(k.noun)+" "+k.noun, orName(k.nameKey), k.loses),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in recordDeleteIn) (*mcp.CallToolResult, deletedOut, error) {
 		m, err := k.find(ctx, in.ID)
 		if err != nil {

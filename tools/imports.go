@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	mcpregistry "github.com/katbyte/go-kt/mcp/registry"
 	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -161,13 +162,13 @@ func registerImportTools(r *registry) {
 		for i := range library {
 			have[library[i].TmdbId] = library[i].Id
 		}
-		limit := limitOr(in.Limit, 10)
+		limit := mcpregistry.LimitOr(in.Limit, 10)
 		for _, folder := range folders {
 			if len(out.Folders) == limit {
 				out.Note = fmt.Sprintf("%d folders of %d, the ones asked for; raise limit or name folders for the rest", limit, out.Total)
 				break
 			}
-			row, err := identifyFolder(ctx, client, folder, have, limitOr(in.Candidates, 3))
+			row, err := identifyFolder(ctx, client, folder, have, mcpregistry.LimitOr(in.Candidates, 3))
 			if err != nil {
 				return nil, out, err
 			}

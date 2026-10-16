@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	mcpregistry "github.com/katbyte/go-kt/mcp/registry"
 	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -264,7 +265,7 @@ func registerMovieEditTools(r *registry) {
 		if err != nil {
 			return nil, commandsOut{}, err
 		}
-		cmd, err := ran(client.RefreshMovieAndWait(ctx, radarr.RefreshMovieCommand{MovieIds: movieIDs(movies)}, waitFor(in.Wait)))
+		cmd, err := ran(client.RefreshMovieAndWait(ctx, radarr.RefreshMovieCommand{MovieIds: movieIDs(movies)}, mcpregistry.WaitFor(in.Wait, defaultWait)))
 		out := commandsOut{Commands: []commandOut{cmd}}
 		if err != nil {
 			return nil, out, err
@@ -286,7 +287,7 @@ func registerMovieEditTools(r *registry) {
 		out := commandsOut{}
 		for i := range movies {
 			var cmd commandOut
-			cmd, err = ran(client.RescanMovieAndWait(ctx, radarr.RescanMovieCommand{MovieId: movies[i].Id}, waitFor(in.Wait)))
+			cmd, err = ran(client.RescanMovieAndWait(ctx, radarr.RescanMovieCommand{MovieId: movies[i].Id}, mcpregistry.WaitFor(in.Wait, defaultWait)))
 			out.Commands = append(out.Commands, cmd)
 			if err != nil {
 				return nil, out, err
@@ -374,7 +375,7 @@ func registerMovieEditTools(r *registry) {
 		if err != nil {
 			return nil, downloadOut{}, err
 		}
-		cmd, err := ran(client.MoviesSearchAndWait(ctx, radarr.MoviesSearchCommand{MovieIds: movieIDs(movies)}, waitFor(in.Wait)))
+		cmd, err := ran(client.MoviesSearchAndWait(ctx, radarr.MoviesSearchCommand{MovieIds: movieIDs(movies)}, mcpregistry.WaitFor(in.Wait, defaultWait)))
 		out := downloadOut{Command: cmd}
 		if err != nil {
 			return nil, out, err

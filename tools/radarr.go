@@ -19,6 +19,7 @@ import (
 	"time"
 	"unicode"
 
+	mcpregistry "github.com/katbyte/go-kt/mcp/registry"
 	"github.com/katbyte/go-kt/outside"
 	"github.com/katbyte/pandorest/client"
 	"github.com/katbyte/radarr-mcp/sdk/radarr"
@@ -590,19 +591,6 @@ func ran(res radarr.GetCommandByIdResponse, err error) (commandOut, error) {
 // a stuck command comes back as "still running" rather than a hung call.
 const defaultWait = 2 * time.Minute
 
-// waitFor is the wait a tool was asked for, in seconds: 0 means the default,
-// and a negative one not to wait at all.
-func waitFor(seconds int) time.Duration {
-	switch {
-	case seconds < 0:
-		return 0
-	case seconds == 0:
-		return defaultWait
-	default:
-		return time.Duration(seconds) * time.Second
-	}
-}
-
 // Text that strangers wrote reaches a model through these tools: a release's
 // name as an indexer gave it, what a download client said of a download, an
 // overview from TMDB, a line of Radarr's log quoting any of them. go-kt's
@@ -621,15 +609,6 @@ func outsideName(s string) string { return outside.Text(s, nameLimit) }
 
 // outsideProse is running text that came from outside, made safe to show.
 func outsideProse(s string) string { return outside.Text(s, proseLimit) }
-
-// limitOr is the limit asked for, or the default when none was.
-func limitOr(limit, dflt int) int {
-	if limit <= 0 {
-		return dflt
-	}
-
-	return limit
-}
 
 const (
 	// defaultLimit is a page of a list asked for with no limit.
@@ -658,7 +637,7 @@ type pageOut struct {
 // default when no limit is given, never more than maxLimit, never before the
 // start.
 func (p pageIn) args() (limit, offset int) {
-	return min(limitOr(p.Limit, defaultLimit), maxLimit), max(p.Offset, 0)
+	return min(mcpregistry.LimitOr(p.Limit, defaultLimit), maxLimit), max(p.Offset, 0)
 }
 
 // pageRows is one page of a list held whole: at most limit rows from offset,
@@ -668,17 +647,7 @@ func pageRows[T any](all []T, in pageIn) ([]T, pageOut) {
 	from := min(offset, len(all))
 	rows := all[from:min(from+limit, len(all))]
 
-	return rows, pageOut{Total: len(all), Offset: offset, NextOffset: nextOffset(offset, len(rows), len(all))}
-}
-
-// nextOffset is where the page after one of n rows from offset starts, or 0
-// when that was the last.
-func nextOffset(offset, n, total int) int {
-	if n == 0 || offset+n >= total {
-		return 0
-	}
-
-	return offset + n
+	return rows, pageOut{Total: len(all), Offset: offset, NextOffset: mcpregistry.NextOffset(offset, len(rows), len(all))}
 }
 
 // window reads limit rows from offset out of a listing Radarr pages by page
@@ -705,7 +674,7 @@ func window[T any](in pageIn, fetch func(page, size int) ([]T, int, error)) ([]T
 		rows = rows[:min(limit, len(rows))]
 	}
 
-	return rows, pageOut{Total: total, Offset: offset, NextOffset: nextOffset(offset, len(rows), total)}, nil
+	return rows, pageOut{Total: total, Offset: offset, NextOffset: mcpregistry.NextOffset(offset, len(rows), total)}, nil
 }
 
 // decodeBody decodes a response's JSON body into v, for the operations whose

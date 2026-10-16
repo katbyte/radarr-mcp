@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 
+	mcpregistry "github.com/katbyte/go-kt/mcp/registry"
 	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -60,7 +61,7 @@ func finding(m *radarr.MovieResource, detail string) auditFinding {
 // collect adds a finding, counting it and keeping it when there is room.
 func (o *auditOut) collect(f auditFinding, limit int) {
 	o.Found++
-	if len(o.Findings) < limitOr(limit, 100) {
+	if len(o.Findings) < mcpregistry.LimitOr(limit, 100) {
 		o.Findings = append(o.Findings, f)
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 
+	mcpregistry "github.com/katbyte/go-kt/mcp/registry"
 	"github.com/katbyte/go-kt/version"
 	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -298,7 +299,7 @@ func registerServerTools(r *registry) {
 			return nil, logFileOut{}, err
 		}
 
-		return nil, logFileOut{Name: in.Name, Lines: lastLines(string(body), limitOr(in.Tail, 100))}, nil
+		return nil, logFileOut{Name: in.Name, Lines: lastLines(string(body), mcpregistry.LimitOr(in.Tail, 100))}, nil
 	})
 
 	type backupsOut struct {

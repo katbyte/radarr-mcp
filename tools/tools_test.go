@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -549,11 +548,6 @@ func TestSmallParsers(t *testing.T) {
 	}
 	if !inFolder("/media/movies/Alien (1979)", "/media/movies/") || inFolder("/media/movies2/Alien", "/media/movies") {
 		t.Error("inFolder matches a sibling folder, or misses a child")
-	}
-	for in, want := range map[int]time.Duration{-1: 0, 0: defaultWait, 30: 30 * time.Second} {
-		if got := waitFor(in); got != want {
-			t.Errorf("waitFor(%d) = %v, want %v", in, got, want)
-		}
 	}
 	for name, want := range map[string]string{"Rss Sync": "RssSync", "rsssync": "RssSync", "Refresh Monitored Downloads": "RefreshMonitoredDownloads"} {
 		if got, ok := canonicalTask(name); !ok || got != want {

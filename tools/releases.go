@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	mcpregistry "github.com/katbyte/go-kt/mcp/registry"
 	"github.com/katbyte/radarr-mcp/sdk/radarr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -98,7 +99,7 @@ func registerReleaseTools(r *registry) {
 		}
 		out := releaseSearchOut{Total: len(res.Answer)}
 		for i := range res.Answer {
-			if len(out.Releases) == limitOr(in.Limit, 20) {
+			if len(out.Releases) == mcpregistry.LimitOr(in.Limit, 20) {
 				break
 			}
 			if in.Approved && !isTrue(res.Answer[i].Approved) {
