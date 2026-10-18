@@ -230,6 +230,12 @@ func auditRuns() []auditRun {
 		auditRun{name: "audit_resolution_mismatch", run: func(ctx context.Context, e *auditEnv, in auditIn) (auditOut, error) {
 			return sweep(ctx, e, in, resolutionCheck)
 		}},
+		auditRun{name: "audit_dynamic_range", run: func(ctx context.Context, e *auditEnv, in auditIn) (auditOut, error) {
+			return sweep(ctx, e, in, rangeCheck)
+		}},
+		auditRun{name: "audit_subtitles", run: func(ctx context.Context, e *auditEnv, in auditIn) (auditOut, error) {
+			return sweep(ctx, e, in, subtitleCheck([]string{interfaceLanguage(ctx, e.c)}, false, false))
+		}},
 		auditRun{name: "audit_quality", run: func(ctx context.Context, e *auditEnv, in auditIn) (auditOut, error) {
 			return sweep(ctx, e, in, qualityCheck(0, 0))
 		}},
@@ -243,6 +249,9 @@ func auditRuns() []auditRun {
 			return sweep(ctx, e, in, metadataCheck(defaultMetadataFields))
 		}},
 		auditRun{name: "audit_unmapped_folders", run: unmappedAudit},
+		auditRun{name: "audit_disk_space", run: func(ctx context.Context, e *auditEnv, in auditIn) (auditOut, error) {
+			return diskSpaceAudit(ctx, e, diskSpaceIn{RootFolder: in.RootFolder})
+		}},
 		auditRun{name: "audit_missing_folders", run: missingFoldersAudit},
 		auditRun{name: "audit_collection_gaps", run: func(ctx context.Context, e *auditEnv, _ auditIn) (auditOut, error) {
 			return gapsAudit(ctx, e, gapsIn{})

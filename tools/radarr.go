@@ -23,19 +23,34 @@ import (
 	"github.com/katbyte/go-kt/outside"
 	"github.com/katbyte/pandorest/client"
 	"github.com/katbyte/radarr-mcp/sdk/radarr"
+	"golang.org/x/sync/singleflight"
 )
 
 // allMovies reads every film in the library. Radarr answers the whole list in
 // one call, each film with its file and the file's media info, which is what
 // makes a sweep over the library one request rather than one per film.
 func allMovies(ctx context.Context, c *radarr.Client) ([]radarr.MovieResource, error) {
-	res, err := c.GetMovie(ctx, radarr.GetMovieOptions{})
+	shared, err, _ := libraryReads.Do(fmt.Sprintf("%p", c), func() (any, error) {
+		// the read is shared, so one caller giving up does not end it for the others
+		res, err := c.GetMovie(context.WithoutCancel(ctx))
+		return res.Answer, err
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return res.Answer, nil
+	movies, ok := shared.([]radarr.MovieResource)
+	if !ok {
+		return nil, fmt.Errorf("reading the library came back as %T, not films", shared)
+	}
+
+	// each caller has a list of its own to sort and cut
+	return slices.Clone(movies), nil
 }
+
+// libraryReads lets calls that want the whole library at the same time share one read of it: on a large library it is a hundred megabytes,
+// and two read side by side were enough to make Radarr stop answering.
+var libraryReads singleflight.Group
 
 // cleanTitle folds a title for comparison: case, punctuation and spacing
 // never decide whether two titles name the same film.
@@ -693,4 +708,9 @@ func decodeBody(resp *http.Response, v any) error {
 	}
 
 	return json.Unmarshal(body, v)
+}
+
+// detailsClash is Radarr refusing a film because another of its own jobs is saving the same film's details at that moment.
+func detailsClash(err error) bool {
+	return client.IsConflict(err) && strings.Contains(err.Error(), "UNIQUE constraint failed: MovieMetadata")
 }

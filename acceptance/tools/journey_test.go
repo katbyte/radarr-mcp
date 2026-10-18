@@ -90,6 +90,10 @@ func TestJourneyLookupsChangeNothing(t *testing.T) {
 		"audit_quality":             {"min_resolution": 2160},
 		"audit_runtime":             {"tolerance_percent": 1},
 		"audit_resolution_mismatch": {"root_folder": messyRoot},
+		"audit_dynamic_range":       {"root_folder": messyRoot},
+		"audit_subtitles":           {"languages": []any{"French"}, "files": true},
+		"audit_disk_space":          {"min_free_gb": 1},
+		"rootfolder_list":           {"unmapped": true},
 	} {
 		suite.Call(t, name, args)
 	}
@@ -237,7 +241,7 @@ func TestJourneyEveryFixableAudit(t *testing.T) {
 		suite.Call(t, "naming_edit", map[string]any{"rename_movies": true})
 		t.Cleanup(func() { _, _ = suite.Invoke("naming_edit", map[string]any{"rename_movies": false}) })
 		before := map[string]string{
-			messyMatrix: messyRoot + "/The Matrix (1999)/the.matrix.1999.1080p.bluray.x264-GRP.mkv",
+			messyMatrix: messyRoot + "/The Matrix (1999)/the.matrix.1999.1080p.bluray.hdr.x264-GRP.mkv",
 			messy2049:   messyRoot + "/Blade Runner 2049 (2017)/Blade Runner 2049 (2017) Bluray-2160p.mkv",
 		}
 		after := map[string]string{

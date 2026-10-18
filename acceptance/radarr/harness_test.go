@@ -466,11 +466,18 @@ func createFixtures(ctx context.Context) (library, error) {
 		if _, ok := l.films[f.TmdbID]; ok {
 			continue
 		}
-		res, err := sdk.PostMovie(ctx, radarr.MovieResource{
+		film := radarr.MovieResource{
 			Title: f.Title, Year: f.Year, TmdbId: radarr.TmdbID(f.TmdbID), Path: f.Path, QualityProfileId: hd1080,
 			Monitored: new(true), MinimumAvailability: radarr.MovieStatusTypeReleased,
 			AddOptions: &radarr.AddMovieOptions{SearchForMovie: new(false), Monitor: radarr.MonitorTypesMovieOnly},
-		})
+		}
+		// adding Alien makes Radarr fetch the rest of its collection, and Alien³ added while that fetch saves its details is refused as a
+		// clash that a moment later is gone
+		res, err := sdk.PostMovie(ctx, film)
+		for attempt := 1; attempt < 4 && client.IsConflict(err) && strings.Contains(err.Error(), "UNIQUE constraint failed: MovieMetadata"); attempt++ {
+			time.Sleep(2 * time.Second)
+			res, err = sdk.PostMovie(ctx, film)
+		}
 		if err != nil {
 			return l, fmt.Errorf("adding %s: %w", f.Title, err)
 		}

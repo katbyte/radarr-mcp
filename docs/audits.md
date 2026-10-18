@@ -48,6 +48,18 @@ Files with no audio in a language they should have: by default the film's origin
 
 A track tagged as of no known language (`und`), as several (`mul`) or as none (`zxx`) is treated like one with no tag: the file is left alone.
 
+## audit_subtitles
+
+Films a viewer could not follow: audio in none of the viewer's languages and no subtitles in them either. The languages are by default the one Radarr's own interface is set to, or any given. With `all`, every film without subtitles in the languages is flagged, whatever its audio.
+
+Subtitles inside the file always count. Subtitle files beside it, which Radarr keeps track of, count with `files`; that asks Radarr about each film the audit would flag, so it is slower. A subtitle file's language is read from its name: `Alien (1979).en.srt` or `.eng.forced.srt`. Audio with no language tag, or tagged as unknown, could be in the viewer's language, so such a film is never flagged unless `all` is set.
+
+Radarr cannot fetch subtitles itself. The findings are a list for a subtitle tool such as Bazarr, or for finding a copy that has them.
+
+## audit_dynamic_range
+
+Files whose name claims a dynamic range the video does not have: named HDR but SDR, or named Dolby Vision but only HDR10. Also Dolby Vision with no HDR10 layer under it, which a TV or player without Dolby Vision shows in the wrong colours. The name is the file's own, or the release's when the file's says nothing; "HDRip" is a rip, not a claim. Radarr reads the video itself, so its grade is not wrong; the release is. `history_mark_failed` rejects it so Radarr looks for another.
+
 ## audit_year_mismatch
 
 Films whose folder names a year two or more away from the film's: the folder says `(2021)`, the match says 1984 - the wrong edition, or the wrong film. A right match in a misnamed folder is fixed by `movie_edit` into the root folder it is already in, which renames the folder by the naming scheme.
@@ -58,9 +70,15 @@ Files and folders not named the way Radarr's naming scheme would: a scene-named 
 
 ## audit_unmapped_folders
 
-Folders in the root folders that no film is in: films on disk Radarr has never heard of, and second copies of films it keeps elsewhere, each named with the copy it duplicates. `import_identify` says which film each one holds, and `movie_add` with the folder takes it in.
+Folders in the root folders that no film is in: films on disk Radarr has never heard of, second copies of films it keeps elsewhere, and where a film it has with no file probably is. `import_identify` says which film each one holds, and `movie_add` with the folder takes a new one in. For a film with no file, `movie_edit` with the folder points the film at it.
 
-A folder is matched to a film in the library by Radarr's main title and year. A folder named for a film's other title, or a year one out, is reported as not in the library.
+A folder is matched to a film by any title the film goes by: its own, its original and its alternative titles, so a folder named for the title a film had in another country still finds it. The year may be one either side of the film's, or its second year, since TMDB and a release often disagree by one. `audit_missing_folders` matches a film to a folder the same way.
+
+`rootfolder_list` counts these folders for each root folder, and with `unmapped` names them, for a session with only the default tools.
+
+## audit_disk_space
+
+Root folders running out of room. A root folder is flagged when Radarr cannot reach it, when it has less free than Radarr keeps free when importing (it then refuses every import there), and when the disk it is on has less than a share free: 5% unless `min_free_percent` says otherwise. `min_free_gb` flags one under a number of GB as well. `movie_batch_edit` with a root folder moves films to another; `audit_quality` and `audit_size` find copies worth replacing.
 
 ## audit_missing_folders
 

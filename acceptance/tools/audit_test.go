@@ -52,6 +52,8 @@ var filmAudits = map[string][]string{
 	"audit_quality":             {"Spirited Away (2001)"},
 	"audit_size":                nil, // nothing has a minimum until TestAuditSize gives one
 	"audit_language":            {"Akira (1988)"},
+	"audit_dynamic_range":       {"The Matrix (1999)"},
+	"audit_subtitles":           nil, // every film is in English, or Japanese with English subtitles
 	"audit_year_mismatch":       {"Dune (1984)"},
 	"audit_missing_metadata":    nil,
 	"audit_removed":             nil,
@@ -90,7 +92,7 @@ func TestAuditDetails(t *testing.T) {
 		audit, film string
 		want        []string
 	}{
-		{"audit_missing_files", "Alien³ (1992)", []string{"monitored and available (released), no file", "never searched"}},
+		{"audit_missing_files", "Alien³ (1992)", []string{"monitored, no file, and wanted since its release on disc or online", "never searched"}},
 		{"audit_unmonitored", "Alien Resurrection (1997)", []string{"Radarr will never download it"}},
 		{"audit_cutoff_unmet", "Heat (1995)", []string{"HDTV-720p is below HD-1080p's cutoff of Bluray-1080p"}},
 		{"audit_profile_mismatch", "Contact (1997)", []string{"Bluray-2160p is not a quality HD-1080p allows", "Bluray-1080p"}},
@@ -98,6 +100,7 @@ func TestAuditDetails(t *testing.T) {
 		{"audit_resolution_mismatch", "Blade Runner 2049 (2017)", []string{"named 2160p", "the video is 1280x720 (720p)", "Radarr graded it Bluray-720p"}},
 		{"audit_quality", "Spirited Away (2001)", []string{"480 lines (720x480), below 720", "a legacy codec (XviD)"}},
 		{"audit_language", "Akira (1988)", []string{"audio is eng, none in Japanese (the film's original language)"}},
+		{"audit_dynamic_range", "The Matrix (1999)", []string{"named HDR, but the video is SDR"}},
 		{"audit_year_mismatch", "Dune (1984)", []string{"the folder says 2021, the film is 1984"}},
 	} {
 		f := finding(t, suite.Call(t, tc.audit, nil), tc.film)
@@ -170,6 +173,68 @@ func TestAuditQualityThresholds(t *testing.T) {
 	}
 }
 
+// The subtitles audit takes the languages a viewer follows: in French, nothing in the fixtures can be followed, Princess Mononoke for its
+// Japanese audio and English subtitles, Akira for its English audio and no subtitles at all.
+func TestAuditSubtitleChoice(t *testing.T) {
+	for _, args := range []map[string]any{{"languages": []any{"French"}}, {"languages": []any{"fre"}, "files": true}} {
+		out := suite.Call(t, "audit_subtitles", args)
+		for film, want := range map[string]string{
+			"Princess Mononoke (1997)": "audio is jpn, subtitles eng, none in",
+			"Akira (1988)":             "audio is eng, no subtitles in",
+		} {
+			if detail := acctest.Str(finding(t, out, film)["detail"]); !strings.Contains(detail, want) {
+				t.Errorf("audit_subtitles %v: %s = %q, want it to say %q", args, film, detail, want)
+			}
+		}
+		// the XviD rip's audio carries no language, so it could be anything
+		if slices.Contains(findings(t, out), "Spirited Away (2001)") {
+			t.Errorf("audit_subtitles %v flagged audio with no language tag", args)
+		}
+	}
+
+	// in Japanese, only all finds the films with no Japanese subtitles: Princess Mononoke is in Japanese already
+	if got := findings(t, suite.Call(t, "audit_subtitles", map[string]any{"languages": []any{"Japanese"}})); slices.Contains(got, "Princess Mononoke (1997)") || !slices.Contains(got, "Akira (1988)") {
+		t.Errorf("audit_subtitles [Japanese] = %v", got)
+	}
+	if got := findings(t, suite.Call(t, "audit_subtitles", map[string]any{"languages": []any{"English"}, "all": true})); slices.Contains(got, "Princess Mononoke (1997)") || !slices.Contains(got, "Alien (1979)") {
+		t.Errorf("audit_subtitles [English] all = %v", got)
+	}
+}
+
+// The disk space audit checks every root folder, and with a floor no disk meets, flags each of them saying how much is free.
+func TestAuditDiskSpace(t *testing.T) {
+	roots := acctest.Rows(t, suite.Call(t, "rootfolder_list", nil)["root_folders"], "root_folders")
+	out := suite.Call(t, "audit_disk_space", map[string]any{"min_free_percent": 101, "min_free_gb": 1 << 30})
+	if acctest.Num(t, out["scanned"], "scanned") != len(roots) || acctest.Num(t, out["total_findings"], "total_findings") != len(roots) {
+		t.Fatalf("audit_disk_space with an unmeetable floor = %v of %d root folders", out, len(roots))
+	}
+	for _, f := range acctest.Rows(t, out["findings"], "findings") {
+		if acctest.Str(f["path"]) == "" || !strings.Contains(acctest.Str(f["detail"]), "free") {
+			t.Errorf("audit_disk_space finding = %v", f)
+		}
+	}
+
+	if one := suite.Call(t, "audit_disk_space", map[string]any{"root_folder": moviesRoot, "min_free_percent": 101}); acctest.Num(t, one["scanned"], "scanned") != 1 {
+		t.Errorf("audit_disk_space in %s scanned %v", moviesRoot, one["scanned"])
+	}
+}
+
+// The root folder list names the folders no film is in when asked, and only counts them otherwise.
+func TestRootFolderListNamesUnmappedFolders(t *testing.T) {
+	named := map[string][]string{}
+	for _, r := range acctest.Rows(t, suite.Call(t, "rootfolder_list", map[string]any{"unmapped": true})["root_folders"], "root_folders") {
+		named[acctest.Str(r["path"])] = acctest.Strs(t, acctest.OrEmptyList(r["unmapped"]), "unmapped")
+	}
+	if !slices.Contains(named[moviesRoot], "Ronin (1998)") || !slices.Contains(named[messyRoot], "Alien (1979) Directors Cut") {
+		t.Errorf("rootfolder_list unmapped = %v", named)
+	}
+	for _, r := range acctest.Rows(t, suite.Call(t, "rootfolder_list", nil)["root_folders"], "root_folders") {
+		if r["unmapped"] != nil {
+			t.Errorf("rootfolder_list without unmapped = %v", r)
+		}
+	}
+}
+
 // The language audit takes the languages a film should have when given
 // them, rather than its original language.
 func TestAuditLanguageChoice(t *testing.T) {
@@ -229,7 +294,7 @@ func TestAuditNaming(t *testing.T) {
 		`file "Blade Runner 2049 (2017) Bluray-2160p.mkv" would be named "Blade Runner 2049 (2017) Bluray-720p.mkv"`,
 		`file "Dune (2021) Bluray-1080p.mkv" would be named "Dune (1984) Bluray-1080p.mkv"`,
 		`file "Spirited Away (2001) DVDRip XviD.avi" would be named "Spirited Away (2001) DVD.avi"`,
-		`file "the.matrix.1999.1080p.bluray.x264-GRP.mkv" would be named "The Matrix (1999) Bluray-1080p.mkv"`,
+		`file "the.matrix.1999.1080p.bluray.hdr.x264-GRP.mkv" would be named "The Matrix (1999) Bluray-1080p.mkv"`,
 		`folder "Dune (2021)" would be named "Dune (1984)"`,
 	}
 	if got := details(t, on); !slices.Equal(got, want) || on["note"] != nil {
@@ -368,7 +433,8 @@ func TestAuditAll(t *testing.T) {
 	}
 	scoped := suite.Call(t, "audit_all", map[string]any{"root_folder": moviesRoot})
 	for _, row := range acctest.Rows(t, scoped["audits"], "audits") {
-		if name := acctest.Str(row["audit"]); name != "audit_unmapped_folders" && name != "audit_collection_gaps" && name != "audit_queue" && acctest.Num(t, row["total_findings"], "total_findings") != 0 {
+		// the disk space audit is about the disk the root folder is on, which is the test machine's
+		if name := acctest.Str(row["audit"]); name != "audit_unmapped_folders" && name != "audit_collection_gaps" && name != "audit_queue" && name != "audit_disk_space" && acctest.Num(t, row["total_findings"], "total_findings") != 0 {
 			t.Errorf("audit_all in %s: %s found %v", moviesRoot, name, row["total_findings"])
 		}
 	}

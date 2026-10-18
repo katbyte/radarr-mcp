@@ -859,3 +859,99 @@ func TestAVideoInAnExtrasFolderIsNotUntracked(t *testing.T) {
 		}
 	}
 }
+
+// A folder finds the film it is by any title the film goes by, and by a year TMDB puts one either side of the release's.
+func TestAFolderFindsItsFilmByAnyTitle(t *testing.T) {
+	t.Parallel()
+
+	utopia := film(1, "Utopia", 1951)
+	utopia.AlternateTitles = []radarr.AlternativeTitleResource{{Title: "Atoll K"}}
+	avalon := film(2, "Avalon High", 2011)
+	astral := film(3, "The Astral Factor", 1978)
+	dune, dune2 := film(4, "Dune", 1984), film(5, "Dune", 2021)
+	byTitle := titleIndex([]radarr.MovieResource{utopia, avalon, astral, dune, dune2})
+
+	for _, tc := range []struct {
+		folder string
+		want   radarr.MovieID
+	}{
+		{"Atoll K (1951)", 1},
+		{"Avalon High (2010)", 2},
+		{"The Astral Factor (1976)", 0},
+		{"Dune (2021)", 5},
+		{"Dune (1984)", 4},
+		{"Brazil (1985)", 0},
+	} {
+		title, year, _ := parseFolder(tc.folder)
+		got := radarr.MovieID(0)
+		if m := sameFilm(byTitle[cleanTitle(title)], year); m != nil {
+			got = m.Id
+		}
+		if got != tc.want {
+			t.Errorf("%s is film %d, want %d", tc.folder, got, tc.want)
+		}
+	}
+}
+
+// A name that claims HDR or Dolby Vision the video lacks is flagged, as is Dolby Vision with nothing under it; HDRip is not a claim.
+func TestDynamicRangeCheck(t *testing.T) {
+	t.Parallel()
+
+	e := newAuditEnv(nil)
+	for _, tc := range []struct {
+		name, kind string
+		want       string
+	}{
+		{"Dune (2021) Bluray-2160p HDR.mkv", "", "named HDR, but the video is SDR"},
+		{"Dune (2021) Bluray-2160p HDR10.mkv", "HDR10", ""},
+		{"Dune (2021) Bluray-2160p DV.mkv", "HDR10", "named Dolby Vision, but the video is HDR10"},
+		{"Dune (2021) Bluray-2160p DV HDR10.mkv", "DV HDR10", ""},
+		{"Dune (2021) WEBDL-2160p.mkv", "DV", "Dolby Vision with no HDR10 layer under it"},
+		{"Dune (2021) Bluray-2160p HDR.mkv", "DV SDR", "named HDR, but the video is SDR"},
+		{"Dune.2021.HDRip.x264.mkv", "", ""},
+		{"Dune (2021) Bluray-1080p.mkv", "", ""},
+	} {
+		m := withMedia(new(film(1, "Dune", 2021)), tc.name, "Bluray-2160p", 2160, radarr.MediaInfoResource{Resolution: "3840x2160", VideoDynamicRangeType: tc.kind}, 1)
+		detail, bad := check(t, rangeCheck, e, m)
+		if bad != (tc.want != "") || !strings.Contains(detail, tc.want) {
+			t.Errorf("%s with %q video = %q, %v; want %q", tc.name, tc.kind, detail, bad, tc.want)
+		}
+	}
+}
+
+// A film is flagged for subtitles when its audio is in none of the languages and its subtitles are in none either; with all, whenever its
+// subtitles are in none.
+func TestSubtitleCheck(t *testing.T) {
+	t.Parallel()
+
+	e := newAuditEnv(nil)
+	akira := func(audio, subs string) *radarr.MovieResource {
+		return withMedia(new(film(1, "Akira", 1988)), "Akira (1988) Bluray-1080p.mkv", "Bluray-1080p", 1080, radarr.MediaInfoResource{AudioLanguages: audio, AudioStreamCount: len(splitList(audio)), Subtitles: subs}, 1)
+	}
+	english := []string{"English"}
+	for _, tc := range []struct {
+		audio, subs string
+		all         bool
+		want        string
+	}{
+		{"jpn", "", false, "audio is jpn, no subtitles in English"},
+		{"jpn", "fre", false, "audio is jpn, subtitles fre, none in English"},
+		{"jpn", "eng", false, ""},
+		{"jpn/eng", "", false, ""},
+		{"und", "", false, ""},
+		{"", "", false, ""},
+		{"eng", "", false, ""},
+		{"eng", "", true, "audio is eng, no subtitles in English"},
+	} {
+		detail, bad := check(t, subtitleCheck(english, tc.all, false), e, akira(tc.audio, tc.subs))
+		if bad != (tc.want != "") || !strings.Contains(detail, tc.want) {
+			t.Errorf("audio %q, subtitles %q, all %v = %q, %v; want %q", tc.audio, tc.subs, tc.all, detail, bad, tc.want)
+		}
+	}
+
+	for name, want := range map[string]bool{"Akira (1988).en.srt": true, "Akira (1988).eng.forced.srt": true, "Akira (1988).english.srt": true, "Akira (1988).fr.srt": false, "Akira (1988).srt": false} {
+		if got := subtitleFileIn(name, english); got != want {
+			t.Errorf("%s is in English: %v, want %v", name, got, want)
+		}
+	}
+}

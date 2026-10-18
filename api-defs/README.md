@@ -6,7 +6,7 @@ Radarr publishes an OpenAPI document of its v3 API, vendored here as the referen
 
 | File | Source | Imported into |
 |---|---|---|
-| `radarr-openapi-6.4.4.10685.json` | Radarr's own repository, `src/Radarr.Api.V3/openapi.json` at the tag `v6.4.4.10685` - 164 paths, 237 operations | `radarr-6.4.4.10685/` |
+| `radarr-openapi-6.4.4.10685.json` | Radarr's own repository, `src/Radarr.Api.V3/openapi.json` at the tag `v6.4.4.10685` - 164 paths, 237 operations, of which the client has the 231 that are the API | `radarr-6.4.4.10685/` |
 
 The document is named by the Radarr release it was taken from, not by its own version: that says "3.0.0" for every release, since it names the API. The generated package carries both, as `APIVersion` and `DocumentVersion`. The live suites run against the same release, the image `.scripts/testenv.sh` pins (`lscr.io/linuxserver/radarr:version-6.4.4.10685`).
 
@@ -18,9 +18,9 @@ The spec is documentation of intent, not of behaviour. Swashbuckle writes it fro
 
 These are shape bugs, fixed in the generated client by this repository's workarounds (`sdk/pandorest/workarounds`, listed in `radarr-6.4.4.10685/Service.json`). Each checks its bug is still in the document and fails the import once it is not.
 
-- **Most GETs do not say what they answer** (`radarr-undeclared-responses`). Their 200 has no content, so nothing says whether it is JSON or a file. A table says which answer JSON of no fixed shape (the filesystem browser, the naming examples, a film's folder), which answer a list of a known schema (`GET /credit`), and which answer files: the UI's pages, log files, media covers, the calendar feed, and `GET /system/routes`, which is a graph of every route as plain text.
+- **Most GETs do not say what they answer** (`radarr-undeclared-responses`). Their 200 has no content, so nothing says whether it is JSON or a file. A table says which answer JSON of no fixed shape (the filesystem browser, the naming examples, a film's folder), which answer a list of a known schema (`GET /credit`), and which answer files: log files, media covers, the calendar feed, and `GET /system/routes`, which is a graph of every route as plain text.
 - **JSON answers also list `text/plain`.** About a hundred responses offer both, and Radarr only ever sends JSON; read as written, the second says "this answers a file". This one is a setting of the generator's rather than a workaround: a response that offers JSON answers JSON.
-- **`GET /` has a parameter it cannot take** (`radarr-root-path-parameter`). It shares its action with the catch-all `GET /{path}`, and inherits its `{path}` parameter.
+- **The web interface's routes are in the document** (`radarr-ui-routes`). Its pages, their files and the sign-in form answer a browser, not a program, so they are taken out: the client has no method for them.
 - **A command's body is the wrong schema, both ways** (`radarr-command-body`, `radarr-command-resource-body`). Radarr reads a command's name and fills that command's own class from the body, so a `RefreshMovie` carries `movieIds` and a `ManualImport` carries `files`; the document names a schema with none of those fields. `POST /command` takes, and a command's `body` answers, raw JSON.
 - **Creates and updates answer other statuses** (`radarr-statuses`). Every create answers 201 and every update 202 - the bulk and editor updates too - where the document says 200 for all of them, which made every one an error.
 - **The server sends fields the document lacks** (`radarr-undeclared-fields`): `allowedHosts` and `trustedNetworks` on the host settings, `isContainerized` on the system status, `movieFileQualities` on a film's statistics, `isExcluded` on a film a lookup finds.
@@ -28,7 +28,6 @@ These are shape bugs, fixed in the generated client by this repository's workaro
 - **Writes that answer something say they answer nothing** (`radarr-write-responses`). The movie and file editors and bulk edits, the collection and quality definition bulk edits, a bulk exclusion and an add from an import list's discoveries answer what they changed; a grab (`POST /release`) answers a release; a manual import's reprocess answers its candidates; a provider action answers whatever that provider's action returns; and a test of every provider answers a result each, with 400 and the same list when any of them fails, which the client reads as the answer it is rather than an error. That result had no schema at all, so the workaround adds one (`ProviderTestAllResult`).
 - **Bulk provider edits answer a list** (`radarr-bulk-responses`). The bulk edits of custom formats, download clients, import lists and indexers declare the single resource the single edit answers.
 - **The host settings cannot be saved without ten of their fields** (`radarr-host-required`). Radarr saves them into `config.xml` field by field, comparing each value it is sent with the one it has; a field that is missing (or null) crashes the save with a 500 (the log level, the instance name, the URL base, the certificate path and password, the update script) or fails validation (the allowed hosts, bind address and branch). The document calls them all optional, and the models leave an empty string out, so the settings a fresh Radarr starts with - no URL base, no certificate - could never be sent back. The workaround marks them required, which the generator turns into fields that are always sent.
-- **A login and a logout answer a redirect, not a page** (`radarr-auth-redirects`). The document says 200 for both, which is the page a client lands on when it follows the redirect. Each answers 302 and nothing else, so that is what the client expects, and it hands the redirect back as it came, where a redirect from any other call is refused: from those it means the server url is of something in front of Radarr.
 - **Updates take their id as a string** (`radarr-put-ids`). Twenty-one PUTs declare the `{id}` in their path a string, where every other operation by id declares the same ids as integers.
 
 ## Radarr behaviour
@@ -73,7 +72,6 @@ What the suites found that no document could say. The tools work with it; anyone
   - Radarr runs its commands on two threads, each as soon as it can, and cancels only a command still waiting for one: cancelling a command that has started or finished answers 409 ("Unable to cancel task").
   - A cancelled command never runs, but reads as queued, then and after.
 - **The rest.**
-  - The login form (`POST /login`) answers with a redirect, which a failed login points back to `/login?loginFailed=true`, and a logout (`GET /logout`) with one to the front page. With External authentication there are no users, so every login fails.
   - `GET /update` answers 500 when Radarr cannot reach its update server, or cannot read what it says. In the test container a stand-in answers for that server (go-kt's `test/services/arrserver`), with no releases on offer, and `GET /update` answers an empty list.
   - Once a build is two weeks old Radarr's health check asks its update server whether there is a newer one, and an answer it cannot read ends the whole check with no health recorded at all. The stand-in answers that too, with no.
 

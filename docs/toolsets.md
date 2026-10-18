@@ -1,20 +1,20 @@
 # Choosing which tools load
 
-**The default is `core`: six read-only tools, about 950 tokens.** The whole surface is around 26,500 tokens of tool definitions before anyone asks a question, which is a poor way to spend a client's context by default. `--toolsets` / `RADARR_TOOLSETS` loads the groups a session actually needs, and `core` comes along with whatever else is asked for, because nothing else can find a film.
+**The default is `core`: six read-only tools, about 1,000 tokens.** The whole surface is around 27,300 tokens of tool definitions before anyone asks a question, which is a poor way to spend a client's context by default. `--toolsets` / `RADARR_TOOLSETS` loads the groups a session actually needs, and `core` comes along with whatever else is asked for, because nothing else can find a film.
 
 **Curating a library needs `RADARR_TOOLSETS=curation`** - the audits and everything that fixes what they find. **Setting Radarr up needs `RADARR_TOOLSETS=setup`** - its indexers, download clients, lists, notifications, rules and settings: more than a third of all the tools, and worth loading only for that job. `RADARR_TOOLSETS=all` restores every tool.
 
 | toolset | tools | with core | ~tokens |
 |---|---|---|---|
-| `core` *(default)* | 6 | 6 | 950 |
-| `organise` | 9 | 15 | 2,550 |
+| `core` *(default)* | 6 | 6 | 1,000 |
+| `organise` | 9 | 15 | 2,600 |
 | `acquire` | 13 | 19 | 3,000 |
-| `admin` | 17 | 23 | 3,500 |
-| `curation` | 40 | 46 | 8,450 |
+| `admin` | 17 | 23 | 3,600 |
+| `curation` | 43 | 49 | 9,300 |
 | `setup` | 52 | 58 | 12,800 |
-| `all` | 137 | 137 | 26,500 |
+| `all` | 140 | 140 | 27,300 |
 
-Tokens are what the model sees: each tool's name, description and input schema, measured over a real `tools/list` at four bytes a token, with `--enable-delete` on (the 14 delete tools are among them). Every tool also carries an output schema, another 34,000 tokens across `all`, but clients keep that to themselves to validate results rather than sending it to the model.
+Tokens are what the model sees: each tool's name, description and input schema, measured over a real `tools/list` at four bytes a token, with `--enable-delete` on (the 14 delete tools are among them). Every tool also carries an output schema, another 35,000 tokens across `all`, but clients keep that to themselves to validate results rather than sending it to the model.
 
 `--toolsets` also takes a resource family - `movie`, `moviefile`, `audit`, `import`, `release`, `queue`, `history`, `blocklist`, `calendar`, `collection`, `exclusion`, `tag`, `rootfolder`, `qualityprofile`, `qualitydefinition`, `customformat`, `naming`, `indexer`, `downloadclient`, `importlist`, `notification`, `metadata`, `provider`, `delayprofile`, `releaseprofile`, `autotagging`, `remotepathmapping`, `customfilter`, `filesystem`, `server`, `task` - which is every tool with that prefix:
 

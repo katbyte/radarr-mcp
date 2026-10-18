@@ -47,9 +47,6 @@ func newOperationServer(t *testing.T, status int, contentType, body string) (*Cl
 
 			return
 		}
-		if status >= http.StatusMultipleChoices && status < http.StatusBadRequest {
-			w.Header().Set("Location", "/redirected")
-		}
 		w.WriteHeader(status)
 		_, _ = io.WriteString(w, body)
 	}))

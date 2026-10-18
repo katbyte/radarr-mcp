@@ -124,7 +124,7 @@ func registerMovieEditTools(r *registry) {
 			body.Path = ""
 			body.RootFolderPath = root.Path
 		}
-		added, err := client.PostMovie(ctx, body)
+		added, err := addMovie(ctx, client, &body)
 		if err != nil {
 			return nil, movieDetail{}, err
 		}
@@ -676,4 +676,21 @@ func waitForMove(ctx context.Context, c *radarr.Client, since time.Time) error {
 	}
 
 	return errors.New("the move is still running; task_list shows it")
+}
+
+// addMovie adds a film, trying again a few times when Radarr refuses it as a clash with itself. Adding a film starts a fetch of its whole
+// collection, and a film of that collection added while the fetch is saving its details is refused, though a moment later it goes in.
+func addMovie(ctx context.Context, c *radarr.Client, body *radarr.MovieResource) (radarr.PostMovieResponse, error) {
+	for attempt := 1; ; attempt++ {
+		added, err := c.PostMovie(ctx, *body)
+		if attempt == 4 || !detailsClash(err) {
+			return added, err
+		}
+
+		select {
+		case <-ctx.Done():
+			return added, ctx.Err()
+		case <-time.After(2 * time.Second):
+		}
+	}
 }

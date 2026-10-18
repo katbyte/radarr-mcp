@@ -54,9 +54,8 @@
 //
 // The importer fixed these bugs in the document before generating from it:
 //
+//   - radarr-ui-routes
 //   - radarr-undeclared-responses
-//   - radarr-auth-redirects
-//   - radarr-root-path-parameter
 //   - radarr-command-body
 //   - radarr-commands
 //   - radarr-statuses

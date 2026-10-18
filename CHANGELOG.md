@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### Added
+
+- `audit_dynamic_range` finds files named HDR or Dolby Vision whose video is not, and Dolby Vision files with no HDR10 layer under them, which show in the wrong colours on a TV without Dolby Vision
+- `audit_subtitles` finds films whose audio and subtitles are both in languages the viewer does not follow, by default the language Radarr's interface is in
+- `audit_disk_space` finds root folders running out of room, or that Radarr cannot reach. All three run in `audit_all`
+- `rootfolder_list` can name the folders no film is in, with `unmapped`, so the default tools can say which they are as well as how many
+
+### Breaking
+
+- the Go client no longer has methods for Radarr's web interface: its pages (`Get`, `GetByPath`, `GetContentByPath`) and its sign-in (`GetLogin`, `PostLogin`, `GetLogout`). They answer a browser, not a program, which signs in with its API key; Sonarr's and Prowlarr's clients already leave them out
+
+### Fixed
+
+- `audit_unmapped_folders` and `audit_missing_folders` match a folder to a film by any of its titles and by a year either side, where they took only its main title and exact year: a folder named for a film's title in another country read as not in the library
+- `audit_unmapped_folders` called a folder "a second copy" of a film the library had with no file; it now says the folder is probably where that film is, and how to point the film at it
+- `audit_missing_files` said "available (announced)", which read as a contradiction; it now says from when Radarr wants the film, such as "since it was announced"
+- two tools reading the whole library at once read it twice, and on a large library that was enough to make Radarr stop answering. Calls at the same moment now share one read
+- adding a film could fail when Radarr was fetching the same film's collection at that moment. `movie_add` now tries again, as Radarr's refusal is gone a moment later
+
 ### Changed
 
 - moved to go-kt v0.9.0 and pandorest v0.11.0. Five small helpers that were radarr's own (limits, paging, waits, "a" or "an", and the first sentence of a description) are now the shared ones

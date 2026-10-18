@@ -95,6 +95,18 @@ var languageCodes = map[string][]string{
 	"ukrainian": {"ukr"}, "urdu": {"urd"}, "vietnamese": {"vie"},
 }
 
+// shortCodes are the two-letter codes a subtitle file beside a film is often named with ("Alien (1979).en.srt"), by the language as Radarr
+// names it.
+var shortCodes = map[string]string{
+	"arabic": "ar", "bengali": "bn", "bulgarian": "bg", "catalan": "ca", "chinese": "zh", "czech": "cs", "danish": "da", "dutch": "nl",
+	"english": "en", "estonian": "et", "finnish": "fi", "flemish": "nl", "french": "fr", "german": "de", "greek": "el", "hebrew": "he",
+	"hindi": "hi", "hungarian": "hu", "icelandic": "is", "indonesian": "id", "italian": "it", "japanese": "ja", "korean": "ko",
+	"latvian": "lv", "lithuanian": "lt", "malay": "ms", "malayalam": "ml", "norwegian": "no", "persian": "fa", "polish": "pl",
+	"portuguese": "pt", "portuguese (brazil)": "pt", "romanian": "ro", "russian": "ru", "serbian": "sr", "slovak": "sk", "slovenian": "sl",
+	"spanish": "es", "spanish (latino)": "es", "swedish": "sv", "tagalog": "tl", "tamil": "ta", "telugu": "te", "thai": "th",
+	"turkish": "tr", "ukrainian": "uk", "urdu": "ur", "vietnamese": "vi",
+}
+
 // codesFor is the audio codes a language, named or already a code, is
 // tagged with.
 func codesFor(lang string) []string {
@@ -128,6 +140,38 @@ func registerFileAudits(r *registry) {
 			"Radarr may quietly grade such a file by its video; the name is still a lie about what was downloaded. moviefile_edit corrects a wrong grade; history_mark_failed rejects the release.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in auditIn) (*mcp.CallToolResult, auditOut, error) {
 		out, err := sweep(ctx, newAuditEnv(client), in, resolutionCheck)
+		return nil, out, err
+	})
+
+	add(r, readTool, &mcp.Tool{
+		Name: "audit_dynamic_range",
+		Description: "Sweep the library for files whose name claims HDR or Dolby Vision the video does not have, and Dolby Vision files with no HDR10 layer under them, which a TV or player without Dolby Vision shows in the wrong colours. " +
+			"Radarr reads the video itself, so the grade is not wrong; the release is. history_mark_failed rejects it and lets Radarr look for another.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in auditIn) (*mcp.CallToolResult, auditOut, error) {
+		out, err := sweep(ctx, newAuditEnv(client), in, rangeCheck)
+		return nil, out, err
+	})
+
+	type subtitlesIn struct {
+		auditIn
+		Languages []string `json:"languages,omitempty" jsonschema:"the languages a film should be followable in (names or codes: English, fre); default the language Radarr's interface is in"`
+		All       bool     `json:"all,omitempty"       jsonschema:"flag every film without subtitles in them, not only those whose audio is in none of them"`
+		Files     bool     `json:"files,omitempty"     jsonschema:"also count the subtitle files Radarr keeps beside a film, asking Radarr about each film it would flag, which is slower"`
+	}
+	add(r, readTool, &mcp.Tool{
+		Name: "audit_subtitles",
+		Description: "Sweep the library for films a viewer could not follow: audio in none of their languages (by default the language Radarr's interface is in) and no subtitles in them either. " +
+			"With all, every film without subtitles in them. Subtitles in the file are always counted; subtitle files beside it only with files. " +
+			"Radarr cannot fetch subtitles itself, so this is a list for a subtitle tool such as Bazarr, or for a copy that has them.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in subtitlesIn) (*mcp.CallToolResult, auditOut, error) {
+		languages := in.Languages
+		if len(languages) == 0 {
+			languages = []string{interfaceLanguage(ctx, client)}
+		}
+		out, err := sweep(ctx, newAuditEnv(client), in.auditIn, subtitleCheck(languages, in.All, in.Files))
+		if err == nil && !in.Files {
+			out.Note = "subtitles inside each file were counted; files also counts the subtitle files beside them"
+		}
 		return nil, out, err
 	})
 
@@ -238,6 +282,153 @@ var resolutionCheck = withFile(func(_ context.Context, _ *auditEnv, _ *radarr.Mo
 
 	return fmt.Sprintf("%s, but the video is %dx%d (%s)%s", strings.Join(claims, " and "), w, h, classLabel(actual), grade), true, nil
 })
+
+// namedRange finds a claim of high dynamic range in a file's name: Dolby Vision, or HDR in one of its forms. HDRip is a rip, not HDR.
+var namedRange = regexp.MustCompile(`(?i)(?:^|[^a-z0-9])(dv|dovi|dolby[ ._-]?vision|hdr10\+|hdr10plus|hdr10|hdr)(?:$|[^a-z0-9+])`)
+
+// rangeClaim is what a name claims of the video's dynamic range: "Dolby Vision", "HDR", or "" for nothing.
+func rangeClaim(name string) string {
+	claim := ""
+	for _, m := range namedRange.FindAllStringSubmatch(name, -1) {
+		switch strings.ToLower(m[1]) {
+		case "dv", "dovi":
+			return "Dolby Vision"
+		default:
+			if strings.HasPrefix(strings.ToLower(m[1]), "dolby") {
+				return "Dolby Vision"
+			}
+			claim = "HDR"
+		}
+	}
+
+	return claim
+}
+
+// rangeCheck flags a file whose name claims a dynamic range its video does not have, and Dolby Vision with no HDR10 layer under it, which a
+// TV or player without Dolby Vision shows in the wrong colours.
+var rangeCheck = withFile(func(_ context.Context, _ *auditEnv, _ *radarr.MovieResource, f *radarr.MovieFileResource) (string, bool, error) {
+	if f.MediaInfo == nil {
+		return "", false, nil
+	}
+	kind := f.MediaInfo.VideoDynamicRangeType
+	dolby := strings.HasPrefix(kind, "DV")
+	// Dolby Vision over an SDR picture is SDR to everything else
+	hdr := kind != "" && kind != "DV SDR" || kind == "" && f.MediaInfo.VideoDynamicRange == "HDR"
+	video := "SDR"
+	if kind != "" {
+		video = kind
+	}
+
+	claim := rangeClaim(f.RelativePath)
+	said := "named"
+	if claim == "" {
+		claim, said = rangeClaim(f.SceneName), "released as"
+	}
+
+	switch {
+	case claim == "Dolby Vision" && !dolby:
+		return fmt.Sprintf("%s Dolby Vision, but the video is %s", said, video), true, nil
+	case claim == "HDR" && !hdr:
+		return said + " HDR, but the video is SDR", true, nil
+	case kind == "DV":
+		return "Dolby Vision with no HDR10 layer under it: a TV or player without Dolby Vision shows it in the wrong colours", true, nil
+	}
+
+	return "", false, nil
+})
+
+// inLanguages reports whether a track's or a file's language tag is one of the languages: by its name, its three-letter codes or, for a
+// subtitle file's name, its two-letter one.
+func inLanguages(tag string, languages []string) bool {
+	tag = strings.ToLower(strings.TrimSpace(tag))
+	for _, l := range languages {
+		name := strings.ToLower(strings.TrimSpace(l))
+		if tag == name || tag == shortCodes[name] || slices.Contains(codesFor(l), tag) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// subtitleFileIn reports whether a subtitle file beside a film is in one of the languages, by the language its name carries before the
+// extension: "Alien (1979).en.srt", "Alien (1979).eng.forced.srt".
+func subtitleFileIn(name string, languages []string) bool {
+	parts := strings.Split(baseName(name), ".")
+	for _, p := range parts[1:max(len(parts)-1, 1)] {
+		if inLanguages(p, languages) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// subtitleCheck flags a film no one who speaks only the languages could follow: audio in none of them and no subtitles in them. With all,
+// every film without subtitles in them. With files, a subtitle file Radarr keeps beside the film counts too, asked for film by film.
+func subtitleCheck(languages []string, all, files bool) filmCheck {
+	want := strings.Join(languages, " or ")
+
+	return withFile(func(ctx context.Context, e *auditEnv, m *radarr.MovieResource, f *radarr.MovieFileResource) (string, bool, error) {
+		if f.MediaInfo == nil {
+			return "", false, nil
+		}
+		audio := splitList(f.MediaInfo.AudioLanguages)
+		inLanguage := func(tag string) bool { return inLanguages(tag, languages) }
+		if !all {
+			// audio with no language tag, or tagged as unknown, could be in the language, so the film is never said to need subtitles
+			if len(audio) == 0 || f.MediaInfo.AudioStreamCount > len(audio) || slices.ContainsFunc(audio, anyLanguage) || slices.ContainsFunc(audio, inLanguage) {
+				return "", false, nil
+			}
+		}
+
+		subs := splitList(f.MediaInfo.Subtitles)
+		if slices.ContainsFunc(subs, inLanguage) {
+			return "", false, nil
+		}
+		if files {
+			extras, err := e.c.GetExtraFile(ctx, m.Id)
+			if err != nil {
+				return "", false, err
+			}
+			for _, x := range extras.Answer {
+				if x.Type == radarr.ExtraFileTypeSubtitle && subtitleFileIn(x.RelativePath, languages) {
+					return "", false, nil
+				}
+			}
+		}
+
+		heard := "audio is " + strings.Join(audio, ", ")
+		if len(audio) == 0 {
+			heard = "audio has no language tag"
+		}
+		if len(subs) == 0 {
+			return fmt.Sprintf("%s, no subtitles in %s", heard, want), true, nil
+		}
+
+		return fmt.Sprintf("%s, subtitles %s, none in %s", heard, strings.Join(subs, ", "), want), true, nil
+	})
+}
+
+// interfaceLanguage is the language Radarr's own interface is set to, the one its user reads; English when it cannot be told.
+func interfaceLanguage(ctx context.Context, c *radarr.Client) string {
+	ui, err := c.GetConfigUi(ctx)
+	if err != nil || ui.Answer == nil {
+		return "English"
+	}
+	languages, err := c.GetLanguage(ctx)
+	if err != nil {
+		return "English"
+	}
+
+	for _, l := range languages.Answer {
+		if l.Id == ui.Answer.UiLanguage && l.Name != "" {
+			return l.Name
+		}
+	}
+
+	return "English"
+}
 
 // qualityCheck flags a file below a resolution, in a legacy codec, or below
 // a bitrate. The detail starts with the resolution, so sorting by it puts

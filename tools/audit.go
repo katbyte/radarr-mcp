@@ -40,7 +40,7 @@ type auditFinding struct {
 	Path        string             `json:"path,omitempty"`
 	File        string             `json:"file,omitempty"         jsonschema:"the file the finding is about"`
 	Detail      string             `json:"detail"`
-	DuplicateOf int                `json:"duplicate_of,omitempty" jsonschema:"the id of the film in the library this is a second copy of"`
+	DuplicateOf int                `json:"duplicate_of,omitempty" jsonschema:"the id of the film in the library this folder is: a second copy of it, or where it probably is"`
 	Folder      string             `json:"folder,omitempty"       jsonschema:"a folder on disk no film is in that reads as this film"`
 	QueueID     int                `json:"queue_id,omitempty"`
 	Missing     []collectionMember `json:"missing,omitempty"      jsonschema:"the collection's released films the library does not hold"`
@@ -210,6 +210,20 @@ type filmAudit struct {
 	check       filmCheck
 }
 
+// wantedFrom says from when Radarr wants a film, by the availability it waits for.
+func wantedFrom(a radarr.MovieStatusType) string {
+	switch a {
+	case radarr.MovieStatusTypeAnnounced:
+		return "since it was announced"
+	case radarr.MovieStatusTypeInCinemas:
+		return "since it reached cinemas"
+	case radarr.MovieStatusTypeReleased:
+		return "since its release on disc or online"
+	default:
+		return "from when it is " + string(a)
+	}
+}
+
 var filmAudits = []filmAudit{
 	{
 		name: "audit_missing_files",
@@ -219,7 +233,7 @@ var filmAudits = []filmAudit{
 			if !isTrue(m.Monitored) || isTrue(m.HasFile) || !isTrue(m.IsAvailable) {
 				return "", false, true, nil
 			}
-			detail := "monitored and available (" + string(m.MinimumAvailability) + "), no file"
+			detail := "monitored, no file, and wanted " + wantedFrom(m.MinimumAvailability)
 			if !m.LastSearchTime.IsZero() {
 				detail += "; last searched " + shownTime(m.LastSearchTime)
 			} else {

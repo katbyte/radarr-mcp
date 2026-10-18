@@ -70,6 +70,7 @@ var Toolsets = map[string][]string{
 		"audit_runtime", "audit_resolution_mismatch", "audit_quality", "audit_size", "audit_language",
 		"audit_year_mismatch", "audit_naming", "audit_unmapped_folders", "audit_missing_folders", "audit_untracked_files",
 		"audit_missing_metadata", "audit_removed", "audit_collection_gaps", "audit_queue",
+		"audit_dynamic_range", "audit_subtitles", "audit_disk_space",
 		"movie_add", "movie_edit", "movie_batch_edit", "movie_refresh", "movie_rescan", "movie_rename", "movie_credits",
 		"moviefile_edit", "import_scan", "import_identify", "import_apply", "release_parse",
 		"collection_list", "collection_edit", "naming_get", "naming_edit",

@@ -72,15 +72,16 @@ log() { echo "==> $*" >&2; }
 #
 # The clean films, one folder each under /media/movies, every file named the
 # way Radarr's default naming scheme would name it, 1080p h264 at the film's
-# runtime, with audio in the film's original language.
+# runtime, with audio in the film's original language. Princess Mononoke has
+# English subtitles too, so audit_subtitles finds the Japanese film followable.
 #
-# folder|title|year|tmdb|imdb|runtime minutes|audio language
+# folder|title|year|tmdb|imdb|runtime minutes|audio language|subtitle language
 MOVIES='Alien (1979)|Alien|1979|348|tt0078748|117|eng
 Aliens (1986)|Aliens|1986|679|tt0090605|137|eng
 Blade Runner (1982)|Blade Runner|1982|78|tt0083658|118|eng
 Dune (2021)|Dune|2021|438631|tt1160419|155|eng
 Dune - Part Two (2024)|Dune: Part Two|2024|693134|tt15239678|167|eng
-Princess Mononoke (1997)|Princess Mononoke|1997|128|tt0119698|134|jpn
+Princess Mononoke (1997)|Princess Mononoke|1997|128|tt0119698|134|jpn|eng
 Arrival (2016)|Arrival|2016|329865|tt2543164|116|eng
 The Thirteenth Floor (1999)|The Thirteenth Floor|1999|1090|tt0139809|100|eng'
 
@@ -105,7 +106,8 @@ The Thirteenth Floor (1999)|The Thirteenth Floor|1999|1090|tt0139809|100|eng'
 #   Heat (1995)              an HDTV-720p file on the HD-1080p profile, whose
 #                            cutoff is Bluray-1080p (audit_cutoff_unmet)
 #   The Matrix (1999)        a scene-named file Radarr would rename
-#                            (audit_naming)
+#                            (audit_naming), named HDR though its video is
+#                            SDR (audit_dynamic_range)
 #   Contact (1997)           two copies in one folder, 1080p and 2160p: Radarr
 #                            tracks one, the other sits there
 #                            (audit_untracked_files)
@@ -132,7 +134,7 @@ Blade Runner 2049 (2017)|Blade Runner 2049 (2017) Bluray-2160p.mkv|164|1280x720|
 Spirited Away (2001)|Spirited Away (2001) DVDRip XviD.avi|125|720x480|xvid|eng
 Akira (1988)|Akira (1988) Bluray-1080p.mkv|124|1920x1080|h264|eng
 Heat (1995)|Heat (1995) HDTV-720p.mkv|170|1280x720|h264|eng
-The Matrix (1999)|the.matrix.1999.1080p.bluray.x264-GRP.mkv|136|1920x1080|h264|eng
+The Matrix (1999)|the.matrix.1999.1080p.bluray.hdr.x264-GRP.mkv|136|1920x1080|h264|eng
 Contact (1997)|Contact (1997) Bluray-1080p.mkv|150|1920x1080|h264|eng
 Contact (1997)|Contact (1997) Bluray-2160p.mkv|150|3840x2160|h264|eng
 Gattaca (1997)|Gattaca (1997) WEBDL-1080p.mkv|107|1920x1080|h264|eng
@@ -152,15 +154,16 @@ wipe_data() {
   rm -rf "${DATA}" 2>/dev/null || true
 }
 
-# video PATH MINUTES [SIZE] [CODEC] [LANGUAGE] - a film of that runtime: one
-# still frame every ten seconds, so a two hour 1080p film is tens of
-# kilobytes and encodes in well under a second. CODEC is h264, or xvid for
+# video PATH MINUTES [SIZE] [CODEC] [LANGUAGE] [SUBTITLES] - a film of that
+# runtime: one still frame every ten seconds, so a two hour 1080p film is tens
+# of kilobytes and encodes in well under a second. CODEC is h264, or xvid for
 # MPEG-4 part 2 tagged XVID, the legacy codec audit_quality looks for. The
 # audio is one second of silence tagged with LANGUAGE, which is all Radarr's
 # probe reads - except in an .avi, which has nowhere to put a language and
-# takes mp3.
+# takes mp3. SUBTITLES, when given, adds a one-line subtitle track in that
+# language inside the file.
 video() {
-  local file=$1 minutes=$2 size=${3:-1920x1080} codec=${4:-h264} lang=${5:-eng}
+  local file=$1 minutes=$2 size=${3:-1920x1080} codec=${4:-h264} lang=${5:-eng} subs=${6:-}
   mkdir -p "$(dirname "$file")"
   local vcodec=libx264 vopts="-preset ultrafast -tune stillimage -crf 51" acodec=aac
   if [ "$codec" = "xvid" ]; then
@@ -168,13 +171,23 @@ video() {
     vopts="-vtag XVID -q:v 31"
   fi
   case "$file" in *.avi) acodec=libmp3lame ;; esac
+  # the subtitle track is read from a file made outside the film's folder,
+  # where Radarr would take it for a subtitle file of the film's own
+  local subin=() subout=() srt=""
+  if [ -n "$subs" ]; then
+    srt=$(mktemp "${TMPDIR:-/tmp}/radarr-mcp-subtitle.XXXXXX")
+    printf '1\n00:00:01,000 --> 00:00:05,000\nA line of dialogue.\n\n' >"$srt"
+    subin=(-f srt -i "$srt")
+    subout=(-map 0:v -map 1:a -map 2:s -c:s srt -metadata:s:s:0 "language=${subs}")
+  fi
   # -nostdin matters: without it ffmpeg reads the while-read loop's stdin
   # looking for interactive keys and swallows a character of the next line
   # shellcheck disable=SC2086 # vopts is a list of flags
   ffmpeg -nostdin -loglevel error -y \
-    -f lavfi -i "color=c=0x202030:s=${size}:r=1/10" -f lavfi -t 1 -i "anullsrc=r=8000:cl=mono" \
-    -t "$((minutes * 60))" -c:v "$vcodec" $vopts -g 1000 -pix_fmt yuv420p \
+    -f lavfi -i "color=c=0x202030:s=${size}:r=1/10" -f lavfi -t 1 -i "anullsrc=r=8000:cl=mono" ${subin[@]+"${subin[@]}"} \
+    ${subout[@]+"${subout[@]}"} -t "$((minutes * 60))" -c:v "$vcodec" $vopts -g 1000 -pix_fmt yuv420p \
     -c:a "$acodec" -b:a 8k -metadata:s:a:0 "language=${lang}" "$file"
+  [ -z "$srt" ] || rm -f "$srt"
 }
 
 fixtures() {
@@ -182,9 +195,9 @@ fixtures() {
   wipe_data
 
   # the clean films: "<folder>/<folder> Bluray-1080p.mkv"
-  while IFS='|' read -r folder _title _year _tmdb _imdb runtime lang; do
+  while IFS='|' read -r folder _title _year _tmdb _imdb runtime lang subs; do
     [ -n "$folder" ] || continue
-    video "${DATA}/media/movies/${folder}/${folder} Bluray-1080p.mkv" "$runtime" 1920x1080 h264 "$lang"
+    video "${DATA}/media/movies/${folder}/${folder} Bluray-1080p.mkv" "$runtime" 1920x1080 h264 "$lang" "$subs"
   done <<<"$MOVIES"
 
   # the messy ones

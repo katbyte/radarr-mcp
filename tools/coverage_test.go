@@ -24,7 +24,7 @@ const (
 	// the same thing as another operation, done to several at once
 	severalAtOnce = "the same as the call a tool makes, for several at once: the tool makes it for each"
 	// what Radarr's own web interface is made of or signs in with
-	webInterface = "part of Radarr's web interface - its pages, sign-in, translations or routes - and nothing a tool has a use for"
+	webInterface = "part of Radarr's web interface - its translations or routes - and nothing a tool has a use for"
 	// one section of settings by id, which is always the one there is
 	settingsByID = "a settings section by id: there is one of each, which the tools read without"
 )
@@ -36,12 +36,6 @@ var notWrapped = map[string]string{
 	"GetAltTitleById": oneOfAList,
 
 	"GetApi":                   webInterface,
-	"Get":                      webInterface,
-	"GetByPath":                webInterface,
-	"GetContentByPath":         webInterface,
-	"GetLogin":                 webInterface,
-	"GetLogout":                webInterface,
-	"PostLogin":                webInterface,
 	"GetPing":                  "whether Radarr answers at all, which server_info and server_health say with more",
 	"GetLocalization":          webInterface,
 	"GetLocalizationLanguage":  webInterface,
@@ -166,8 +160,8 @@ func TestEveryOperationHasAToolOrAReason(t *testing.T) {
 	t.Parallel()
 
 	ops, src := operations(t), toolSource(t)
-	if len(ops) != 237 {
-		t.Errorf("the client has %d operations, want Radarr's 237: this test no longer finds them all", len(ops))
+	if len(ops) != 231 {
+		t.Errorf("the client has %d operations, want Radarr's 231: this test no longer finds them all", len(ops))
 	}
 
 	called := 0

@@ -20,11 +20,13 @@ import (
 
 const radarr = Service
 
-const (
-	textHTML    = "text/html"
-	textPlain   = "text/plain"
-	octetStream = "application/octet-stream"
-)
+const textPlain = "text/plain"
+
+// radarrUIRoutes takes out the routes that serve the web interface: its pages, their files, and the sign-in form.
+var radarrUIRoutes = pandorest.NotAPI(pandorest.About{
+	Name: "radarr-ui-routes", Service: radarr,
+	Bug: "the document includes the routes that serve the web interface (its pages, their files, the sign-in form), which answer a browser rather than anything an API client reads",
+}, "/", "/{path}", "/content/{path}", "/login", "/logout")
 
 // radarrUndeclaredResponses declares what the GETs without a response schema
 // answer.
@@ -48,41 +50,11 @@ var radarrUndeclaredResponses = pandorest.UndeclaredAnswers(pandorest.About{
 	"GET /api/v3/credit": pandorest.ListOf("CreditResource"),
 
 	// files
-	"GET /":                                  pandorest.File(textHTML),
-	"GET /login":                             pandorest.File(textHTML),
-	"GET /{path}":                            pandorest.File(octetStream),
-	"GET /content/{path}":                    pandorest.File(octetStream),
-	"GET /api/v3/log/file/{filename}":        pandorest.File(textPlain),
-	"GET /api/v3/log/file/update/{filename}": pandorest.File(textPlain),
+	"GET /api/v3/log/file/{filename}":             pandorest.File(textPlain),
+	"GET /api/v3/log/file/update/{filename}":      pandorest.File(textPlain),
 	"GET /api/v3/mediacover/{movieId}/{filename}": pandorest.File("image/*"),
 	"GET /feed/v3/calendar/radarr.ics":            pandorest.File("text/calendar"),
 })
-
-// radarrRootPathParameter drops the {path} parameter GET / declares without
-// having the placeholder: the root and the catch-all GET /{path} are one
-// controller action, and Swashbuckle gives both routes its parameter.
-type radarrRootPathParameter struct{}
-
-func (radarrRootPathParameter) Name() string    { return "radarr-root-path-parameter" }
-func (radarrRootPathParameter) Service() string { return radarr }
-func (radarrRootPathParameter) Bug() string {
-	return "GET / declares a path parameter named path that its template does not have: it shares an action with the catch-all GET /{path}"
-}
-
-func (radarrRootPathParameter) Apply(spec *openapi.Spec) error {
-	op, err := pandorest.Operation(spec, http.MethodGet, "/")
-	if err != nil {
-		return err
-	}
-	if op.Parameter(openapi.InPath, "path") == nil {
-		return errors.New("GET / no longer declares a path parameter")
-	}
-	op.Parameters = slices.DeleteFunc(op.Parameters, func(p *openapi.Parameter) bool {
-		return p.In == openapi.InPath && p.Name == "path"
-	})
-
-	return nil
-}
 
 // radarrCommandBody makes POST /api/v3/command take any command. Radarr
 // reads the body's name, finds the command class of that name and
@@ -531,13 +503,3 @@ func (radarrPutIDs) Apply(spec *openapi.Spec) error {
 
 	return nil
 }
-
-// radarrAuthRedirects declares what the login form and the logout answer: a
-// redirect, and nothing else. A login is sent to where it asked to land, or
-// back to the form marked failed, and a logout to the front page; the
-// document says 200 for both, which is the page a client that follows the
-// redirect lands on.
-var radarrAuthRedirects = pandorest.WrongStatus(pandorest.About{
-	Name: "radarr-auth-redirects", Service: radarr,
-	Bug: "the login form and the logout are documented as answering 200, but each answers 302 Found: a login to where it asked to land, or back to the form with loginFailed=true, and a logout to the front page",
-}, http.StatusOK, map[int][]string{http.StatusFound: {"POST /login", "GET /logout"}})

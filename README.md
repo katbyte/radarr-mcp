@@ -12,7 +12,7 @@ Lets an AI assistant look after a [Radarr](https://radarr.video) film library: f
 
 It is an [MCP](https://modelcontextprotocol.io) server, so it works with Claude Code, Claude Desktop and any other MCP client. A command-line tool and a Go client for Radarr come with it.
 
-**Detection is code, correction is judgment.** The server runs 18 audits, each a cheap, exact sweep of the whole library for one kind of problem. The assistant only has to think about what they turn up.
+**Detection is code, correction is judgment.** The server runs 21 audits, each a cheap, exact sweep of the whole library for one kind of problem. The assistant only has to think about what they turn up.
 
 ```bash
 go install github.com/katbyte/radarr-mcp@latest
@@ -38,9 +38,12 @@ Then ask it to run `audit_all`. Tested against Radarr 6.4.
 | [`audit_quality`](docs/audits.md#audit_quality) | Low-resolution files and old video formats. `movie_download` searches for better. |
 | [`audit_size`](docs/audits.md#audit_size) | Files far too small or too large for their quality. `history_mark_failed` rejects the release. |
 | [`audit_language`](docs/audits.md#audit_language) | Files with no audio in the film's original language. `release_search` finds another copy. |
+| [`audit_subtitles`](docs/audits.md#audit_subtitles) | Films whose audio and subtitles are both in languages you don't follow. A list for a subtitle tool. |
+| [`audit_dynamic_range`](docs/audits.md#audit_dynamic_range) | Files named HDR or Dolby Vision whose video is not, and Dolby Vision with no HDR10 under it. `history_mark_failed` rejects the release. |
 | [`audit_year_mismatch`](docs/audits.md#audit_year_mismatch) | Folders whose year disagrees with the film's. `movie_edit` renames the folder. |
 | [`audit_naming`](docs/audits.md#audit_naming) | Files and folders not named the way Radarr would name them. `movie_rename` renames them. |
 | [`audit_unmapped_folders`](docs/audits.md#audit_unmapped_folders) | Folders on disk that no film in Radarr uses. `movie_add` takes one in. |
+| [`audit_disk_space`](docs/audits.md#audit_disk_space) | Root folders low on space, or out of Radarr's reach. `movie_batch_edit` moves films elsewhere. |
 | [`audit_missing_folders`](docs/audits.md#audit_missing_folders) | Films whose folder is no longer on disk. `movie_edit` points the film at where it is now. |
 | [`audit_untracked_files`](docs/audits.md#audit_untracked_files) | Extra video files sitting in a film's folder. `import_apply` imports one. |
 | [`audit_missing_metadata`](docs/audits.md#audit_missing_metadata) | Films missing a poster, an overview, a runtime or the like. `movie_refresh` fetches it again. |
@@ -120,7 +123,7 @@ docker compose up -d
 
 ## Tools
 
-There are 137 tools: everything Radarr's own web interface can do. Loading them all would fill much of an assistant's memory before it had done anything, so they come in groups called toolsets and only `core` loads by default.
+There are 140 tools: everything Radarr's own web interface can do. Loading them all would fill much of an assistant's memory before it had done anything, so they come in groups called toolsets and only `core` loads by default.
 
 | Toolset | What it is for | Tools |
 |---|---|---|
@@ -128,9 +131,9 @@ There are 137 tools: everything Radarr's own web interface can do. Loading them 
 | `organise` | Tags, root folders and quality profiles | 15 |
 | `acquire` | Searching, grabbing and following downloads | 19 |
 | `admin` | Health, logs, backups and tasks | 23 |
-| `curation` | The audits and everything that fixes what they find | 46 |
+| `curation` | The audits and everything that fixes what they find | 49 |
 | `setup` | Indexers, download clients, lists, notifications, settings | 58 |
-| `all` | Everything | 137 |
+| `all` | Everything | 140 |
 
 The counts include `core`. To curate a library, use `RADARR_TOOLSETS=curation`.
 
@@ -141,12 +144,12 @@ The counts include `core`. To curate a library, use `RADARR_TOOLSETS=curation`.
 
 - **Nothing is deleted by accident.** The 14 tools that delete are not loaded unless `--enable-delete` is set. Even then, each only says what it would delete until called again with `confirm`.
 - **Restarts and restores ask twice too.** So does any change to how Radarr is reached or who can sign in.
-- **`--read-only` loads only the 67 tools that change nothing.**
+- **`--read-only` loads only the 70 tools that change nothing.**
 - **Passwords and keys are never shown.** A tool says that one is set, not what it is. The same holds for the log.
 
 ## The Go client
 
-`sdk/radarr` is a complete Go client for Radarr's API, with a method for every one of its 237 operations. It knows nothing of MCP and can be used on its own. See [docs/go-client.md](docs/go-client.md).
+`sdk/radarr` is a complete Go client for Radarr's API, with a method for every one of its 231 operations. It knows nothing of MCP and can be used on its own. See [docs/go-client.md](docs/go-client.md).
 
 ## Development
 

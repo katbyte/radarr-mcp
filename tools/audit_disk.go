@@ -119,8 +119,8 @@ func parseFolder(name string) (title string, year int, rest string) {
 }
 
 // unmappedAudit lists the folders in the root folders that no film in the
-// library is in, and says which of them are a second copy of a film the
-// library has elsewhere.
+// library is in, and says which of them are a film the library already has:
+// a second copy beside its file, or where a film with no file probably is.
 func unmappedAudit(ctx context.Context, e *auditEnv, in auditIn) (auditOut, error) {
 	folders, err := e.c.GetRootFolder(ctx)
 	if err != nil {
@@ -138,6 +138,8 @@ func unmappedAudit(ctx context.Context, e *auditEnv, in auditIn) (auditOut, erro
 		}
 		root = f.Path
 	}
+	byTitle := titleIndex(movies)
+
 	out := auditOut{}
 	for _, rf := range folders.Answer {
 		if root != "" && rf.Path != root {
@@ -147,19 +149,154 @@ func unmappedAudit(ctx context.Context, e *auditEnv, in auditIn) (auditOut, erro
 			out.Scanned++
 			title, year, rest := parseFolder(u.Name)
 			f := auditFinding{Title: title, Year: year, Path: u.Path, Detail: "not in the library: movie_add with this folder takes it in"}
-			for i := range movies {
-				m := &movies[i]
-				if cleanTitle(m.Title) == cleanTitle(title) && (year == 0 || m.Year == year) {
-					f.DuplicateOf = int(m.Id)
+			if m := sameFilm(byTitle[cleanTitle(title)], year); m != nil {
+				f.DuplicateOf = int(m.Id)
+				if isTrue(m.HasFile) {
 					f.Detail = fmt.Sprintf("a second copy of %s, which the library keeps at %s", titleYear(m.Title, m.Year), m.Path)
-					if rest != "" {
-						f.Detail += " (this one says " + rest + ")"
-					}
-					break
+				} else {
+					f.Detail = fmt.Sprintf("probably %s, which the library has with no file, at %s: movie_edit with this folder points the film here", titleYear(m.Title, m.Year), m.Path)
+				}
+				if rest != "" {
+					f.Detail += " (this one says " + rest + ")"
 				}
 			}
 			out.collect(f, in.Limit)
 		}
+	}
+
+	return out, nil
+}
+
+// titleIndex is the library's films by every title each goes by, cleaned: its own, its original and its alternative titles, so a folder
+// named for a film's title in another country still finds it.
+func titleIndex(movies []radarr.MovieResource) map[string][]*radarr.MovieResource {
+	out := map[string][]*radarr.MovieResource{}
+	for i := range movies {
+		m := &movies[i]
+		seen := map[string]bool{}
+		add := func(title string) {
+			if key := cleanTitle(title); key != "" && !seen[key] {
+				seen[key] = true
+				out[key] = append(out[key], m)
+			}
+		}
+
+		add(m.Title)
+		add(m.OriginalTitle)
+		for _, alt := range m.AlternateTitles {
+			add(alt.Title)
+		}
+	}
+
+	return out
+}
+
+// sameFilm is the film among those of a title that a folder of that year is: the one of the year, or failing that one a year either side or
+// of its second year, since TMDB and a release often disagree by one. A folder with no year is the first of them.
+func sameFilm(films []*radarr.MovieResource, year int) *radarr.MovieResource {
+	if len(films) == 0 {
+		return nil
+	}
+	if year == 0 {
+		return films[0]
+	}
+
+	for _, m := range films {
+		if m.Year == year {
+			return m
+		}
+	}
+	for _, m := range films {
+		if m.Year-1 <= year && year <= m.Year+1 || val(m.SecondaryYear) == year {
+			return m
+		}
+	}
+
+	return nil
+}
+
+type diskSpaceIn struct {
+	RootFolder     string `json:"root_folder,omitempty"      jsonschema:"only this root folder (path or id)"`
+	MinFreePercent int    `json:"min_free_percent,omitempty" jsonschema:"flag a root folder whose disk has less than this share free, default 5"`
+	MinFreeGB      int    `json:"min_free_gb,omitempty"      jsonschema:"also flag a root folder with less than this many GB free; off by default"`
+}
+
+// gb is a size in bytes as a person reads a disk's: whole GB, or MB under one.
+func gb(bytes int64) string {
+	if bytes < 1<<30 {
+		return fmt.Sprintf("%d MB", bytes>>20)
+	}
+
+	return fmt.Sprintf("%d GB", bytes>>30)
+}
+
+// diskSpaceAudit finds the root folders running out of room, or out of reach: each is checked against Radarr's own floor for imports, a
+// share of the disk it is on, and a number of GB when one is given.
+func diskSpaceAudit(ctx context.Context, e *auditEnv, in diskSpaceIn) (auditOut, error) {
+	roots, err := e.c.GetRootFolder(ctx)
+	if err != nil {
+		return auditOut{}, err
+	}
+	disks, err := e.c.GetDiskSpace(ctx)
+	if err != nil {
+		return auditOut{}, err
+	}
+	media, err := e.c.GetConfigMediaManagement(ctx)
+	if err != nil {
+		return auditOut{}, err
+	}
+	floor := int64(0)
+	if media.Answer != nil {
+		floor = int64(media.Answer.MinimumFreeSpaceWhenImporting) << 20
+	}
+	pct := in.MinFreePercent
+	if pct <= 0 {
+		pct = 5
+	}
+
+	root := ""
+	if in.RootFolder != "" {
+		f, err := resolveRootFolder(ctx, e.c, in.RootFolder)
+		if err != nil {
+			return auditOut{}, err
+		}
+		root = f.Path
+	}
+
+	out := auditOut{}
+	for _, rf := range roots.Answer {
+		if root != "" && rf.Path != root {
+			continue
+		}
+		out.Scanned++
+		f := auditFinding{ID: int(rf.Id), Title: rf.Path, Path: rf.Path}
+		if !isTrue(rf.Accessible) {
+			f.Detail = "Radarr cannot reach it, so nothing in it can be imported, renamed or checked: server_health says why"
+			out.collect(f, 0)
+			continue
+		}
+
+		free := val(rf.FreeSpace)
+		// the disk is the one whose mount the root folder sits deepest in
+		var total int64
+		mount := ""
+		for _, d := range disks.Answer {
+			if inFolder(rf.Path, d.Path) && len(d.Path) > len(mount) {
+				mount, total = d.Path, d.TotalSpace
+			}
+		}
+
+		switch {
+		case floor > 0 && free < floor:
+			f.Detail = fmt.Sprintf("%s free, under the %d MB Radarr keeps free when importing: it refuses every import here until room is made", gb(free), floor>>20)
+		case total > 0 && free*100 < int64(pct)*total:
+			f.Detail = fmt.Sprintf("%s free of %s (%d%%), under %d%%", gb(free), gb(total), free*100/total, pct)
+		case in.MinFreeGB > 0 && free < int64(in.MinFreeGB)<<30:
+			f.Detail = fmt.Sprintf("%s free, under the %d GB asked for", gb(free), in.MinFreeGB)
+		default:
+			continue
+		}
+		out.collect(f, 0)
 	}
 
 	return out, nil
@@ -267,11 +404,12 @@ func missingFoldersAudit(ctx context.Context, e *auditEnv, in auditIn) (auditOut
 	return out, nil
 }
 
-// looksLike picks the folder no film is in that reads as this film.
+// looksLike picks the folder no film is in that reads as this film, by any of its titles.
 func looksLike(m *radarr.MovieResource, folders []radarr.UnmappedFolder) string {
+	titles := titleIndex([]radarr.MovieResource{*m})
 	for _, u := range folders {
 		title, year, _ := parseFolder(u.Name)
-		if cleanTitle(title) == cleanTitle(m.Title) && (year == 0 || year == m.Year) {
+		if sameFilm(titles[cleanTitle(title)], year) != nil {
 			return u.Path
 		}
 	}
@@ -371,8 +509,8 @@ func registerDiskAudits(r *registry) {
 
 	add(r, readTool, &mcp.Tool{
 		Name: "audit_unmapped_folders",
-		Description: "List the folders in the root folders that no film in the library is in: films on disk Radarr has never heard of, and second copies of films it keeps elsewhere, each named with the copy it duplicates. " +
-			"movie_add with the folder takes one in.",
+		Description: "List the folders in the root folders that no film in the library is in: films on disk Radarr has never heard of, second copies of films it keeps elsewhere, and where a film it has with no file probably is. " +
+			"A folder is matched to a film by any of the film's titles, and a year either side. movie_add with the folder takes a new one in; movie_edit with folder points a film with no file at its folder.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in auditIn) (*mcp.CallToolResult, auditOut, error) {
 		out, err := unmappedAudit(ctx, newAuditEnv(client), in)
 		return nil, out, err
@@ -384,6 +522,15 @@ func registerDiskAudits(r *registry) {
 			"Each names the folder in the same root folder that reads as the film, when there is one, and movie_edit with folder points the film at it.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in auditIn) (*mcp.CallToolResult, auditOut, error) {
 		out, err := missingFoldersAudit(ctx, newAuditEnv(client), in)
+		return nil, out, err
+	})
+
+	add(r, readTool, &mcp.Tool{
+		Name: "audit_disk_space",
+		Description: "Check the root folders for space: one Radarr cannot reach, one with less free than Radarr keeps free when importing (it refuses every import there), and one under a share of its disk free (default 5%) or, when given, under a number of GB. " +
+			"movie_batch_edit with root_folder moves films to another; audit_quality and audit_size find copies worth replacing.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in diskSpaceIn) (*mcp.CallToolResult, auditOut, error) {
+		out, err := diskSpaceAudit(ctx, newAuditEnv(client), in)
 		return nil, out, err
 	})
 

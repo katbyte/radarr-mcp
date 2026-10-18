@@ -11,16 +11,17 @@ import (
 )
 
 type rootFolderRow struct {
-	ID              int    `json:"id"`
-	Path            string `json:"path"`
-	Accessible      bool   `json:"accessible"       jsonschema:"whether Radarr can reach it now"`
-	FreeSpace       int64  `json:"free_space"       jsonschema:"bytes"`
-	Movies          int    `json:"movies"           jsonschema:"films kept in it"`
-	UnmappedFolders int    `json:"unmapped_folders" jsonschema:"folders in it no film is in the library for"`
+	ID              int      `json:"id"`
+	Path            string   `json:"path"`
+	Accessible      bool     `json:"accessible"         jsonschema:"whether Radarr can reach it now"`
+	FreeSpace       int64    `json:"free_space"         jsonschema:"bytes"`
+	Movies          int      `json:"movies"             jsonschema:"films kept in it"`
+	UnmappedFolders int      `json:"unmapped_folders"   jsonschema:"folders in it no film is in the library for"`
+	Unmapped        []string `json:"unmapped,omitempty" jsonschema:"those folders by name, when asked for"`
 }
 
-// rootFolderRows lists the root folders with how many films each holds.
-func rootFolderRows(ctx context.Context, c *radarr.Client) ([]rootFolderRow, error) {
+// rootFolderRows lists the root folders with how many films each holds, and with named the folders in each no film is in.
+func rootFolderRows(ctx context.Context, c *radarr.Client, named bool) ([]rootFolderRow, error) {
 	folders, err := c.GetRootFolder(ctx)
 	if err != nil {
 		return nil, err
@@ -32,6 +33,12 @@ func rootFolderRows(ctx context.Context, c *radarr.Client) ([]rootFolderRow, err
 	out := make([]rootFolderRow, 0, len(folders.Answer))
 	for _, f := range folders.Answer {
 		row := rootFolderRow{ID: int(f.Id), Path: f.Path, Accessible: isTrue(f.Accessible), FreeSpace: val(f.FreeSpace), UnmappedFolders: len(f.UnmappedFolders)}
+		if named {
+			for _, u := range f.UnmappedFolders {
+				row.Unmapped = append(row.Unmapped, u.Name)
+			}
+			slices.Sort(row.Unmapped)
+		}
 		for i := range movies {
 			if inFolder(movies[i].Path, f.Path) {
 				row.Movies++
@@ -54,21 +61,25 @@ func inFolder(path, folder string) bool {
 func registerRootFolderTools(r *registry) {
 	client := r.client
 
+	type rootFolderListIn struct {
+		pageIn
+		Unmapped bool `json:"unmapped,omitempty" jsonschema:"also name the folders in each that no film is in the library for"`
+	}
 	type rootFolderListOut struct {
 		RootFolders []rootFolderRow `json:"root_folders"`
 		pageOut
 	}
 	add(r, readTool, &mcp.Tool{
 		Name:        "rootfolder_list",
-		Description: "List the root folders Radarr keeps films in, as paths Radarr sees: whether each is reachable, its free space, how many films it holds and how many folders in it no film is in the library for.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in pageIn) (*mcp.CallToolResult, rootFolderListOut, error) {
-		rows, err := rootFolderRows(ctx, client)
+		Description: "List the root folders Radarr keeps films in, as paths Radarr sees: whether each is reachable, its free space, how many films it holds and how many folders in it no film is in the library for, with unmapped those folders by name.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in rootFolderListIn) (*mcp.CallToolResult, rootFolderListOut, error) {
+		rows, err := rootFolderRows(ctx, client, in.Unmapped)
 		if err != nil {
 			return nil, rootFolderListOut{}, err
 		}
 
 		out := rootFolderListOut{}
-		out.RootFolders, out.pageOut = pageRows(rows, in)
+		out.RootFolders, out.pageOut = pageRows(rows, in.pageIn)
 
 		return nil, out, nil
 	})
@@ -108,7 +119,7 @@ func registerRootFolderTools(r *registry) {
 		if in.RootFolder == "" {
 			return nil, rootFolderRow{}, errors.New("name the root folder to remove")
 		}
-		rows, err := rootFolderRows(ctx, client)
+		rows, err := rootFolderRows(ctx, client, false)
 		if err != nil {
 			return nil, rootFolderRow{}, err
 		}

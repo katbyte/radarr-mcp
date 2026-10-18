@@ -120,9 +120,8 @@ var radarrWords = map[string]string{
 
 // All is every workaround, in the order they are applied.
 var All = []pandorest.Workaround{
+	radarrUIRoutes,
 	radarrUndeclaredResponses,
-	radarrAuthRedirects,
-	radarrRootPathParameter{},
 	radarrCommandBody{},
 	radarrCommands,
 	radarrStatuses,

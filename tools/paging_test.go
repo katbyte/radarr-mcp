@@ -188,7 +188,7 @@ func TestDeletesWaitForConfirm(t *testing.T) {
 	f.library(movie(1, "Moon", 2009, "Bluray-1080p", "1920x1080", "1:37:00"))
 	f.mux.HandleFunc("DELETE /api/v3/movie/{id}", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
 	f.mux.HandleFunc("DELETE /api/v3/moviefile/{id}", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
-	f.answer("GET /api/v3/config/mediamanagement", http.StatusOK, map[string]any{"id": 1, "autoUnmonitorPreviouslyDownloadedMovies": false})
+	f.media = map[string]any{"id": 1, "autoUnmonitorPreviouslyDownloadedMovies": false}
 	cs := session(t, f, Options{EnableDelete: true})
 
 	would := mustCall(t, cs, "movie_delete", map[string]any{"movie": "Moon", "delete_files": true, "add_exclusion": true})
@@ -355,7 +355,7 @@ func TestMovieFileDeleteSaysWhatRadarrDoesNext(t *testing.T) {
 	idle := movie(2, "Brazil", 1985, "Bluray-1080p", "1920x1080", "2:22:00")
 	idle["monitored"] = false
 	f.library(movie(1, "Moon", 2009, "Bluray-1080p", "1920x1080", "1:37:00"), idle)
-	f.answer("GET /api/v3/config/mediamanagement", http.StatusOK, map[string]any{"id": 1, "autoUnmonitorPreviouslyDownloadedMovies": true})
+	f.media = map[string]any{"id": 1, "autoUnmonitorPreviouslyDownloadedMovies": true}
 	cs := session(t, f, Options{EnableDelete: true})
 
 	if warning := fmt.Sprint(mustCall(t, cs, "moviefile_delete", map[string]any{"movie": "Moon"})["warning"]); !strings.Contains(warning, "is not downloaded again") || !strings.Contains(warning, "Unmonitor Deleted Movies") {

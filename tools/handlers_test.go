@@ -35,6 +35,8 @@ type fakeRadarr struct {
 	mu     sync.Mutex
 	seen   []request
 	movies []map[string]any
+	// media is Radarr's media management settings as the fake answers them, for a test to set
+	media map[string]any
 }
 
 type request struct {
@@ -122,6 +124,19 @@ func (f *fakeRadarr) library(movies ...map[string]any) {
 		}
 	}
 	f.answer("GET /api/v3/filesystem", http.StatusOK, map[string]any{"parent": "/media", "directories": dirs})
+
+	// the disk the root folder is on, half free, and the language Radarr's interface is in
+	f.answer("GET /api/v3/diskspace", http.StatusOK, []any{map[string]any{"path": "/media", "label": "media", "freeSpace": 1 << 40, "totalSpace": 2 << 40}})
+	f.media = map[string]any{"id": 1, "minimumFreeSpaceWhenImporting": 100}
+	f.mux.HandleFunc("GET /api/v3/config/mediamanagement", func(w http.ResponseWriter, _ *http.Request) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(f.media)
+	})
+	f.answer("GET /api/v3/config/ui", http.StatusOK, map[string]any{"id": 1, "uiLanguage": 1})
+	f.answer("GET /api/v3/language", http.StatusOK, []any{map[string]any{"id": 1, "name": "English"}, map[string]any{"id": 8, "name": "Japanese"}})
 }
 
 // fakeProfile is HD-1080p as Radarr answers it: worst first, cutoff
@@ -916,5 +931,155 @@ func TestExclusionRemoveChecksIDs(t *testing.T) {
 	out := mustCall(t, cs, "exclusion_remove", map[string]any{"ids": []any{7}})
 	if removed := rowsOf(out["removed"]); len(removed) != 1 || removed[0]["title"] != "Moon" || removed[0]["year"] != 2009.0 {
 		t.Errorf("exclusion_remove = %v", out)
+	}
+}
+
+// Two calls that want the whole library at the same time share one read of it, and each gets a list of its own.
+func TestCallsAtOnceShareOneReadOfTheLibrary(t *testing.T) {
+	t.Parallel()
+
+	f := newFakeRadarr(t)
+	started, release := make(chan struct{}), make(chan struct{})
+	var once sync.Once
+	f.mux.HandleFunc("GET /api/v3/movie", func(w http.ResponseWriter, _ *http.Request) {
+		once.Do(func() { close(started) })
+		<-release
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode([]any{map[string]any{"id": 1, "title": "Alien", "year": 1979}, map[string]any{"id": 2, "title": "Aliens", "year": 1986}})
+	})
+	c, err := radarr.New(f.srv.URL, "k")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lists := make([][]radarr.MovieResource, 2)
+	var wg sync.WaitGroup
+	for i := range lists {
+		wg.Go(func() {
+			movies, err := allMovies(t.Context(), c)
+			if err != nil {
+				t.Error(err)
+			}
+			lists[i] = movies
+		})
+	}
+	<-started
+	// the second call has joined the first's read by the time the answer comes
+	time.Sleep(200 * time.Millisecond)
+	close(release)
+	wg.Wait()
+
+	if got := len(f.requests(http.MethodGet, "/api/v3/movie")); got != 1 {
+		t.Errorf("two calls at once read the library %d times, want once", got)
+	}
+	if len(lists[0]) != 2 || len(lists[1]) != 2 {
+		t.Fatalf("the calls got %d and %d films, want 2 each", len(lists[0]), len(lists[1]))
+	}
+	lists[0][0].Title = "changed"
+	if lists[1][0].Title != "Alien" {
+		t.Error("one call's change to its list reached the other's")
+	}
+}
+
+// Radarr refusing a film because its own fetch of the film's collection is saving the same details is tried again, and goes in; any other
+// refusal is not.
+func TestAddingAFilmGetsPastRadarrsClashWithItself(t *testing.T) {
+	t.Parallel()
+
+	f := newFakeRadarr(t)
+	var mu sync.Mutex
+	tries := 0
+	f.mux.HandleFunc("POST /api/v3/movie", func(w http.ResponseWriter, _ *http.Request) {
+		mu.Lock()
+		tries++
+		first := tries == 1
+		mu.Unlock()
+
+		w.Header().Set("Content-Type", "application/json")
+		if first {
+			w.WriteHeader(http.StatusConflict)
+			_ = json.NewEncoder(w).Encode(map[string]any{"message": "constraint failed\nUNIQUE constraint failed: MovieMetadata.TmdbId"})
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": 7, "title": "Alien³", "year": 1992})
+	})
+	c, err := radarr.New(f.srv.URL, "k")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	added, err := addMovie(t.Context(), c, &radarr.MovieResource{Title: "Alien³", Year: 1992, TmdbId: 8077})
+	if err != nil || added.Answer == nil || added.Answer.Id != 7 {
+		t.Fatalf("addMovie = %+v, %v; want the film added on the second try", added.Answer, err)
+	}
+	if got := len(f.requests(http.MethodPost, "/api/v3/movie")); got != 2 {
+		t.Errorf("tried %d times, want 2", got)
+	}
+
+	// a film already in the library is refused for good, and asked once
+	held := newFakeRadarr(t)
+	held.answer("POST /api/v3/movie", http.StatusConflict, map[string]any{"message": "This movie has already been added"})
+	c, err = radarr.New(held.srv.URL, "k")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := addMovie(t.Context(), c, &radarr.MovieResource{Title: "Alien", Year: 1979, TmdbId: 348}); err == nil {
+		t.Error("a film already held was added")
+	}
+	if got := len(held.requests(http.MethodPost, "/api/v3/movie")); got != 1 {
+		t.Errorf("a refusal for good was tried %d times, want once", got)
+	}
+}
+
+// A root folder is flagged when Radarr cannot reach it, when it has less free than Radarr keeps free for imports, and when its disk is
+// under the share free asked for; one with room is not.
+func TestDiskSpaceAudit(t *testing.T) {
+	t.Parallel()
+
+	f := newFakeRadarr(t)
+	f.answer("GET /api/v3/rootfolder", http.StatusOK, []any{
+		map[string]any{"id": 1, "path": "/media/movies", "accessible": true, "freeSpace": 50 << 30},
+		map[string]any{"id": 2, "path": "/media/full", "accessible": true, "freeSpace": 50 << 20},
+		map[string]any{"id": 3, "path": "/media/roomy", "accessible": true, "freeSpace": 900 << 30},
+		map[string]any{"id": 4, "path": "/mnt/gone", "accessible": false},
+	})
+	f.answer("GET /api/v3/diskspace", http.StatusOK, []any{
+		map[string]any{"path": "/", "freeSpace": 1 << 30, "totalSpace": 100 << 30},
+		map[string]any{"path": "/media", "freeSpace": 50 << 30, "totalSpace": 2000 << 30},
+		map[string]any{"path": "/media/roomy", "freeSpace": 900 << 30, "totalSpace": 1000 << 30},
+	})
+	f.answer("GET /api/v3/config/mediamanagement", http.StatusOK, map[string]any{"id": 1, "minimumFreeSpaceWhenImporting": 100})
+	c, err := radarr.New(f.srv.URL, "k")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := diskSpaceAudit(t.Context(), newAuditEnv(c), diskSpaceIn{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, f := range out.Findings {
+		got[f.Path] = f.Detail
+	}
+	want := map[string]string{
+		"/media/movies": "50 GB free of 2000 GB (2%), under 5%",
+		"/media/full":   "50 MB free, under the 100 MB Radarr keeps free when importing",
+		"/mnt/gone":     "Radarr cannot reach it",
+	}
+	if out.Scanned != 4 || len(got) != len(want) {
+		t.Errorf("scanned %d, found %v; want 4 scanned and %v", out.Scanned, got, want)
+	}
+	for path, w := range want {
+		if !strings.Contains(got[path], w) {
+			t.Errorf("%s = %q, want it to say %q", path, got[path], w)
+		}
+	}
+
+	// a number of GB flags the roomy one too
+	out, err = diskSpaceAudit(t.Context(), newAuditEnv(c), diskSpaceIn{MinFreeGB: 1000})
+	if err != nil || out.Found != 4 {
+		t.Errorf("under 1000 GB = %d findings, %v; want all 4", out.Found, err)
 	}
 }
