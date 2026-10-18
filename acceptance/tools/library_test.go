@@ -28,8 +28,9 @@ func libraryCollection(t *testing.T, args map[string]any) map[string]map[string]
 func libraryMissing(t *testing.T, c map[string]any) []string {
 	t.Helper()
 
-	var out []string
-	for _, m := range acctest.Rows(t, c["missing"], "missing") {
+	missing := acctest.Rows(t, c["missing"], "missing")
+	out := make([]string, 0, len(missing))
+	for _, m := range missing {
 		out = append(out, titleYear(acctest.Str(m["title"]), acctest.NumOr0(m["year"])))
 	}
 
@@ -42,7 +43,7 @@ func libraryMissing(t *testing.T, c map[string]any) []string {
 // narrows the list to the collections with gaps.
 func TestCollections(t *testing.T) {
 	cols := libraryCollection(t, nil)
-	var titles []string
+	titles := make([]string, 0, len(cols))
 	for title := range cols {
 		titles = append(titles, title)
 	}
@@ -69,7 +70,7 @@ func TestCollections(t *testing.T) {
 			t.Errorf("%s is missing %v, want %v", title, got, want.missing)
 		}
 		// a collection takes its settings from the first film added to it
-		if c["monitored"] != false || c["search_on_add"] != false || acctest.Str(c["quality_profile"]) != profileHD || acctest.Str(c["root_folder"]) != want.root || acctest.NumOr0(c["tmdb_id"]) == 0 {
+		if !acctest.IsBool(c["monitored"], false) || !acctest.IsBool(c["search_on_add"], false) || acctest.Str(c["quality_profile"]) != profileHD || acctest.Str(c["root_folder"]) != want.root || acctest.NumOr0(c["tmdb_id"]) == 0 {
 			t.Errorf("%s = %v", title, c)
 		}
 	}
@@ -125,7 +126,7 @@ func TestCollectionEdit(t *testing.T) {
 		"collection": "The Matrix", "quality_profile": profileUHD, "root_folder": moviesRoot, "minimum_availability": "announced", "search_on_add": false, "monitored": false,
 	})
 	if acctest.Str(out["title"]) != "The Matrix Collection" || acctest.Str(out["quality_profile"]) != profileUHD || acctest.Str(out["root_folder"]) != moviesRoot ||
-		out["monitored"] != false || out["search_on_add"] != false || len(acctest.Strs(t, acctest.OrEmptyList(out["held"]), "held")) != 1 {
+		!acctest.IsBool(out["monitored"], false) || !acctest.IsBool(out["search_on_add"], false) || len(acctest.Strs(t, acctest.OrEmptyList(out["held"]), "held")) != 1 {
 		t.Errorf("collection_edit = %v", out)
 	}
 	raw := acctest.Object(t, settingsRaw(t, path), "collection")
@@ -194,7 +195,7 @@ func TestExclusions(t *testing.T) {
 	}
 
 	list := acctest.Rows(t, suite.Call(t, "exclusion_list", nil)["exclusions"], "exclusions")
-	var titles []string
+	titles := make([]string, 0, len(list))
 	for _, e := range list {
 		titles = append(titles, acctest.Str(e["title"]))
 	}
@@ -205,14 +206,14 @@ func TestExclusions(t *testing.T) {
 	// a collection's missing film on the exclusions is marked so, and still
 	// listed
 	for _, m := range acctest.Rows(t, libraryCollection(t, nil)["The Matrix Collection"]["missing"], "missing") {
-		if (acctest.Str(m["title"]) == "The Matrix Reloaded") != (m["excluded"] == true) {
+		if (acctest.Str(m["title"]) == "The Matrix Reloaded") != acctest.BoolOf(m["excluded"]) {
 			t.Errorf("a missing Matrix film = %v", m)
 		}
 	}
 
 	ids := []any{moon["id"], reloaded["id"], gattaca["id"]}
 	removed := acctest.Rows(t, suite.Call(t, "exclusion_remove", map[string]any{"ids": ids})["removed"], "removed")
-	var gone []string
+	gone := make([]string, 0, len(removed))
 	for _, e := range removed {
 		gone = append(gone, acctest.Str(e["title"]))
 	}
@@ -248,13 +249,14 @@ func libraryDaysSince(date string) int {
 }
 
 // libraryCalendar is calendar_list's films, title to releases, in its order.
-func libraryCalendar(t *testing.T, args map[string]any) ([]string, map[string][]string, map[string]any) {
+func libraryCalendar(t *testing.T, args map[string]any) (order []string, releases map[string][]string, out map[string]any) {
 	t.Helper()
 
-	out := suite.Call(t, "calendar_list", args)
-	var order []string
-	releases := map[string][]string{}
-	for _, m := range acctest.Rows(t, out["movies"], "movies") {
+	out = suite.Call(t, "calendar_list", args)
+	movies := acctest.Rows(t, out["movies"], "movies")
+	order = make([]string, 0, len(movies))
+	releases = map[string][]string{}
+	for _, m := range movies {
 		title := titleYear(acctest.Str(m["title"]), acctest.NumOr0(m["year"]))
 		order = append(order, title)
 		releases[title] = acctest.Strs(t, acctest.OrEmptyList(m["releases"]), "releases")

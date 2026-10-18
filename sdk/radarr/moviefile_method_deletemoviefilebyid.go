@@ -4,7 +4,6 @@ package radarr
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -25,12 +24,12 @@ func (c Client) DeleteMovieFileById(ctx context.Context, id MovieFileID) (result
 		},
 		HTTPMethod: http.MethodDelete,
 		Operation:  "DeleteMovieFileById",
-		Path:       fmt.Sprintf("/api/v3/moviefile/%s", url.PathEscape(strconv.Itoa(int(id)))),
+		Path:       "/api/v3/moviefile/" + url.PathEscape(strconv.Itoa(int(id))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -39,8 +38,8 @@ func (c Client) DeleteMovieFileById(ctx context.Context, id MovieFileID) (result
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

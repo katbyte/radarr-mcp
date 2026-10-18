@@ -5,8 +5,8 @@ package radarr
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
@@ -48,16 +48,16 @@ func (c Client) PutExclusionsById(ctx context.Context, id int, input ImportListE
 		},
 		HTTPMethod: http.MethodPut,
 		Operation:  "PutExclusionsById",
-		Path:       fmt.Sprintf("/api/v3/exclusions/%d", id),
+		Path:       "/api/v3/exclusions/" + strconv.Itoa(id),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -66,15 +66,15 @@ func (c Client) PutExclusionsById(ctx context.Context, id int, input ImportListE
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer ImportListExclusionResource
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.ImportListExclusionResource = result.Answer
 
-	return
+	return result, nil
 }

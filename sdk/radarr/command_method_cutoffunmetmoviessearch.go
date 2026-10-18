@@ -55,11 +55,11 @@ func (c Client) CutOffUnmetMoviesSearch(ctx context.Context, input CutOffUnmetMo
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -68,29 +68,28 @@ func (c Client) CutOffUnmetMoviesSearch(ctx context.Context, input CutOffUnmetMo
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer CommandResource
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.CommandResource = result.Answer
 
-	return
+	return result, nil
 }
 
 // CutOffUnmetMoviesSearchAndWait queues the CutOffUnmetMoviesSearch command and waits for it as WaitForCommand does, answering it as it stands.
 func (c Client) CutOffUnmetMoviesSearchAndWait(ctx context.Context, input CutOffUnmetMoviesSearchCommand, wait time.Duration) (result GetCommandByIdResponse, err error) {
 	queued, err := c.CutOffUnmetMoviesSearch(ctx, input)
 	if err != nil {
-		return
+		return result, err
 	}
 	if queued.Answer == nil {
-		err = errors.New("CutOffUnmetMoviesSearch answered no command to wait for")
-		return
+		return result, errors.New("CutOffUnmetMoviesSearch answered no command to wait for")
 	}
 
-	return c.WaitForCommand(ctx, int(queued.Answer.Id), wait)
+	return c.WaitForCommand(ctx, queued.Answer.Id, wait)
 }

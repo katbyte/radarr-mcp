@@ -4,7 +4,6 @@ package radarr
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -25,12 +24,12 @@ func (c Client) DeleteDownloadClientById(ctx context.Context, id DownloadClientI
 		},
 		HTTPMethod: http.MethodDelete,
 		Operation:  "DeleteDownloadClientById",
-		Path:       fmt.Sprintf("/api/v3/downloadclient/%s", url.PathEscape(strconv.Itoa(int(id)))),
+		Path:       "/api/v3/downloadclient/" + url.PathEscape(strconv.Itoa(int(id))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -39,8 +38,8 @@ func (c Client) DeleteDownloadClientById(ctx context.Context, id DownloadClientI
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

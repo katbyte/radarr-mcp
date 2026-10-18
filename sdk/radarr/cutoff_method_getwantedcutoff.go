@@ -51,8 +51,7 @@ type GetWantedCutoffOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetWantedCutoffOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.
@@ -79,8 +78,7 @@ func (o GetWantedCutoffOptions) ToQuery() *client.QueryParams {
 // GetWantedCutoff calls GET /api/v3/wanted/cutoff.
 func (c Client) GetWantedCutoff(ctx context.Context, options ...GetWantedCutoffOptions) (result GetWantedCutoffResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetWantedCutoff takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("GetWantedCutoff takes one options struct at most, not %d", len(options))
 	}
 	var option GetWantedCutoffOptions
 	if len(options) == 1 {
@@ -100,7 +98,7 @@ func (c Client) GetWantedCutoff(ctx context.Context, options ...GetWantedCutoffO
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -109,17 +107,17 @@ func (c Client) GetWantedCutoff(ctx context.Context, options ...GetWantedCutoffO
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer MovieResourcePagingResource
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.MovieResourcePagingResource = result.Answer
 
-	return
+	return result, nil
 }
 
 // GetWantedCutoffCompleteResult is every result GetWantedCutoffComplete loaded.
@@ -133,8 +131,7 @@ type GetWantedCutoffCompleteResult struct {
 // options.PageSize is the page size, client.DefaultPageSize when unset.
 func (c Client) GetWantedCutoffComplete(ctx context.Context, options ...GetWantedCutoffOptions) (result GetWantedCutoffCompleteResult, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetWantedCutoffComplete takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("GetWantedCutoffComplete takes one options struct at most, not %d", len(options))
 	}
 	var option GetWantedCutoffOptions
 	if len(options) == 1 {
@@ -156,17 +153,16 @@ func (c Client) GetWantedCutoffComplete(ctx context.Context, options ...GetWante
 		page, err = c.GetWantedCutoff(ctx, option)
 		result.LatestHttpResponse = page.HttpResponse
 		if err != nil {
-			err = fmt.Errorf("loading results: %w", err)
-			return
+			return result, fmt.Errorf("loading results: %w", err)
 		}
 		if page.Answer == nil || len(page.Answer.Records) == 0 {
-			return
+			return result, nil
 		}
 		result.Items = append(result.Items, page.Answer.Records...)
 		// a short page is the last; so is the page that reaches the total, when
 		// the server reports one
 		if len(page.Answer.Records) < limit || page.Answer.TotalRecords > 0 && number*limit >= page.Answer.TotalRecords {
-			return
+			return result, nil
 		}
 		number++
 	}
@@ -216,8 +212,8 @@ func (c Client) GetWantedCutoffEach(ctx context.Context, options ...GetWantedCut
 			if page.Answer == nil || len(page.Answer.Records) == 0 {
 				return
 			}
-			for _, item := range page.Answer.Records {
-				if !yield(item, nil) {
+			for i := range page.Answer.Records {
+				if !yield(page.Answer.Records[i], nil) {
 					return
 				}
 			}

@@ -196,7 +196,7 @@ func TestRootFolders(t *testing.T) {
 			t.Errorf("no root folder %s among %v", root, out)
 			continue
 		}
-		if acctest.Num(t, r["movies"], "movies") != films || r["accessible"] != true || acctest.NumOr0(r["free_space"]) <= 0 {
+		if acctest.Num(t, r["movies"], "movies") != films || !acctest.BoolOf(r["accessible"]) || acctest.NumOr0(r["free_space"]) <= 0 {
 			t.Errorf("%s = %v, want %d films", root, r, films)
 		}
 		// Ronin in one, the second copy of Alien in the other
@@ -217,7 +217,7 @@ func TestRootFolders(t *testing.T) {
 		_ = os.RemoveAll(testenv.HostPath(extra))
 	})
 	added := suite.Call(t, "rootfolder_add", map[string]any{"path": extra})
-	if acctest.Str(added["path"]) != extra || added["accessible"] != true || acctest.Num(t, added["unmapped_folders"], "unmapped_folders") != 1 || acctest.NumOr0(added["id"]) == 0 {
+	if acctest.Str(added["path"]) != extra || !acctest.BoolOf(added["accessible"]) || acctest.Num(t, added["unmapped_folders"], "unmapped_folders") != 1 || acctest.NumOr0(added["id"]) == 0 {
 		t.Errorf("rootfolder_add = %v", added)
 	}
 	if msg := suite.CallErr(t, "rootfolder_add", map[string]any{"path": "/media/no-such-folder"}); msg == "" {
@@ -265,7 +265,7 @@ func TestQualityProfiles(t *testing.T) {
 		t.Fatalf("profiles = %v", out)
 	}
 	allowed := acctest.Strs(t, acctest.OrEmptyList(hd["allowed"]), "allowed")
-	if acctest.Str(hd["cutoff"]) != "Bluray-1080p" || hd["upgrade_allowed"] != false || len(allowed) == 0 || allowed[0] != "Remux-1080p" || allowed[len(allowed)-1] != "HDTV-1080p" ||
+	if acctest.Str(hd["cutoff"]) != "Bluray-1080p" || !acctest.IsBool(hd["upgrade_allowed"], false) || len(allowed) == 0 || allowed[0] != "Remux-1080p" || allowed[len(allowed)-1] != "HDTV-1080p" ||
 		!slices.Contains(allowed, "WEBDL-1080p") || !slices.Contains(allowed, "WEBRip-1080p") || slices.Contains(allowed, "HDTV-720p") {
 		t.Errorf("HD-1080p = %v, want Remux-1080p down to HDTV-1080p, the web group's qualities among them", hd)
 	}
@@ -282,7 +282,7 @@ func TestQualityProfiles(t *testing.T) {
 	})
 
 	edited := suite.Call(t, "qualityprofile_edit", map[string]any{"profile": profileHD, "upgrade_allowed": true, "cutoff": "Remux-1080p", "cutoff_format_score": 10})
-	if edited["upgrade_allowed"] != true || acctest.Str(edited["cutoff"]) != "Remux-1080p" || acctest.Num(t, edited["cutoff_format_score"], "cutoff_format_score") != 10 ||
+	if !acctest.BoolOf(edited["upgrade_allowed"]) || acctest.Str(edited["cutoff"]) != "Remux-1080p" || acctest.Num(t, edited["cutoff_format_score"], "cutoff_format_score") != 10 ||
 		acctest.Num(t, edited["movies"], "movies") != films[profileHD] {
 		t.Errorf("qualityprofile_edit = %v", edited)
 	}
@@ -313,7 +313,7 @@ func TestQualityProfiles(t *testing.T) {
 func TestQualityDefinitions(t *testing.T) {
 	defs := acctest.Rows(t, suite.Call(t, "qualitydefinition_list", nil)["definitions"], "definitions")
 	byQuality := map[string]map[string]any{}
-	var order []string
+	order := make([]string, 0, len(defs))
 	for _, d := range defs {
 		byQuality[acctest.Str(d["quality"])] = d
 		order = append(order, acctest.Str(d["quality"]))
@@ -409,8 +409,7 @@ func TestCustomFormats(t *testing.T) {
 		t.Errorf("scores = %v, want HD-1080p's 25 and no other profile's 0", scores)
 	}
 	for _, p := range acctest.Rows(t, suite.Call(t, "qualityprofile_list", nil)["profiles"], "profiles") {
-		scores, _ := p["format_scores"].(map[string]any)
-		if (acctest.Str(p["name"]) == profileHD) != (acctest.NumOr0(scores["acceptance-x265"]) == 25) {
+		if (acctest.Str(p["name"]) == profileHD) != (acctest.NumOr0(formatScores(p)["acceptance-x265"]) == 25) {
 			t.Errorf("%s's format scores = %v", p["name"], p["format_scores"])
 		}
 	}
@@ -447,7 +446,7 @@ func TestProviders(t *testing.T) {
 	}
 	fake := indexers[0]
 	if acctest.Str(fake["name"]) != "Fake Indexer" || acctest.Str(fake["implementation"]) != "Newznab" || acctest.Str(fake["protocol"]) != "usenet" ||
-		fake["enable_rss"] != true || fake["enable_automatic_search"] != true || fake["enable_interactive_search"] != true || acctest.Num(t, fake["priority"], "priority") != 25 {
+		!acctest.BoolOf(fake["enable_rss"]) || !acctest.BoolOf(fake["enable_automatic_search"]) || !acctest.BoolOf(fake["enable_interactive_search"]) || acctest.Num(t, fake["priority"], "priority") != 25 {
 		t.Errorf("the fake indexer = %v", fake)
 	}
 	clients := acctest.Rows(t, suite.Call(t, "downloadclient_list", nil)["download_clients"], "download_clients")
@@ -455,19 +454,19 @@ func TestProviders(t *testing.T) {
 		t.Fatalf("download clients = %v, want the harness's one", clients)
 	}
 	hole := clients[0]
-	if acctest.Str(hole["name"]) != "Blackhole" || acctest.Str(hole["implementation"]) != "Usenet Blackhole" || hole["enabled"] != true ||
-		hole["remove_completed_downloads"] != true || hole["remove_failed_downloads"] != true || acctest.Num(t, hole["priority"], "priority") != 1 {
+	if acctest.Str(hole["name"]) != "Blackhole" || acctest.Str(hole["implementation"]) != "Usenet Blackhole" || !acctest.BoolOf(hole["enabled"]) ||
+		!acctest.BoolOf(hole["remove_completed_downloads"]) || !acctest.BoolOf(hole["remove_failed_downloads"]) || acctest.Num(t, hole["priority"], "priority") != 1 {
 		t.Errorf("the blackhole = %v", hole)
 	}
 
 	// both pass as they are
 	for tool, name := range map[string]string{"indexer_test": "Fake Indexer", "downloadclient_test": "Blackhole"} {
 		results := acctest.Rows(t, suite.Call(t, tool, nil)["results"], "results")
-		if len(results) != 1 || acctest.Str(results[0]["name"]) != name || results[0]["valid"] != true || results[0]["failures"] != nil {
+		if len(results) != 1 || acctest.Str(results[0]["name"]) != name || !acctest.BoolOf(results[0]["valid"]) || results[0]["failures"] != nil {
 			t.Errorf("%s = %v", tool, results)
 		}
 		one := acctest.Rows(t, suite.Call(t, tool, map[string]any{"name": strings.ToLower(name)})["results"], "results")
-		if len(one) != 1 || one[0]["valid"] != true {
+		if len(one) != 1 || !acctest.BoolOf(one[0]["valid"]) {
 			t.Errorf("%s by name = %v", tool, one)
 		}
 	}
@@ -515,14 +514,14 @@ func TestProviders(t *testing.T) {
 		for _, r := range results {
 			byName[acctest.Str(r["name"])] = r
 		}
-		if len(results) != 2 || byName[name]["valid"] != false || len(acctest.Strs(t, acctest.OrEmptyList(byName[name]["failures"]), "failures")) == 0 {
+		if len(results) != 2 || !acctest.IsBool(byName[name]["valid"], false) || len(acctest.Strs(t, acctest.OrEmptyList(byName[name]["failures"]), "failures")) == 0 {
 			t.Errorf("%s with a broken one = %v", tool, results)
 		}
-		if good := byName[map[string]string{"indexer_test": "Fake Indexer", "downloadclient_test": "Blackhole"}[tool]]; good["valid"] != true {
+		if good := byName[map[string]string{"indexer_test": "Fake Indexer", "downloadclient_test": "Blackhole"}[tool]]; !acctest.BoolOf(good["valid"]) {
 			t.Errorf("%s: the working one failed beside the broken one: %v", tool, results)
 		}
 		one := acctest.Rows(t, suite.Call(t, tool, map[string]any{"name": name})["results"], "results")
-		if len(one) != 1 || one[0]["valid"] != false || len(acctest.Strs(t, acctest.OrEmptyList(one[0]["failures"]), "failures")) == 0 {
+		if len(one) != 1 || !acctest.IsBool(one[0]["valid"], false) || len(acctest.Strs(t, acctest.OrEmptyList(one[0]["failures"]), "failures")) == 0 {
 			t.Errorf("%s %s = %v", tool, name, one)
 		}
 	}
@@ -544,7 +543,7 @@ func TestNaming(t *testing.T) {
 	out := suite.Call(t, "naming_get", nil)
 	// Radarr's example film is "The Movie: Title", so the examples show what
 	// the colon becomes
-	if out["rename_movies"] != false || acctest.Str(out["colon_replacement"]) != "smart" || acctest.Str(out["standard_movie_format"]) != "{Movie Title} ({Release Year}) {Quality Full}" ||
+	if !acctest.IsBool(out["rename_movies"], false) || acctest.Str(out["colon_replacement"]) != "smart" || acctest.Str(out["standard_movie_format"]) != "{Movie Title} ({Release Year}) {Quality Full}" ||
 		acctest.Str(out["movie_folder_format"]) != "{Movie Title} ({Release Year})" || acctest.Str(out["example_file"]) != "The Movie - Title (2010) Bluray-1080p Proper" ||
 		acctest.Str(out["example_folder"]) != "The Movie - Title (2010)" {
 		t.Errorf("naming_get = %v", out)
@@ -558,7 +557,7 @@ func TestNaming(t *testing.T) {
 	})
 
 	edited := suite.Call(t, "naming_edit", map[string]any{"rename_movies": true, "colon_replacement": "Delete", "standard_movie_format": "{Movie Title} ({Release Year}) - {Quality Full}"})
-	if edited["rename_movies"] != true || acctest.Str(edited["colon_replacement"]) != "delete" || acctest.Str(edited["example_file"]) != "The Movie Title (2010) - Bluray-1080p Proper" ||
+	if !acctest.BoolOf(edited["rename_movies"]) || acctest.Str(edited["colon_replacement"]) != "delete" || acctest.Str(edited["example_file"]) != "The Movie Title (2010) - Bluray-1080p Proper" ||
 		acctest.Str(edited["example_folder"]) != "The Movie Title (2010)" || acctest.Str(edited["movie_folder_format"]) != "{Movie Title} ({Release Year})" {
 		t.Errorf("naming_edit = %v", edited)
 	}

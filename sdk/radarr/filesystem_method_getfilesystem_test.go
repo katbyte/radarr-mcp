@@ -27,7 +27,7 @@ func TestOperationGetFileSystem(t *testing.T) {
 	expectQuery(t, r, "path", "v-Path")
 	expectQuery(t, r, "includeFiles", "true")
 	expectQuery(t, r, "allowFoldersWithoutTrailingSlashes", "true")
-	if result.HttpResponse == nil || result.HttpResponse.StatusCode != 200 {
+	if result.HttpResponse == nil || result.HttpResponse.StatusCode != http.StatusOK {
 		t.Fatalf("HttpResponse = %+v", result.HttpResponse)
 	}
 	if result.Answer == nil || !result.Answered() {

@@ -18,7 +18,8 @@
 package tools_test
 
 import (
+	"os"
 	"testing"
 )
 
-func TestMain(m *testing.M) { testMain(m) }
+func TestMain(m *testing.M) { os.Exit(runSuite(m)) }

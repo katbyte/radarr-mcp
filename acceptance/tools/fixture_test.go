@@ -39,7 +39,7 @@ func TestFixturesAreWhatTheScriptLaidOut(t *testing.T) {
 		if f.Folder != "" && acctest.Str(row["path"]) != f.Root+"/"+f.Folder {
 			t.Errorf("%s is at %v, want %s/%s", name, row["path"], f.Root, f.Folder)
 		}
-		if got := acctest.Str(row["quality"]); got != f.Quality || (row["has_file"] == true) != (f.Quality != "") {
+		if got := acctest.Str(row["quality"]); got != f.Quality || acctest.BoolOf(row["has_file"]) != (f.Quality != "") {
 			t.Errorf("%s: file graded %q (has_file %v), want %q", name, got, row["has_file"], f.Quality)
 		}
 	}

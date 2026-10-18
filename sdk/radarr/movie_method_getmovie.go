@@ -30,8 +30,7 @@ type GetMovieOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetMovieOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.
@@ -52,8 +51,7 @@ func (o GetMovieOptions) ToQuery() *client.QueryParams {
 // GetMovie calls GET /api/v3/movie.
 func (c Client) GetMovie(ctx context.Context, options ...GetMovieOptions) (result GetMovieResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetMovie takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("GetMovie takes one options struct at most, not %d", len(options))
 	}
 	var option GetMovieOptions
 	if len(options) == 1 {
@@ -72,7 +70,7 @@ func (c Client) GetMovie(ctx context.Context, options ...GetMovieOptions) (resul
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -81,12 +79,12 @@ func (c Client) GetMovie(ctx context.Context, options ...GetMovieOptions) (resul
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

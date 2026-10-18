@@ -37,8 +37,6 @@ import (
 // custom filter, custom format, release profile, remote path mapping, auto
 // tagging rule, exclusion, notification and import list - so each by-id GET
 // has something real to read.
-//
-//nolint:paralleltest // the tests share one server and its fixtures
 func TestReadSweep(t *testing.T) {
 	ctx := skipUnlessUp(t)
 	l := fixtures(t)
@@ -47,7 +45,7 @@ func TestReadSweep(t *testing.T) {
 
 	// a subtitle beside Alien's file, which the rescan further down finds and Radarr then keeps track of as an extra file. It is laid out first: the container sees a new file on this machine's disk a moment after it is written
 	subtitle := testenv.HostPath(alien.Path + "/" + strings.TrimSuffix(alien.File, ".mkv") + ".en.srt")
-	if err := os.WriteFile(subtitle, []byte("1\n00:00:01,000 --> 00:00:03,000\nIn space no one can hear you scream.\n"), 0o644); err != nil {
+	if err := os.WriteFile(subtitle, []byte("1\n00:00:01,000 --> 00:00:03,000\nIn space no one can hear you scream.\n"), 0o644); err != nil { //nolint:gosec // the container reads it as another user
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Remove(subtitle) })
@@ -115,10 +113,10 @@ func TestReadSweep(t *testing.T) {
 
 	// the log Radarr's updater leaves, which a container never runs: laid out where it would write one
 	const updateLog = "radarr.update.txt"
-	if err := os.MkdirAll(testenv.ConfigPath("UpdateLogs"), 0o755); err != nil {
+	if err := os.MkdirAll(testenv.ConfigPath("UpdateLogs"), 0o755); err != nil { //nolint:gosec // the container reads it as another user
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(testenv.ConfigPath("UpdateLogs", updateLog), []byte("2026-01-01 00:00:00.0|Info|UpdateApp|Starting Radarr Update Client\n"), 0o644); err != nil {
+	if err := os.WriteFile(testenv.ConfigPath("UpdateLogs", updateLog), []byte("2026-01-01 00:00:00.0|Info|UpdateApp|Starting Radarr Update Client\n"), 0o644); err != nil { //nolint:gosec // the container reads it as another user
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(testenv.ConfigPath("UpdateLogs")) })

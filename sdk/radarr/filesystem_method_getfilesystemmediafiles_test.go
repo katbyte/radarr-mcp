@@ -21,7 +21,7 @@ func TestOperationGetFileSystemMediaFiles(t *testing.T) {
 	_ = body
 	expectRequest(t, r, http.MethodGet, "/api/v3/filesystem/mediafiles")
 	expectQuery(t, r, "path", "v-Path")
-	if result.HttpResponse == nil || result.HttpResponse.StatusCode != 200 {
+	if result.HttpResponse == nil || result.HttpResponse.StatusCode != http.StatusOK {
 		t.Fatalf("HttpResponse = %+v", result.HttpResponse)
 	}
 	if result.Answer == nil || !result.Answered() {

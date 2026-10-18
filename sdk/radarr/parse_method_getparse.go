@@ -44,8 +44,7 @@ type GetParseOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetParseOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.
@@ -75,7 +74,7 @@ func (c Client) GetParse(ctx context.Context, title string) (result GetParseResp
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -84,15 +83,15 @@ func (c Client) GetParse(ctx context.Context, title string) (result GetParseResp
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer ParseResource
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.ParseResource = result.Answer
 
-	return
+	return result, nil
 }

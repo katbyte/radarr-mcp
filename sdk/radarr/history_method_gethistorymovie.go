@@ -30,8 +30,7 @@ type GetHistoryMovieOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetHistoryMovieOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.
@@ -52,8 +51,7 @@ func (o GetHistoryMovieOptions) ToQuery() *client.QueryParams {
 // GetHistoryMovie calls GET /api/v3/history/movie.
 func (c Client) GetHistoryMovie(ctx context.Context, options ...GetHistoryMovieOptions) (result GetHistoryMovieResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetHistoryMovie takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("GetHistoryMovie takes one options struct at most, not %d", len(options))
 	}
 	var option GetHistoryMovieOptions
 	if len(options) == 1 {
@@ -72,7 +70,7 @@ func (c Client) GetHistoryMovie(ctx context.Context, options ...GetHistoryMovieO
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -81,12 +79,12 @@ func (c Client) GetHistoryMovie(ctx context.Context, options ...GetHistoryMovieO
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

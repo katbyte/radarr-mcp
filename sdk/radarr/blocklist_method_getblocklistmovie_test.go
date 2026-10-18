@@ -21,7 +21,7 @@ func TestOperationGetBlocklistMovie(t *testing.T) {
 	_ = body
 	expectRequest(t, r, http.MethodGet, "/api/v3/blocklist/movie")
 	expectQuery(t, r, "movieId", "7")
-	if result.HttpResponse == nil || result.HttpResponse.StatusCode != 200 {
+	if result.HttpResponse == nil || result.HttpResponse.StatusCode != http.StatusOK {
 		t.Fatalf("HttpResponse = %+v", result.HttpResponse)
 	}
 	if result.Answer == nil || !result.Answered() {
@@ -47,8 +47,8 @@ func TestOperationGetBlocklistMovie(t *testing.T) {
 	if _, err = c.GetBlocklistMovie(t.Context()); err != nil {
 		t.Errorf("without the option = %v", err)
 	}
-	if r, _ := s.only(t); r.URL.RawQuery != "" || r.Header.Get("movieId") != "" {
-		t.Errorf("without the option, sent %q and %q", r.URL.RawQuery, r.Header.Get("movieId"))
+	if r, _ := s.only(t); r.URL.RawQuery != "" || r.Header.Get("Movieid") != "" {
+		t.Errorf("without the option, sent %q and %q", r.URL.RawQuery, r.Header.Get("Movieid"))
 	}
 	// two values are refused before any request
 	if _, err = c.GetBlocklistMovie(t.Context(), MovieID(7), MovieID(7)); err == nil || len(s.requests) != 1 {

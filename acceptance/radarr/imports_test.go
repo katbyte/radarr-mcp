@@ -21,8 +21,6 @@ import (
 // does: it lists what Radarr would import from a folder, has a candidate
 // reprocessed with the film chosen for it, and runs the import command,
 // which tells the webhook.
-//
-//nolint:paralleltest // the tests share one server
 func TestManualImport(t *testing.T) {
 	ctx := skipUnlessUp(t)
 	fixtures(t)
@@ -83,8 +81,6 @@ func TestManualImport(t *testing.T) {
 // command waits only while both are busy. A search waits on every indexer,
 // so with an indexer that answers only when told, each search holds a
 // thread, and the command after two of them waits.
-//
-//nolint:paralleltest // the tests share one server
 func TestCommands(t *testing.T) {
 	ctx := skipUnlessUp(t)
 	downloads(t)

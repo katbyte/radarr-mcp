@@ -28,7 +28,7 @@ func TestImportScan(t *testing.T) {
 	}
 	f := files[0]
 	if acctest.Str(f["relative_path"]) != "Contact (1997) Bluray-1080p.mkv" || acctest.Str(f["movie"]) != "Contact (1997)" || acctest.Str(f["quality"]) != "Bluray-1080p" ||
-		f["importable"] != false || !strings.Contains(strings.Join(acctest.Strs(t, acctest.OrEmptyList(f["rejections"]), "rejections"), " "), "Not an upgrade") {
+		!acctest.IsBool(f["importable"], false) || !strings.Contains(strings.Join(acctest.Strs(t, acctest.OrEmptyList(f["rejections"]), "rejections"), " "), "Not an upgrade") {
 		t.Errorf("the untracked copy = %v", f)
 	}
 
@@ -44,7 +44,7 @@ func TestImportScan(t *testing.T) {
 	}
 	// Ronin, on disk and not in the library, is an unknown film
 	ronin := acctest.Rows(t, suite.Call(t, "import_scan", map[string]any{"folder": unmappedRonin})["files"], "files")
-	if len(ronin) != 1 || acctest.Str(ronin[0]["movie"]) != "" || !slices.Contains(acctest.Strs(t, acctest.OrEmptyList(ronin[0]["rejections"]), "rejections"), "Unknown Movie") || ronin[0]["importable"] != true {
+	if len(ronin) != 1 || acctest.Str(ronin[0]["movie"]) != "" || !slices.Contains(acctest.Strs(t, acctest.OrEmptyList(ronin[0]["rejections"]), "rejections"), "Unknown Movie") || !acctest.BoolOf(ronin[0]["importable"]) {
 		t.Errorf("Ronin = %v", ronin)
 	}
 	if msg := suite.CallErr(t, "import_scan", nil); !strings.Contains(msg, "name a folder, a download_id or a movie") {
@@ -75,7 +75,7 @@ func TestImportIdentify(t *testing.T) {
 	}
 	best := acctest.Rows(t, ronin["candidates"], "candidates")
 	if len(best) == 0 || acctest.Str(best[0]["title"]) != "Ronin" || acctest.Num(t, best[0]["year"], "year") != 1998 ||
-		acctest.Num(t, best[0]["tmdb_id"], "tmdb_id") != 8195 || best[0]["in_library"] != false {
+		acctest.Num(t, best[0]["tmdb_id"], "tmdb_id") != 8195 || !acctest.IsBool(best[0]["in_library"], false) {
 		t.Errorf("Ronin's candidates = %v", ronin["candidates"])
 	}
 
@@ -84,7 +84,7 @@ func TestImportIdentify(t *testing.T) {
 	if cut == nil {
 		t.Fatalf("the director's cut folder = %v", byFolder)
 	}
-	if c := acctest.Rows(t, cut["candidates"], "candidates"); len(c) == 0 || c[0]["in_library"] != true ||
+	if c := acctest.Rows(t, cut["candidates"], "candidates"); len(c) == 0 || !acctest.BoolOf(c[0]["in_library"]) ||
 		acctest.Num(t, c[0]["library_id"], "library_id") != movieID(t, "Alien", 1979) {
 		t.Errorf("the director's cut candidates = %v", cut["candidates"])
 	}

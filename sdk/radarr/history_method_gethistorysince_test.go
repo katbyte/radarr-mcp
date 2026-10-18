@@ -28,7 +28,7 @@ func TestOperationGetHistorySince(t *testing.T) {
 	expectQuery(t, r, "date", "2024-03-04T05:06:07Z")
 	expectQuery(t, r, "eventType", "unknown")
 	expectQuery(t, r, "includeMovie", "true")
-	if result.HttpResponse == nil || result.HttpResponse.StatusCode != 200 {
+	if result.HttpResponse == nil || result.HttpResponse.StatusCode != http.StatusOK {
 		t.Fatalf("HttpResponse = %+v", result.HttpResponse)
 	}
 	if result.Answer == nil || !result.Answered() {

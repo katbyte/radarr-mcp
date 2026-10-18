@@ -63,8 +63,8 @@ func newOperationServer(t *testing.T, status int, contentType, body string) (*Cl
 	return c, s
 }
 
-// only returns the one request the server received.
-func (s *operationServer) only(t *testing.T) (*http.Request, string) {
+// only returns the one request the server received, and its body.
+func (s *operationServer) only(t *testing.T) (r *http.Request, body string) {
 	t.Helper()
 
 	if len(s.requests) != 1 {
@@ -93,9 +93,9 @@ func expectQuery(t *testing.T, r *http.Request, name string, want ...string) {
 }
 
 // pagedServer answers the first pages requests with one item each and an
-// empty list after, reporting total items, and records the page of
-// each request.
-func pagedServer(t *testing.T, startIndex, item string, total, pages int) (*Client, *[]string) {
+// empty list after, reporting total items under the names the list answers
+// with, and records the page of each request.
+func pagedServer(t *testing.T, startIndex, items, total, item string, count, pages int) (paged *Client, asked *[]string) {
 	t.Helper()
 
 	var starts []string
@@ -105,7 +105,7 @@ func pagedServer(t *testing.T, startIndex, item string, total, pages int) (*Clie
 		if len(starts) > pages {
 			item = ""
 		}
-		_, _ = fmt.Fprintf(w, "{\"records\":[%s],\"totalRecords\":%d}", item, total)
+		_, _ = fmt.Fprintf(w, "{%q:[%s],%q:%d}", items, item, total, count)
 	}))
 	t.Cleanup(srv.Close)
 	c, err := New(srv.URL, "test-token")

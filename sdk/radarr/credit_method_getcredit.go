@@ -29,8 +29,7 @@ type GetCreditOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetCreditOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.
@@ -48,8 +47,7 @@ func (o GetCreditOptions) ToQuery() *client.QueryParams {
 // GetCredit calls GET /api/v3/credit.
 func (c Client) GetCredit(ctx context.Context, options ...GetCreditOptions) (result GetCreditResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetCredit takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("GetCredit takes one options struct at most, not %d", len(options))
 	}
 	var option GetCreditOptions
 	if len(options) == 1 {
@@ -68,7 +66,7 @@ func (c Client) GetCredit(ctx context.Context, options ...GetCreditOptions) (res
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -77,12 +75,12 @@ func (c Client) GetCredit(ctx context.Context, options ...GetCreditOptions) (res
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

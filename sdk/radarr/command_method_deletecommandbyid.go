@@ -4,8 +4,8 @@ package radarr
 
 import (
 	"context"
-	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
@@ -23,12 +23,12 @@ func (c Client) DeleteCommandById(ctx context.Context, id int) (result DeleteCom
 		},
 		HTTPMethod: http.MethodDelete,
 		Operation:  "DeleteCommandById",
-		Path:       fmt.Sprintf("/api/v3/command/%d", id),
+		Path:       "/api/v3/command/" + strconv.Itoa(id),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -37,8 +37,8 @@ func (c Client) DeleteCommandById(ctx context.Context, id int) (result DeleteCom
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

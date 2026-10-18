@@ -4,7 +4,6 @@ package radarr
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -25,12 +24,12 @@ func (c Client) DeleteRootFolderById(ctx context.Context, id RootFolderID) (resu
 		},
 		HTTPMethod: http.MethodDelete,
 		Operation:  "DeleteRootFolderById",
-		Path:       fmt.Sprintf("/api/v3/rootfolder/%s", url.PathEscape(strconv.Itoa(int(id)))),
+		Path:       "/api/v3/rootfolder/" + url.PathEscape(strconv.Itoa(int(id))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -39,8 +38,8 @@ func (c Client) DeleteRootFolderById(ctx context.Context, id RootFolderID) (resu
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

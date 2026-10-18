@@ -89,7 +89,6 @@ func actionOptions(t *testing.T, raw json.RawMessage) []map[string]any {
 	return answer.Options
 }
 
-//nolint:paralleltest // the tests share one server
 func TestIndexers(t *testing.T) {
 	ctx := skipUnlessUp(t)
 	d := downloads(t)
@@ -105,16 +104,16 @@ func TestIndexers(t *testing.T) {
 		})
 		ids = append(ids, created.Id)
 	}
-	b := must(sdk.GetIndexerById(ctx, ids[0])).Answer
+	b := must(must(sdk.GetIndexerById(ctx, ids[0])).Record())
 
-	edit := *b
+	edit := b
 	edit.Priority = 30
-	b = must(sdk.PutIndexerById(ctx, b.Id, edit)).Answer
+	b = must(must(sdk.PutIndexerById(ctx, b.Id, edit)).Record())
 	if b.Priority != 30 {
 		t.Errorf("priority %d after the update, want 30", b.Priority)
 	}
 
-	must(sdk.PostIndexerTest(ctx, *b))
+	must(sdk.PostIndexerTest(ctx, b))
 	all := must(sdk.PostIndexerTestAll(ctx)).Answer
 	for _, id := range []radarr.IndexerID{d.indexer, ids[0], ids[1]} {
 		if r := testResult(t, all, int(id)); !r.IsValid {
@@ -124,7 +123,7 @@ func TestIndexers(t *testing.T) {
 
 	// the categories a Newznab indexer offers are an action on it, asked of
 	// the indexer itself
-	categories := actionOptions(t, must(sdk.PostIndexerActionByName(ctx, "newznabCategories", *b)).Answer)
+	categories := actionOptions(t, must(sdk.PostIndexerActionByName(ctx, "newznabCategories", b)).Answer)
 	if len(categories) == 0 {
 		t.Error("the indexer offers no categories")
 	}
@@ -142,7 +141,6 @@ func TestIndexers(t *testing.T) {
 	gone(t, "the indexer", res, err)
 }
 
-//nolint:paralleltest // the tests share one server
 func TestDownloadClients(t *testing.T) {
 	ctx := skipUnlessUp(t)
 	downloads(t)
@@ -163,16 +161,16 @@ func TestDownloadClients(t *testing.T) {
 		})
 		ids = append(ids, created.Id)
 	}
-	b := must(sdk.GetDownloadClientById(ctx, ids[0])).Answer
+	b := must(must(sdk.GetDownloadClientById(ctx, ids[0])).Record())
 
-	edit := *b
+	edit := b
 	edit.Priority = 5
-	b = must(sdk.PutDownloadClientById(ctx, b.Id, edit)).Answer
+	b = must(must(sdk.PutDownloadClientById(ctx, b.Id, edit)).Record())
 	if b.Priority != 5 {
 		t.Errorf("priority %d after the update, want 5", b.Priority)
 	}
 
-	must(sdk.PostDownloadClientTest(ctx, *b))
+	must(sdk.PostDownloadClientTest(ctx, b))
 	for _, r := range must(sdk.PostDownloadClientTestAll(ctx)).Answer {
 		if !r.IsValid {
 			t.Errorf("download client %d failed its test: %+v", r.Id, r.ValidationFailures)
@@ -197,8 +195,8 @@ func TestDownloadClients(t *testing.T) {
 	}
 	// and a test of the one client answers 400 with its failures, which
 	// say whether each is only a warning
-	c := must(sdk.GetDownloadClientById(ctx, ids[1])).Answer
-	one, err := sdk.PostDownloadClientTest(ctx, *c)
+	c := must(must(sdk.GetDownloadClientById(ctx, ids[1])).Record())
+	one, err := sdk.PostDownloadClientTest(ctx, c)
 	if client.StatusCode(err) != http.StatusBadRequest {
 		t.Fatalf("a test of the client without folders: want 400, got %v", err)
 	}
@@ -207,7 +205,7 @@ func TestDownloadClients(t *testing.T) {
 	}
 
 	// a blackhole has no actions: an action it does not have answers null
-	if act := must(sdk.PostDownloadClientActionByName(ctx, "sdk-no-such-action", *b)).Answer; string(act) != "null" {
+	if act := must(sdk.PostDownloadClientActionByName(ctx, "sdk-no-such-action", b)).Answer; string(act) != "null" {
 		t.Errorf("an action the client does not have answered %s", act)
 	}
 
@@ -224,7 +222,6 @@ func TestDownloadClients(t *testing.T) {
 	gone(t, "the client", gotten, err)
 }
 
-//nolint:paralleltest // the tests share one server
 func TestImportLists(t *testing.T) {
 	ctx := skipUnlessUp(t)
 	fixtures(t)
@@ -241,16 +238,16 @@ func TestImportLists(t *testing.T) {
 		})
 		ids = append(ids, created.Id)
 	}
-	b := must(sdk.GetImportListById(ctx, ids[0])).Answer
+	b := must(must(sdk.GetImportListById(ctx, ids[0])).Record())
 
-	edit := *b
+	edit := b
 	edit.Name = "SDK List B Renamed"
-	b = must(sdk.PutImportListById(ctx, b.Id, edit)).Answer
+	b = must(must(sdk.PutImportListById(ctx, b.Id, edit)).Record())
 	if b.Name != edit.Name {
 		t.Errorf("named %q after the update", b.Name)
 	}
 
-	must(sdk.PostImportListTest(ctx, *b))
+	must(sdk.PostImportListTest(ctx, b))
 	all := must(sdk.PostImportListTestAll(ctx)).Answer
 	for _, id := range ids {
 		if r := testResult(t, all, id); !r.IsValid {
@@ -260,7 +257,7 @@ func TestImportLists(t *testing.T) {
 
 	// the profiles of the other Radarr are an action on the list, which
 	// asks that Radarr: this one, whose profiles include HD-1080p
-	profiles := actionOptions(t, must(sdk.PostImportListActionByName(ctx, "getProfiles", *b)).Answer)
+	profiles := actionOptions(t, must(sdk.PostImportListActionByName(ctx, "getProfiles", b)).Answer)
 	if !slices.ContainsFunc(profiles, func(o map[string]any) bool { return o["name"] == "HD-1080p" }) {
 		t.Errorf("the other Radarr's profiles: %v", profiles)
 	}
@@ -278,14 +275,13 @@ func TestImportLists(t *testing.T) {
 	gone(t, "the list", res, err)
 }
 
-//nolint:paralleltest // the tests share one server
 func TestNotifications(t *testing.T) {
 	ctx := skipUnlessUp(t)
 
 	// Radarr tests a notification before saving it, which sends the
 	// webhook a test event
 	before := len(hooks.received())
-	n := must(sdk.PostNotification(ctx, webhook(t, "SDK Hook"))).Answer
+	n := must(must(sdk.PostNotification(ctx, webhook(t, "SDK Hook"))).Record())
 	removeAfter(ctx, t, "the webhook", func(ctx context.Context) (radarr.DeleteNotificationByIdResponse, error) {
 		return sdk.DeleteNotificationById(ctx, n.Id)
 	})
@@ -294,23 +290,23 @@ func TestNotifications(t *testing.T) {
 		t.Errorf("saving the webhook sent it no test event: %v", hooks.received()[before:])
 	}
 
-	edit := *n
+	edit := n
 	edit.Name = "SDK Hook Renamed"
 	edit.OnGrab = new(false)
-	n = must(sdk.PutNotificationById(ctx, n.Id, edit)).Answer
+	n = must(must(sdk.PutNotificationById(ctx, n.Id, edit)).Record())
 	if n.Name != edit.Name || isTrue(n.OnGrab) {
 		t.Errorf("named %q, on grab %v after the update", n.Name, isTrue(n.OnGrab))
 	}
 
 	sent := tests()
-	must(sdk.PostNotificationTest(ctx, *n))
+	must(sdk.PostNotificationTest(ctx, n))
 	if !poll(10*time.Second, func() bool { return tests() > sent }) {
 		t.Error("a test of the webhook sent it nothing")
 	}
 	if r := testResult(t, must(sdk.PostNotificationTestAll(ctx)).Answer, n.Id); !r.IsValid {
 		t.Errorf("the webhook failed its test: %+v", r.ValidationFailures)
 	}
-	if act := must(sdk.PostNotificationActionByName(ctx, "sdk-no-such-action", *n)).Answer; string(act) != "null" {
+	if act := must(sdk.PostNotificationActionByName(ctx, "sdk-no-such-action", n)).Answer; string(act) != "null" {
 		t.Errorf("an action the webhook does not have answered %s", act)
 	}
 
@@ -319,7 +315,6 @@ func TestNotifications(t *testing.T) {
 	gone(t, "the webhook", res, err)
 }
 
-//nolint:paralleltest // the tests share one server
 func TestMetadataConsumers(t *testing.T) {
 	ctx := skipUnlessUp(t)
 
@@ -339,7 +334,7 @@ func TestMetadataConsumers(t *testing.T) {
 	fresh.Id = 0
 	fresh.Name = "SDK Metadata"
 	fresh.Enable = new(true)
-	m := must(sdk.PostMetadata(ctx, fresh)).Answer
+	m := must(must(sdk.PostMetadata(ctx, fresh)).Record())
 	removeAfter(ctx, t, "the consumer", func(ctx context.Context) (radarr.DeleteMetadataByIdResponse, error) {
 		return sdk.DeleteMetadataById(ctx, m.Id)
 	})
@@ -347,18 +342,18 @@ func TestMetadataConsumers(t *testing.T) {
 		t.Fatalf("creating a consumer answered the existing one, %d", m.Id)
 	}
 
-	edit := *m
+	edit := m
 	edit.Name = "SDK Metadata Renamed"
-	m = must(sdk.PutMetadataById(ctx, m.Id, edit)).Answer
+	m = must(must(sdk.PutMetadataById(ctx, m.Id, edit)).Record())
 	if m.Name != edit.Name {
 		t.Errorf("named %q after the update", m.Name)
 	}
 
-	must(sdk.PostMetadataTest(ctx, *m))
+	must(sdk.PostMetadataTest(ctx, m))
 	if r := testResult(t, must(sdk.PostMetadataTestAll(ctx)).Answer, m.Id); !r.IsValid {
 		t.Errorf("the consumer failed its test: %+v", r.ValidationFailures)
 	}
-	if act := must(sdk.PostMetadataActionByName(ctx, "sdk-no-such-action", *m)).Answer; string(act) != "null" {
+	if act := must(sdk.PostMetadataActionByName(ctx, "sdk-no-such-action", m)).Answer; string(act) != "null" {
 		t.Errorf("an action the consumer does not have answered %s", act)
 	}
 

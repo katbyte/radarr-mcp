@@ -5,7 +5,6 @@ package radarr
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -49,12 +48,12 @@ func (c Client) GetIndexerById(ctx context.Context, id IndexerID) (result GetInd
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetIndexerById",
-		Path:       fmt.Sprintf("/api/v3/indexer/%s", url.PathEscape(strconv.Itoa(int(id)))),
+		Path:       "/api/v3/indexer/" + url.PathEscape(strconv.Itoa(int(id))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -63,15 +62,15 @@ func (c Client) GetIndexerById(ctx context.Context, id IndexerID) (result GetInd
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer IndexerResource
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.IndexerResource = result.Answer
 
-	return
+	return result, nil
 }

@@ -18,7 +18,7 @@ import (
 // started with.
 func TestServerInfo(t *testing.T) {
 	out := suite.Call(t, "server_info", nil)
-	if acctest.Str(out["app"]) != "Radarr" || acctest.Str(out["version"]) == "" || acctest.Str(out["instance_name"]) != "radarr-mcp-test" || out["docker"] != true {
+	if acctest.Str(out["app"]) != "Radarr" || acctest.Str(out["version"]) == "" || acctest.Str(out["instance_name"]) != "radarr-mcp-test" || !acctest.BoolOf(out["docker"]) {
 		t.Errorf("server_info = %v", out)
 	}
 	if acctest.Str(out["radarr_mcp_version"]) == "" {
@@ -47,10 +47,10 @@ func TestServerInfo(t *testing.T) {
 	}
 
 	roots := acctest.Rows(t, out["root_folders"], "root_folders")
-	var paths []string
+	paths := make([]string, 0, len(roots))
 	for _, r := range roots {
 		paths = append(paths, acctest.Str(r["path"]))
-		if r["accessible"] != true || acctest.NumOr0(r["free_space"]) <= 0 {
+		if !acctest.BoolOf(r["accessible"]) || acctest.NumOr0(r["free_space"]) <= 0 {
 			t.Errorf("root folder %v", r)
 		}
 	}
@@ -152,7 +152,7 @@ func TestServerLogs(t *testing.T) {
 	}
 	// Radarr keeps info and worse in its database, so a harder level is a
 	// subset of a softer one; the setup alone logged hundreds of lines
-	if !(totals["info"] >= totals["warn"] && totals["warn"] >= totals["error"]) || totals["info"] < 20 {
+	if totals["info"] < totals["warn"] || totals["warn"] < totals["error"] || totals["info"] < 20 {
 		t.Errorf("totals by level = %v", totals)
 	}
 
@@ -171,7 +171,7 @@ func TestServerLogs(t *testing.T) {
 // it does not have is an error listing the ones it does.
 func TestServerLogFile(t *testing.T) {
 	files := acctest.Rows(t, suite.Call(t, "server_log_file", nil)["files"], "files")
-	var names []string
+	names := make([]string, 0, len(files))
 	for _, f := range files {
 		names = append(names, acctest.Str(f["name"]))
 		if acctest.Str(f["last_write_time"]) == "" {
@@ -242,7 +242,7 @@ func TestTaskList(t *testing.T) {
 	out := suite.Call(t, "task_list", nil)
 	tasks := acctest.Rows(t, out["tasks"], "tasks")
 	byName := map[string]map[string]any{}
-	var names []string
+	names := make([]string, 0, len(tasks))
 	for _, task := range tasks {
 		byName[acctest.Str(task["task_name"])] = task
 		names = append(names, acctest.Str(task["name"]))

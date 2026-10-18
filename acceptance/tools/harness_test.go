@@ -125,21 +125,21 @@ var (
 	suite = &acctest.Suite{NotReady: "RADARR_SERVER, RADARR_TOKEN and RADARR_TEST_DATA are not set; run: eval \"$(.scripts/testenv.sh up)\""}
 )
 
-// testMain connects, starts the provider proxy and the fake indexer, seeds
-// the fixtures, and runs.
-func testMain(m *testing.M) {
+// runSuite connects, starts the provider proxy and the fake indexer, seeds
+// the fixtures, and runs, answering the code the test binary exits with.
+func runSuite(m *testing.M) int {
 	if !testenv.Configured() {
-		os.Exit(m.Run()) // every test skips
+		return m.Run() // every test skips
 	}
 	var err error
 	if proxy, err = testenv.StartProxy(context.Background(), testenv.CassetteDir()); err != nil {
 		fmt.Fprintln(os.Stderr, "provider proxy:", err)
-		os.Exit(1)
+		return 1
 	}
 	if err := start(); err != nil {
 		_ = proxy.Stop()
 		fmt.Fprintln(os.Stderr, "acceptance setup:", err)
-		os.Exit(1)
+		return 1
 	}
 
 	code := m.Run()
@@ -185,7 +185,7 @@ func testMain(m *testing.M) {
 		}
 	}
 
-	os.Exit(code)
+	return code
 }
 
 func start() error {
@@ -342,31 +342,29 @@ func movieID(t *testing.T, title string, year int) int {
 	return acctest.Num(t, out["id"], "id")
 }
 
+// formatScores is a quality profile's scores for custom formats, by format, or none when it scores none.
+func formatScores(profile map[string]any) map[string]any {
+	scores, ok := profile["format_scores"].(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	return scores
+}
+
 // findings returns the "Title (Year)" of each finding in an audit's
 // worklist, sorted.
 func findings(t *testing.T, out map[string]any) []string {
 	t.Helper()
 
-	var names []string
-	for _, f := range acctest.Rows(t, out["findings"], "findings") {
+	rows := acctest.Rows(t, out["findings"], "findings")
+	names := make([]string, 0, len(rows))
+	for _, f := range rows {
 		names = append(names, titleYear(acctest.Str(f["title"]), acctest.NumOr0(f["year"])))
 	}
 	slices.Sort(names)
 
 	return names
-}
-
-// copyFixture copies a fixture film's file to a new place under the media
-// tree, for a test that needs a file Radarr has not seen.
-func copyFixture(t *testing.T, from, to string) {
-	t.Helper()
-
-	data, err := os.ReadFile(testenv.HostPath(from)) //nolint:gosec // a fixture under the test data dir
-	if err != nil {
-		t.Fatal(err)
-	}
-	env.Mkdir(t, testenv.DataDir(), filepath.Dir(testenv.HostPath(to)))
-	env.WriteFile(t, testenv.HostPath(to), data)
 }
 
 // makeVideo writes a new film file of a runtime and size with ffmpeg, the way

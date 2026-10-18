@@ -481,7 +481,9 @@ func createFixtures(ctx context.Context) (library, error) {
 		if err != nil {
 			return l, fmt.Errorf("adding %s: %w", f.Title, err)
 		}
-		l.films[f.TmdbID] = *res.Answer
+		if l.films[f.TmdbID], err = res.Record(); err != nil {
+			return l, fmt.Errorf("adding %s: %w", f.Title, err)
+		}
 	}
 
 	// Radarr refreshes a new film and scans its folder in the background;
@@ -491,18 +493,20 @@ func createFixtures(ctx context.Context) (library, error) {
 			continue
 		}
 		id := l.films[f.TmdbID].Id
-		var m *radarr.MovieResource
+		var m radarr.MovieResource
 		if !poll(2*time.Minute, func() bool {
 			res, err := sdk.GetMovieById(ctx, id)
 			if err != nil {
 				return false
 			}
-			m = res.Answer
+			if m, err = res.Record(); err != nil {
+				return false
+			}
 			return isTrue(m.HasFile) && m.MovieFile != nil && m.MovieFile.MediaInfo != nil
 		}) {
 			return l, fmt.Errorf("%s never found its file", f.Title)
 		}
-		l.films[f.TmdbID] = *m
+		l.films[f.TmdbID] = m
 	}
 
 	return l, nil
@@ -658,11 +662,12 @@ const commandWait = 2 * time.Minute
 func completed(t *testing.T, res radarr.GetCommandByIdResponse) radarr.CommandResource {
 	t.Helper()
 
-	if res.Answer.Status != radarr.CommandStatusCompleted {
-		t.Fatalf("%s %s: %s %s", res.Answer.Name, res.Answer.Status, res.Answer.Message, res.Answer.Exception)
+	cmd := must(res.Record())
+	if cmd.Status != radarr.CommandStatusCompleted {
+		t.Fatalf("%s %s: %s %s", cmd.Name, cmd.Status, cmd.Message, cmd.Exception)
 	}
 
-	return *res.Answer
+	return cmd
 }
 
 // mediaMkdir makes a directory under the bind-mounted media tree that

@@ -43,7 +43,6 @@ func nzb(t *testing.T, title string) {
 	}
 }
 
-//nolint:paralleltest // the tests share one server
 func TestReleases(t *testing.T) {
 	ctx := skipUnlessUp(t)
 	downloads(t)
@@ -54,11 +53,11 @@ func TestReleases(t *testing.T) {
 
 	// a failed download is not searched for again while the test runs,
 	// which offers each release itself
-	dc := must(sdk.GetConfigDownloadClient(ctx)).Answer
-	noRetry := *dc
+	dc := must(must(sdk.GetConfigDownloadClient(ctx)).Record())
+	noRetry := dc
 	noRetry.AutoRedownloadFailed = new(false)
 	must(sdk.PutConfigDownloadClientById(ctx, dc.Id, noRetry))
-	t.Cleanup(func() { _, _ = sdk.PutConfigDownloadClientById(context.WithoutCancel(ctx), dc.Id, *dc) })
+	t.Cleanup(func() { _, _ = sdk.PutConfigDownloadClientById(context.WithoutCancel(ctx), dc.Id, dc) })
 
 	before := len(hooks.received())
 	hook := must(sdk.PostNotification(ctx, webhook(t, "SDK Grab Hook"))).Answer

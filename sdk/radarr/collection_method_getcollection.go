@@ -28,8 +28,7 @@ type GetCollectionOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetCollectionOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.
@@ -45,8 +44,7 @@ func (o GetCollectionOptions) ToQuery() *client.QueryParams {
 func (c Client) GetCollection(ctx context.Context, tmdbId ...int) (result GetCollectionResponse, err error) {
 	var option GetCollectionOptions
 	if len(tmdbId) > 1 {
-		err = fmt.Errorf("GetCollection takes one tmdbId at most, not %d", len(tmdbId))
-		return
+		return result, fmt.Errorf("GetCollection takes one tmdbId at most, not %d", len(tmdbId))
 	}
 	if len(tmdbId) == 1 {
 		option.TmdbId = &tmdbId[0]
@@ -64,7 +62,7 @@ func (c Client) GetCollection(ctx context.Context, tmdbId ...int) (result GetCol
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -73,12 +71,12 @@ func (c Client) GetCollection(ctx context.Context, tmdbId ...int) (result GetCol
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

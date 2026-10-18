@@ -25,8 +25,7 @@ type DeleteMovieByIdOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o DeleteMovieByIdOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.
@@ -44,8 +43,7 @@ func (o DeleteMovieByIdOptions) ToQuery() *client.QueryParams {
 // DeleteMovieById calls DELETE /api/v3/movie/{id}.
 func (c Client) DeleteMovieById(ctx context.Context, id MovieID, options ...DeleteMovieByIdOptions) (result DeleteMovieByIdResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("DeleteMovieById takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("DeleteMovieById takes one options struct at most, not %d", len(options))
 	}
 	var option DeleteMovieByIdOptions
 	if len(options) == 1 {
@@ -59,12 +57,12 @@ func (c Client) DeleteMovieById(ctx context.Context, id MovieID, options ...Dele
 		HTTPMethod:    http.MethodDelete,
 		Operation:     "DeleteMovieById",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/api/v3/movie/%s", url.PathEscape(strconv.Itoa(int(id)))),
+		Path:          "/api/v3/movie/" + url.PathEscape(strconv.Itoa(int(id))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -73,8 +71,8 @@ func (c Client) DeleteMovieById(ctx context.Context, id MovieID, options ...Dele
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

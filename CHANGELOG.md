@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1 (2026-10-18)
+
+### Changed
+
+- the live tests are linted like the rest of the code, where the linter never saw them: they read a call's answer by value, so a missing one fails the test rather than crashing it, and read a yes or no from a tool's answer the way the other servers' tests do
+- the generated Go client and its tests are linted too, where the linter skipped them as generated code: moved to pandorest v0.13.1, whose client passes the same checks as the rest of the code, and a request body may be up to 1,024 bytes before the linter asks for it to be passed by pointer, so a film can still be written in place
+
 ## 0.5.0 (2026-10-18)
 
 ### Added

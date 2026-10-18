@@ -55,11 +55,11 @@ func (c Client) RefreshCollections(ctx context.Context, input RefreshCollections
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -68,29 +68,28 @@ func (c Client) RefreshCollections(ctx context.Context, input RefreshCollections
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer CommandResource
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.CommandResource = result.Answer
 
-	return
+	return result, nil
 }
 
 // RefreshCollectionsAndWait queues the RefreshCollections command and waits for it as WaitForCommand does, answering it as it stands.
 func (c Client) RefreshCollectionsAndWait(ctx context.Context, input RefreshCollectionsCommand, wait time.Duration) (result GetCommandByIdResponse, err error) {
 	queued, err := c.RefreshCollections(ctx, input)
 	if err != nil {
-		return
+		return result, err
 	}
 	if queued.Answer == nil {
-		err = errors.New("RefreshCollections answered no command to wait for")
-		return
+		return result, errors.New("RefreshCollections answered no command to wait for")
 	}
 
-	return c.WaitForCommand(ctx, int(queued.Answer.Id), wait)
+	return c.WaitForCommand(ctx, queued.Answer.Id, wait)
 }

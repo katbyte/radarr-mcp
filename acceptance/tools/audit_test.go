@@ -30,8 +30,9 @@ func finding(t *testing.T, out map[string]any, name string) map[string]any {
 func details(t *testing.T, out map[string]any) []string {
 	t.Helper()
 
-	var ds []string
-	for _, f := range acctest.Rows(t, out["findings"], "findings") {
+	rows := acctest.Rows(t, out["findings"], "findings")
+	ds := make([]string, 0, len(rows))
+	for _, f := range rows {
 		ds = append(ds, acctest.Str(f["detail"]))
 	}
 	slices.Sort(ds)
@@ -77,8 +78,7 @@ func TestAuditsFindWhatTheFixturesCarry(t *testing.T) {
 			}
 
 			// the clean root folder is clean
-			clean := suite.Call(t, audit, map[string]any{"root_folder": moviesRoot})
-			if got := findings(t, clean); len(got) != 0 {
+			if got := findings(t, suite.Call(t, audit, map[string]any{"root_folder": moviesRoot})); len(got) != 0 {
 				t.Errorf("%s found %v among the clean films", audit, got)
 			}
 		})
@@ -352,7 +352,7 @@ func TestAuditMissingFolders(t *testing.T) {
 	}
 
 	row := acctest.Rows(t, suite.Call(t, "movie_edit", map[string]any{"movie": "Moon", "folder": "Moon (2009) [remux]"})["movies"], "movies")
-	if len(row) != 1 || acctest.Str(row[0]["path"]) != renamed || row[0]["has_file"] != true {
+	if len(row) != 1 || acctest.Str(row[0]["path"]) != renamed || !acctest.BoolOf(row[0]["has_file"]) {
 		t.Fatalf("after pointing the film at the folder = %v", row)
 	}
 	if got := findings(t, suite.Call(t, "audit_missing_folders", nil)); len(got) != 0 {

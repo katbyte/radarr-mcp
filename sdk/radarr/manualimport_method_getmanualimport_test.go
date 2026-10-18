@@ -29,7 +29,7 @@ func TestOperationGetManualImport(t *testing.T) {
 	expectQuery(t, r, "downloadId", "v-DownloadId")
 	expectQuery(t, r, "movieId", "7")
 	expectQuery(t, r, "filterExistingFiles", "true")
-	if result.HttpResponse == nil || result.HttpResponse.StatusCode != 200 {
+	if result.HttpResponse == nil || result.HttpResponse.StatusCode != http.StatusOK {
 		t.Fatalf("HttpResponse = %+v", result.HttpResponse)
 	}
 	if result.Answer == nil || !result.Answered() {

@@ -31,8 +31,7 @@ type GetImportListMovieOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetImportListMovieOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.
@@ -53,8 +52,7 @@ func (o GetImportListMovieOptions) ToQuery() *client.QueryParams {
 // GetImportListMovie calls GET /api/v3/importlist/movie.
 func (c Client) GetImportListMovie(ctx context.Context, options ...GetImportListMovieOptions) (result GetImportListMovieResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetImportListMovie takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("GetImportListMovie takes one options struct at most, not %d", len(options))
 	}
 	var option GetImportListMovieOptions
 	if len(options) == 1 {
@@ -73,7 +71,7 @@ func (c Client) GetImportListMovie(ctx context.Context, options ...GetImportList
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -82,12 +80,12 @@ func (c Client) GetImportListMovie(ctx context.Context, options ...GetImportList
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

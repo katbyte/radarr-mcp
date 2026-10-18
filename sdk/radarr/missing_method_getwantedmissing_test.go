@@ -33,7 +33,7 @@ func TestOperationGetWantedMissing(t *testing.T) {
 	expectQuery(t, r, "sortKey", "v-SortKey")
 	expectQuery(t, r, "sortDirection", "default")
 	expectQuery(t, r, "monitored", "true")
-	if result.HttpResponse == nil || result.HttpResponse.StatusCode != 200 {
+	if result.HttpResponse == nil || result.HttpResponse.StatusCode != http.StatusOK {
 		t.Fatalf("HttpResponse = %+v", result.HttpResponse)
 	}
 	if result.Answer == nil || !result.Answered() {
@@ -42,7 +42,7 @@ func TestOperationGetWantedMissing(t *testing.T) {
 	if result.MovieResourcePagingResource != result.Answer {
 		t.Error("the embedded answer is not the answer")
 	}
-	if record, err := result.Record(); err != nil || !reflect.DeepEqual(record, *result.Answer) {
+	if record, err := result.Record(); err != nil || !reflect.DeepEqual(&record, result.Answer) {
 		t.Errorf("Record = %+v, %v", record, err)
 	}
 
@@ -101,7 +101,7 @@ func TestOperationGetWantedMissingComplete(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			c, starts := pagedServer(t, "page", "{}", tc.total, tc.pages)
+			c, starts := pagedServer(t, "page", "records", "totalRecords", "{}", tc.total, tc.pages)
 			result, err := c.GetWantedMissingComplete(t.Context(), tc.options)
 			if err != nil {
 				t.Fatal(err)
@@ -116,7 +116,7 @@ func TestOperationGetWantedMissingComplete(t *testing.T) {
 func TestOperationGetWantedMissingEach(t *testing.T) {
 	t.Parallel()
 
-	c, starts := pagedServer(t, "page", "{}", 0, 2)
+	c, starts := pagedServer(t, "page", "records", "totalRecords", "{}", 0, 2)
 	n := 0
 	for _, err := range c.GetWantedMissingEach(t.Context(), GetWantedMissingOptions{PageSize: new(1)}) {
 		if err != nil {
@@ -129,7 +129,7 @@ func TestOperationGetWantedMissingEach(t *testing.T) {
 	}
 
 	// stopping after the first result asks for no page more
-	c, starts = pagedServer(t, "page", "{}", 0, 2)
+	c, starts = pagedServer(t, "page", "records", "totalRecords", "{}", 0, 2)
 	for range c.GetWantedMissingEach(t.Context(), GetWantedMissingOptions{PageSize: new(1)}) {
 		break
 	}

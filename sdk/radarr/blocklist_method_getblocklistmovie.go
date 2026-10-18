@@ -28,8 +28,7 @@ type GetBlocklistMovieOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetBlocklistMovieOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.
@@ -45,8 +44,7 @@ func (o GetBlocklistMovieOptions) ToQuery() *client.QueryParams {
 func (c Client) GetBlocklistMovie(ctx context.Context, movieId ...MovieID) (result GetBlocklistMovieResponse, err error) {
 	var option GetBlocklistMovieOptions
 	if len(movieId) > 1 {
-		err = fmt.Errorf("GetBlocklistMovie takes one movieId at most, not %d", len(movieId))
-		return
+		return result, fmt.Errorf("GetBlocklistMovie takes one movieId at most, not %d", len(movieId))
 	}
 	if len(movieId) == 1 {
 		option.MovieId = movieId[0]
@@ -64,7 +62,7 @@ func (c Client) GetBlocklistMovie(ctx context.Context, movieId ...MovieID) (resu
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -73,12 +71,12 @@ func (c Client) GetBlocklistMovie(ctx context.Context, movieId ...MovieID) (resu
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

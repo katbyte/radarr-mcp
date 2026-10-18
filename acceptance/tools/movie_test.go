@@ -64,8 +64,9 @@ func TestMovieList(t *testing.T) {
 		t.Fatalf("the library = %v films", all["total"])
 	}
 	// title order is Radarr's sort title, which files "The Matrix" under M
-	var titles []string
-	for _, row := range acctest.Rows(t, all["movies"], "movies") {
+	rows := acctest.Rows(t, all["movies"], "movies")
+	titles := make([]string, 0, len(rows))
+	for _, row := range rows {
 		titles = append(titles, acctest.Str(row["title"]))
 	}
 	if i, j := slices.Index(titles, "The Matrix"), slices.Index(titles, "Princess Mononoke"); i < 0 || j < 0 || i > j {
@@ -117,7 +118,7 @@ func TestMovieList(t *testing.T) {
 
 func TestMovieGet(t *testing.T) {
 	out := suite.Call(t, "movie_get", map[string]any{"movie": "Princess Mononoke"})
-	if acctest.Str(out["original_language"]) != "Japanese" || acctest.Num(t, out["runtime"], "runtime") != 134 || acctest.Str(out["imdb_id"]) != "tt0119698" || out["is_available"] != true {
+	if acctest.Str(out["original_language"]) != "Japanese" || acctest.Num(t, out["runtime"], "runtime") != 134 || acctest.Str(out["imdb_id"]) != "tt0119698" || !acctest.BoolOf(out["is_available"]) {
 		t.Errorf("Princess Mononoke = %v", out)
 	}
 	file := acctest.Object(t, out["file"], "file")
@@ -159,12 +160,12 @@ func TestMovieGet(t *testing.T) {
 func TestMovieLookup(t *testing.T) {
 	out := suite.Call(t, "movie_lookup", map[string]any{"term": "tmdb:17431"})
 	res := acctest.Rows(t, out["results"], "results")
-	if len(res) != 1 || acctest.Str(res[0]["title"]) != scratchTitle || acctest.Num(t, res[0]["year"], "year") != scratchYear || res[0]["in_library"] != false ||
+	if len(res) != 1 || acctest.Str(res[0]["title"]) != scratchTitle || acctest.Num(t, res[0]["year"], "year") != scratchYear || !acctest.IsBool(res[0]["in_library"], false) ||
 		acctest.Num(t, res[0]["runtime"], "runtime") != 97 || acctest.Str(res[0]["imdb_id"]) != "tt1182345" {
 		t.Fatalf("tmdb:17431 = %v", res)
 	}
 	byImdb := acctest.Rows(t, suite.Call(t, "movie_lookup", map[string]any{"term": "imdb:tt0078748"})["results"], "results")
-	if len(byImdb) != 1 || acctest.Str(byImdb[0]["title"]) != "Alien" || byImdb[0]["in_library"] != true || acctest.Num(t, byImdb[0]["library_id"], "library_id") != movieID(t, "Alien", 1979) {
+	if len(byImdb) != 1 || acctest.Str(byImdb[0]["title"]) != "Alien" || !acctest.BoolOf(byImdb[0]["in_library"]) || acctest.Num(t, byImdb[0]["library_id"], "library_id") != movieID(t, "Alien", 1979) {
 		t.Errorf("imdb:tt0078748 = %v", byImdb)
 	}
 	dune := acctest.Rows(t, suite.Call(t, "movie_lookup", map[string]any{"term": "Dune", "limit": 20})["results"], "results")
@@ -173,7 +174,7 @@ func TestMovieLookup(t *testing.T) {
 		year := acctest.Num(t, r["year"], "year")
 		if acctest.Str(r["title"]) == "Dune" && (year == 1984 || year == 2021) {
 			years = append(years, year)
-			if r["in_library"] != true {
+			if !acctest.BoolOf(r["in_library"]) {
 				t.Errorf("both Dunes are in the library: %v", r)
 			}
 		}
@@ -245,10 +246,10 @@ func TestMovieEdit(t *testing.T) {
 		return movies[0]
 	}
 
-	if got := edit(map[string]any{"monitored": false}); got["monitored"] != false || acctest.Str(got["quality_profile"]) != profileHD {
+	if got := edit(map[string]any{"monitored": false}); !acctest.IsBool(got["monitored"], false) || acctest.Str(got["quality_profile"]) != profileHD {
 		t.Errorf("unmonitored = %v", got)
 	}
-	if got := edit(map[string]any{"quality_profile": profileUHD, "minimum_availability": "inCinemas"}); acctest.Str(got["quality_profile"]) != profileUHD || got["monitored"] != false {
+	if got := edit(map[string]any{"quality_profile": profileUHD, "minimum_availability": "inCinemas"}); acctest.Str(got["quality_profile"]) != profileUHD || !acctest.IsBool(got["monitored"], false) {
 		t.Errorf("a profile change = %v", got)
 	}
 	if got := suite.Call(t, "movie_get", map[string]any{"movie": "Moon"}); acctest.Str(got["minimum_availability"]) != "inCinemas" {
@@ -279,7 +280,7 @@ func TestMovieEdit(t *testing.T) {
 		t.Errorf("the old folder is still there: %v", err)
 	}
 	back := edit(map[string]any{"root_folder": moviesRoot})
-	if acctest.Str(back["path"]) != scratchFolder || back["has_file"] != true {
+	if acctest.Str(back["path"]) != scratchFolder || !acctest.BoolOf(back["has_file"]) {
 		t.Errorf("moved back = %v", back)
 	}
 
@@ -313,7 +314,7 @@ func TestMovieBatchEdit(t *testing.T) {
 		if acctest.Str(row["title"]) == "Aliens" {
 			want = []string{"batch-all", "batch-own"}
 		}
-		if !slices.Equal(tags, want) || row["monitored"] != false {
+		if !slices.Equal(tags, want) || !acctest.IsBool(row["monitored"], false) {
 			t.Errorf("%v = monitored %v, tags %v; want %v", row["title"], row["monitored"], tags, want)
 		}
 	}
@@ -336,14 +337,14 @@ func TestMovieRefreshAndRescan(t *testing.T) {
 		t.Fatal(err)
 	}
 	out = suite.Call(t, "movie_rescan", map[string]any{"movies": []any{"Moon"}})
-	if movies := acctest.Rows(t, out["movies"], "movies"); movies[0]["has_file"] != false {
+	if movies := acctest.Rows(t, out["movies"], "movies"); !acctest.IsBool(movies[0]["has_file"], false) {
 		t.Errorf("a rescan of an empty folder kept the file: %v", movies[0])
 	}
 	if err := os.Rename(aside, testenv.HostPath(scratchFile)); err != nil {
 		t.Fatal(err)
 	}
 	out = suite.Call(t, "movie_rescan", map[string]any{"movies": []any{"Moon"}})
-	if movies := acctest.Rows(t, out["movies"], "movies"); movies[0]["has_file"] != true || acctest.Str(movies[0]["quality"]) != "Bluray-1080p" {
+	if movies := acctest.Rows(t, out["movies"], "movies"); !acctest.BoolOf(movies[0]["has_file"]) || acctest.Str(movies[0]["quality"]) != "Bluray-1080p" {
 		t.Errorf("a rescan did not pick the file up again: %v", movies[0])
 	}
 
@@ -371,7 +372,7 @@ func TestMovieRename(t *testing.T) {
 
 	preview := suite.Call(t, "movie_rename", map[string]any{"movies": []any{"Moon"}})
 	renames := acctest.Rows(t, preview["renames"], "renames")
-	if len(renames) != 1 || acctest.Str(renames[0]["existing"]) != "moon.2009.1080p.bluray.x264-GRP.mkv" || acctest.Str(renames[0]["new"]) != "Moon (2009) Bluray-1080p.mkv" || preview["renamed"] != false {
+	if len(renames) != 1 || acctest.Str(renames[0]["existing"]) != "moon.2009.1080p.bluray.x264-GRP.mkv" || acctest.Str(renames[0]["new"]) != "Moon (2009) Bluray-1080p.mkv" || !acctest.IsBool(preview["renamed"], false) {
 		t.Fatalf("the preview = %v", preview)
 	}
 	if _, err := os.Stat(testenv.HostPath(scene)); err != nil {
@@ -379,7 +380,7 @@ func TestMovieRename(t *testing.T) {
 	}
 
 	done := suite.Call(t, "movie_rename", map[string]any{"movies": []any{"Moon"}, "preview": false})
-	if done["renamed"] != true {
+	if !acctest.BoolOf(done["renamed"]) {
 		t.Errorf("the rename = %v", done)
 	}
 	if _, err := os.Stat(testenv.HostPath(scratchFile)); err != nil {
@@ -400,14 +401,14 @@ func TestMovieFileEdit(t *testing.T) {
 	})
 	file := acctest.Object(t, out["file"], "file")
 	if acctest.Str(file["quality"]) != "Bluray-720p" || !slices.Equal(acctest.Strs(t, acctest.OrEmptyList(file["languages"]), "languages"), []string{"English", "Japanese"}) ||
-		acctest.Str(file["release_group"]) != "FIXED" || acctest.Str(file["edition"]) != "Director's Cut" || file["cutoff_not_met"] != true {
+		acctest.Str(file["release_group"]) != "FIXED" || acctest.Str(file["edition"]) != "Director's Cut" || !acctest.BoolOf(file["cutoff_not_met"]) {
 		t.Errorf("the edited file = %v", file)
 	}
 	if got := findings(t, suite.Call(t, "audit_cutoff_unmet", map[string]any{"tag": "scratch"})); !slices.Equal(got, []string{"Moon (2009)"}) {
 		t.Errorf("the regraded file's cutoff = %v", got)
 	}
 	back := acctest.Object(t, suite.Call(t, "moviefile_edit", map[string]any{"movie": "Moon", "quality": "Bluray-1080p"})["file"], "file")
-	if acctest.Str(back["quality"]) != "Bluray-1080p" || back["cutoff_not_met"] != false || acctest.Str(back["release_group"]) != "FIXED" {
+	if acctest.Str(back["quality"]) != "Bluray-1080p" || !acctest.IsBool(back["cutoff_not_met"], false) || acctest.Str(back["release_group"]) != "FIXED" {
 		t.Errorf("graded back = %v", back)
 	}
 
@@ -447,7 +448,7 @@ func TestMovieFileDelete(t *testing.T) {
 		t.Errorf("the file is still on disk: %v", err)
 	}
 	after := suite.Call(t, "movie_get", map[string]any{"movie": "Moon"})
-	if after["has_file"] != false || after["file"] != nil {
+	if !acctest.IsBool(after["has_file"], false) || after["file"] != nil {
 		t.Errorf("the film after = %v", after)
 	}
 	if got := findings(t, suite.Call(t, "audit_missing_files", map[string]any{"tag": "scratch"})); !slices.Equal(got, []string{"Moon (2009)"}) {
@@ -463,7 +464,7 @@ func TestMovieFileDelete(t *testing.T) {
 func TestMovieDelete(t *testing.T) {
 	addScratch(t)
 	would := suite.Call(t, "movie_delete", map[string]any{"movie": "Moon", "delete_files": true})
-	if film := acctest.Object(t, would["would_delete"], "would_delete"); acctest.Str(film["title"]) != scratchTitle || would["deleted"] != nil || would["files_deleted"] != false || !strings.Contains(acctest.Str(would["files"]), scratchFolder) {
+	if film := acctest.Object(t, would["would_delete"], "would_delete"); acctest.Str(film["title"]) != scratchTitle || would["deleted"] != nil || !acctest.IsBool(would["files_deleted"], false) || !strings.Contains(acctest.Str(would["files"]), scratchFolder) {
 		t.Errorf("without confirm = %v", would)
 	}
 	if _, err := os.Stat(testenv.HostPath(scratchFile)); err != nil {
@@ -472,7 +473,7 @@ func TestMovieDelete(t *testing.T) {
 	suite.Call(t, "movie_get", map[string]any{"movie": "tmdb:17431"})
 
 	out := suite.Call(t, "movie_delete", map[string]any{"movie": "Moon", "confirm": true})
-	if deleted := acctest.Object(t, out["deleted"], "deleted"); acctest.Str(deleted["title"]) != scratchTitle || out["files_deleted"] != false || out["would_delete"] != nil {
+	if deleted := acctest.Object(t, out["deleted"], "deleted"); acctest.Str(deleted["title"]) != scratchTitle || !acctest.IsBool(out["files_deleted"], false) || out["would_delete"] != nil {
 		t.Errorf("deleted = %v", out)
 	}
 	if _, err := os.Stat(testenv.HostPath(scratchFile)); err != nil {
@@ -483,7 +484,7 @@ func TestMovieDelete(t *testing.T) {
 	// back, then gone with its files and onto the exclusions
 	suite.Call(t, "movie_add", map[string]any{"movie": "tmdb:17431", "quality_profile": profileHD, "root_folder": moviesRoot, "folder": "Moon (2009)"})
 	out = suite.Call(t, "movie_delete", map[string]any{"movie": "Moon", "delete_files": true, "add_exclusion": true, "confirm": true})
-	if out["files_deleted"] != true || out["excluded"] != true {
+	if !acctest.BoolOf(out["files_deleted"]) || !acctest.BoolOf(out["excluded"]) {
 		t.Errorf("deleted with files = %v", out)
 	}
 	// Radarr deletes the folder and adds the exclusion in event handlers of
@@ -492,7 +493,7 @@ func TestMovieDelete(t *testing.T) {
 		_, err := os.Stat(testenv.HostPath(scratchFolder))
 		return os.IsNotExist(err)
 	}) {
-		t.Errorf("the folder is still on disk a minute after the delete")
+		t.Error("the folder is still on disk a minute after the delete")
 	}
 	var excluded int
 	acctest.EventuallyWithin(time.Minute, func() bool {

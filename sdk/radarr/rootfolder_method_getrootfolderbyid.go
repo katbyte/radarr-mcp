@@ -5,7 +5,6 @@ package radarr
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -49,12 +48,12 @@ func (c Client) GetRootFolderById(ctx context.Context, id RootFolderID) (result 
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetRootFolderById",
-		Path:       fmt.Sprintf("/api/v3/rootfolder/%s", url.PathEscape(strconv.Itoa(int(id)))),
+		Path:       "/api/v3/rootfolder/" + url.PathEscape(strconv.Itoa(int(id))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -63,15 +62,15 @@ func (c Client) GetRootFolderById(ctx context.Context, id RootFolderID) (result 
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer RootFolderResource
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.RootFolderResource = result.Answer
 
-	return
+	return result, nil
 }

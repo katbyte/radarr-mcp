@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/katbyte/pandorest/definitions"
+	"github.com/katbyte/radarr-mcp/sdk/radarr"
 )
 
 // notExercised are the writes the suite does not call, and why.
@@ -126,7 +127,7 @@ func writeShapes() []string {
 		if o.Response.Type.Type == definitions.RawFile || len(body) == 0 {
 			continue
 		}
-		method, ok := reflect.TypeOf(*sdk).MethodByName(o.Name)
+		method, ok := reflect.TypeFor[radarr.Client]().MethodByName(o.Name)
 		if !ok {
 			continue
 		}

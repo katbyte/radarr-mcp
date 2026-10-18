@@ -28,7 +28,7 @@ type GetFeedV3CalendarRadarrIcsResponse struct {
 // answer, so a deferred Close is always safe. The body stays readable after
 // the result goes out of scope, and has no size or time limit of the client's:
 // the caller's context is the one bound on a slow read.
-func (r GetFeedV3CalendarRadarrIcsResponse) Reader() (io.ReadCloser, string) {
+func (r GetFeedV3CalendarRadarrIcsResponse) Reader() (body io.ReadCloser, contentType string) {
 	if r.HttpResponse == nil || r.HttpResponse.Body == nil {
 		return http.NoBody, ""
 	}
@@ -68,14 +68,14 @@ func (r GetFeedV3CalendarRadarrIcsResponse) WriteTo(w io.Writer) (int64, error) 
 	return client.Copy(w, r.HttpResponse.Body)
 }
 
-// Bytes reads the file whole, up to max bytes, and closes the body: a file
-// over max is a client.TooLargeError rather than cut short without a word.
-func (r GetFeedV3CalendarRadarrIcsResponse) Bytes(max int64) ([]byte, error) {
+// Bytes reads the file whole, up to limit bytes, and closes the body: a file
+// over the limit is a client.TooLargeError rather than cut short without a word.
+func (r GetFeedV3CalendarRadarrIcsResponse) Bytes(limit int64) ([]byte, error) {
 	if r.HttpResponse == nil || r.HttpResponse.Body == nil {
 		return nil, errors.New("no answer to read")
 	}
 
-	return client.ReadAtMost(r.HttpResponse.Body, max)
+	return client.ReadAtMost(r.HttpResponse.Body, limit)
 }
 
 // GetFeedV3CalendarRadarrIcsOptions holds the query and header parameters of GetFeedV3CalendarRadarrIcs.
@@ -89,8 +89,7 @@ type GetFeedV3CalendarRadarrIcsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetFeedV3CalendarRadarrIcsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.
@@ -117,8 +116,7 @@ func (o GetFeedV3CalendarRadarrIcsOptions) ToQuery() *client.QueryParams {
 // GetFeedV3CalendarRadarrIcs calls GET /feed/v3/calendar/radarr.ics.
 func (c Client) GetFeedV3CalendarRadarrIcs(ctx context.Context, options ...GetFeedV3CalendarRadarrIcsOptions) (result GetFeedV3CalendarRadarrIcsResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetFeedV3CalendarRadarrIcs takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("GetFeedV3CalendarRadarrIcs takes one options struct at most, not %d", len(options))
 	}
 	var option GetFeedV3CalendarRadarrIcsOptions
 	if len(options) == 1 {
@@ -139,7 +137,7 @@ func (c Client) GetFeedV3CalendarRadarrIcs(ctx context.Context, options ...GetFe
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -148,8 +146,8 @@ func (c Client) GetFeedV3CalendarRadarrIcs(ctx context.Context, options ...GetFe
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

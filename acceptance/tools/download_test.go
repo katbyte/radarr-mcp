@@ -66,8 +66,9 @@ func checkDownloads(t *testing.T) {
 func events(t *testing.T) []string {
 	t.Helper()
 
-	var kinds []string
-	for _, e := range acctest.Rows(t, suite.Call(t, "history_list", map[string]any{"movie": "tmdb:14337"})["events"], "events") {
+	events := acctest.Rows(t, suite.Call(t, "history_list", map[string]any{"movie": "tmdb:14337"})["events"], "events")
+	kinds := make([]string, 0, len(events))
+	for _, e := range events {
 		kinds = append(kinds, acctest.Str(e["event"]))
 	}
 
@@ -79,8 +80,6 @@ func events(t *testing.T) []string {
 // see Radarr import it, search again automatically for something better,
 // reject what that brought, and clear a download that can never be
 // imported.
-//
-//nolint:paralleltest // the steps share one film and one download client, in order
 func TestDownloadJourney(t *testing.T) {
 	skipUnlessReady(t)
 	if err := indexer.Offer(primerBluray, primerHDTV, primerCam); err != nil {
@@ -115,11 +114,11 @@ func TestDownloadJourney(t *testing.T) {
 				t.Errorf("release = %v", r)
 			}
 		}
-		if bluray := byTitle[primerBluray.Title]; bluray == nil || bluray["approved"] != true || acctest.Str(bluray["quality"]) != "Bluray-1080p" || acctest.Num(t, bluray["size"], "size") != int(primerBluray.Size) {
+		if bluray := byTitle[primerBluray.Title]; bluray == nil || !acctest.BoolOf(bluray["approved"]) || acctest.Str(bluray["quality"]) != "Bluray-1080p" || acctest.Num(t, bluray["size"], "size") != int(primerBluray.Size) {
 			t.Errorf("the 1080p BluRay = %v", bluray)
 		}
 		for _, title := range []string{primerHDTV.Title, primerCam.Title} {
-			if r := byTitle[title]; r == nil || r["approved"] != false || len(acctest.Strs(t, acctest.OrEmptyList(r["rejections"]), "rejections")) == 0 {
+			if r := byTitle[title]; r == nil || !acctest.IsBool(r["approved"], false) || len(acctest.Strs(t, acctest.OrEmptyList(r["rejections"]), "rejections")) == 0 {
 				t.Errorf("%s should be rejected with reasons: %v", title, r)
 			}
 		}
@@ -196,7 +195,7 @@ func TestDownloadJourney(t *testing.T) {
 		if !acctest.EventuallyWithin(time.Minute, func() bool {
 			checkDownloads(t)
 			got := suite.Call(t, "movie_get", map[string]any{"movie": "Primer"})
-			return got["has_file"] == true
+			return acctest.BoolOf(got["has_file"])
 		}) {
 			t.Fatalf("Primer was never imported; queue %v, history %v", suite.Call(t, "queue_list", map[string]any{"include_unknown": true}), events(t))
 		}
@@ -269,7 +268,7 @@ func TestDownloadJourney(t *testing.T) {
 			}
 			return entry != nil
 		}) {
-			t.Fatalf("the failed release is not on the blocklist")
+			t.Fatal("the failed release is not on the blocklist")
 		}
 		if acctest.Str(entry["movie"]) != "Primer (2004)" || acctest.Str(entry["indexer"]) != "Fake Indexer" {
 			t.Errorf("the blocklist entry = %v", entry)
@@ -284,7 +283,7 @@ func TestDownloadJourney(t *testing.T) {
 		// a blocklisted release is one Radarr no longer takes on its own
 		var blocked bool
 		for _, r := range acctest.Rows(t, suite.Call(t, "release_search", map[string]any{"movie": "Primer"})["releases"], "releases") {
-			if acctest.Str(r["title"]) == primerBluray.Title && r["approved"] == false && strings.Contains(strings.Join(acctest.Strs(t, acctest.OrEmptyList(r["rejections"]), "rejections"), " "), "blocklist") {
+			if acctest.Str(r["title"]) == primerBluray.Title && acctest.IsBool(r["approved"], false) && strings.Contains(strings.Join(acctest.Strs(t, acctest.OrEmptyList(r["rejections"]), "rejections"), " "), "blocklist") {
 				blocked = true
 			}
 		}
@@ -292,7 +291,7 @@ func TestDownloadJourney(t *testing.T) {
 			t.Error("the blocklisted release is still approved")
 		}
 		removed := suite.Call(t, "blocklist_remove", map[string]any{"ids": []any{entry["id"]}})
-		if got := removed["removed"].([]any); len(got) != 1 { //nolint:forcetypeassert // the tool's own output
+		if got, ok := removed["removed"].([]any); !ok || len(got) != 1 {
 			t.Errorf("blocklist_remove = %v", removed)
 		}
 		if left := acctest.Rows(t, suite.Call(t, "blocklist_list", map[string]any{"movie": "Primer"})["entries"], "entries"); len(left) != 0 {

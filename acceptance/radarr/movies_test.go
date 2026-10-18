@@ -39,12 +39,12 @@ func newMovie(f filmFixture) radarr.MovieResource {
 
 // withFile waits for Radarr to find a film's file, which it scans for in
 // the background after an add or a rescan.
-func withFile(ctx context.Context, t *testing.T, id radarr.MovieID) *radarr.MovieResource {
+func withFile(ctx context.Context, t *testing.T, id radarr.MovieID) radarr.MovieResource {
 	t.Helper()
 
-	var m *radarr.MovieResource
+	var m radarr.MovieResource
 	if !poll(2*time.Minute, func() bool {
-		m = must(sdk.GetMovieById(ctx, id)).Answer
+		m = must(must(sdk.GetMovieById(ctx, id)).Record())
 		return isTrue(m.HasFile) && m.MovieFile != nil
 	}) {
 		t.Fatalf("%s never found its file", m.Title)
@@ -53,7 +53,6 @@ func withFile(ctx context.Context, t *testing.T, id radarr.MovieID) *radarr.Movi
 	return m
 }
 
-//nolint:paralleltest // the tests share one server
 func TestMovies(t *testing.T) {
 	ctx := skipUnlessUp(t)
 	fixtures(t)
@@ -70,7 +69,7 @@ func TestMovies(t *testing.T) {
 	m := withFile(ctx, t, added.Id)
 
 	t.Run("update", func(t *testing.T) {
-		edit := *m
+		edit := m
 		edit.Monitored = new(false)
 		edit.MinimumAvailability = radarr.MovieStatusTypeInCinemas
 		got := must(sdk.PutMovieById(ctx, m.Id, edit, false)).Answer
@@ -142,8 +141,6 @@ func TestMovies(t *testing.T) {
 // TestMovieImports adds films the two ways that take a list - an import of
 // existing folders, and an add from an import list's discoveries - and
 // deletes them together.
-//
-//nolint:paralleltest // the tests share one server
 func TestMovieImports(t *testing.T) {
 	ctx := skipUnlessUp(t)
 	fixtures(t)
@@ -190,7 +187,6 @@ func TestMovieImports(t *testing.T) {
 	ids = nil
 }
 
-//nolint:paralleltest // the tests share one server
 func TestRootFolders(t *testing.T) {
 	ctx := skipUnlessUp(t)
 
@@ -210,7 +206,6 @@ func TestRootFolders(t *testing.T) {
 	gone(t, "the root folder", res, err)
 }
 
-//nolint:paralleltest // the tests share one server
 func TestCollections(t *testing.T) {
 	ctx := skipUnlessUp(t)
 	fixtures(t)

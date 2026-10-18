@@ -25,7 +25,7 @@ func TestOperationGetMovieFile(t *testing.T) {
 	expectRequest(t, r, http.MethodGet, "/api/v3/moviefile")
 	expectQuery(t, r, "movieId", "1", "2")
 	expectQuery(t, r, "movieFileIds", "1", "2")
-	if result.HttpResponse == nil || result.HttpResponse.StatusCode != 200 {
+	if result.HttpResponse == nil || result.HttpResponse.StatusCode != http.StatusOK {
 		t.Fatalf("HttpResponse = %+v", result.HttpResponse)
 	}
 	if result.Answer == nil || !result.Answered() {

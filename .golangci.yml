@@ -6,6 +6,8 @@ version: "2"
 run:
   timeout: 60m
   modules-download-mode: vendor
+  build-tags:
+    - acceptance # the suites under acceptance/ are behind this tag; without it none of their files are linted
 
 issues:
   max-issues-per-linter: 0
@@ -74,6 +76,7 @@ linters:
     - makezero                  # finds slice declarations with non-zero initial length but capacity is initialized
 
   exclusions:
+    generated: disable # the generated client and its tests are linted like the rest of the code
     rules:
       # flag names ("repo", "build-type-id", ...) repeat across cobra/viper registration, env binding, and
       # validation lists by design; hoisting them into constants would just add indirection
@@ -85,6 +88,11 @@ linters:
       - path: '(tools|sdk/radarr|lib/testenv|acceptance)/.*\.go'
         linters:
           - goconst
+      # the live tests share one real Radarr and run in the order written: each leaves the
+      # library as the next expects it, so none can run beside another
+      - path: 'acceptance/.*\.go'
+        linters:
+          - paralleltest
       # media types, type names and HTTP methods are the generator's vocabulary, and the base
       # client's tests spell out the requests they expect
       - path: 'sdk/pandorest/.*\.go'
@@ -115,8 +123,9 @@ linters:
         # this is a network-bound CLI; only flag genuinely huge copies, not every mid-size struct
         rangeValCopy:
           sizeThreshold: 512
+        # the client takes a request body by value so a caller can write it in place, and a film is 728 bytes
         hugeParam:
-          sizeThreshold: 512
+          sizeThreshold: 1024
     revive:
       enable-all-rules: true
       rules:

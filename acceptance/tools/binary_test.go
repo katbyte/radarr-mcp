@@ -223,7 +223,7 @@ func TestTheBinary(t *testing.T) {
 			t.Cleanup(func() { _, _ = suite.Invoke("movie_edit", map[string]any{"movie": "Arrival", "monitored": true}) })
 			monitored := func(on bool) bool {
 				callOn(t, cs, "movie_edit", map[string]any{"movie": "Arrival", "monitored": on})
-				return callOn(t, cs, "movie_get", map[string]any{"movie": "Arrival"})["monitored"] == true
+				return acctest.BoolOf(callOn(t, cs, "movie_get", map[string]any{"movie": "Arrival"})["monitored"])
 			}
 			if monitored(false) || !monitored(true) {
 				t.Error("movie_edit through the binary did not change whether Arrival is monitored")

@@ -5,8 +5,8 @@ package radarr
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
@@ -47,12 +47,12 @@ func (c Client) GetConfigMetadataById(ctx context.Context, id int) (result GetCo
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetConfigMetadataById",
-		Path:       fmt.Sprintf("/api/v3/config/metadata/%d", id),
+		Path:       "/api/v3/config/metadata/" + strconv.Itoa(id),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -61,15 +61,15 @@ func (c Client) GetConfigMetadataById(ctx context.Context, id int) (result GetCo
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer MetadataConfigResource
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.MetadataConfigResource = result.Answer
 
-	return
+	return result, nil
 }

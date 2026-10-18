@@ -47,8 +47,7 @@ type PutMovieByIdOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o PutMovieByIdOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.
@@ -64,8 +63,7 @@ func (o PutMovieByIdOptions) ToQuery() *client.QueryParams {
 func (c Client) PutMovieById(ctx context.Context, id MovieID, input MovieResource, moveFiles ...bool) (result PutMovieByIdResponse, err error) {
 	var option PutMovieByIdOptions
 	if len(moveFiles) > 1 {
-		err = fmt.Errorf("PutMovieById takes one moveFiles at most, not %d", len(moveFiles))
-		return
+		return result, fmt.Errorf("PutMovieById takes one moveFiles at most, not %d", len(moveFiles))
 	}
 	if len(moveFiles) == 1 {
 		option.MoveFiles = &moveFiles[0]
@@ -80,16 +78,16 @@ func (c Client) PutMovieById(ctx context.Context, id MovieID, input MovieResourc
 		HTTPMethod:    http.MethodPut,
 		Operation:     "PutMovieById",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/api/v3/movie/%s", url.PathEscape(strconv.Itoa(int(id)))),
+		Path:          "/api/v3/movie/" + url.PathEscape(strconv.Itoa(int(id))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -98,15 +96,15 @@ func (c Client) PutMovieById(ctx context.Context, id MovieID, input MovieResourc
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer MovieResource
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.MovieResource = result.Answer
 
-	return
+	return result, nil
 }

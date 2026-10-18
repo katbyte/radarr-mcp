@@ -5,8 +5,8 @@ package radarr
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
@@ -47,12 +47,12 @@ func (c Client) GetCreditById(ctx context.Context, id int) (result GetCreditById
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetCreditById",
-		Path:       fmt.Sprintf("/api/v3/credit/%d", id),
+		Path:       "/api/v3/credit/" + strconv.Itoa(id),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -61,15 +61,15 @@ func (c Client) GetCreditById(ctx context.Context, id int) (result GetCreditById
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer CreditResource
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.CreditResource = result.Answer
 
-	return
+	return result, nil
 }

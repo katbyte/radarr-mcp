@@ -83,7 +83,7 @@ func TestEverySettingShownHasBeenLookedAt(t *testing.T) {
 				settings++
 
 				name, holds := acctest.Str(setting["name"]), acctest.Str(setting["type"])
-				if setting["secret"] != true && !slices.Contains([]string{"checkbox", "number", "select"}, holds) && !slices.Contains(lookedAt, name) {
+				if !acctest.BoolOf(setting["secret"]) && !slices.Contains([]string{"checkbox", "number", "select"}, holds) && !slices.Contains(lookedAt, name) {
 					t.Errorf("the %s %s shows its setting %s (%s), which nobody has looked at: make it a credential in the tools, or add it to lookedAt", provider, kind, name, holds)
 				}
 			}
@@ -94,7 +94,7 @@ func TestEverySettingShownHasBeenLookedAt(t *testing.T) {
 	}
 
 	for kind, name := range map[string]string{"Webhook": "headers", "Apprise": "statelessUrls"} {
-		if setting := named(acctest.Rows(t, suite.Call(t, "provider_kinds", map[string]any{"provider": "notification", "kind": kind})["settings"], "settings"), "name", name); setting == nil || setting["secret"] != true {
+		if setting := named(acctest.Rows(t, suite.Call(t, "provider_kinds", map[string]any{"provider": "notification", "kind": kind})["settings"], "settings"), "name", name); setting == nil || !acctest.BoolOf(setting["secret"]) {
 			t.Errorf("a %s notification's %s = %v, want it a credential", kind, name, setting)
 		}
 	}
@@ -117,7 +117,7 @@ func TestProviderKinds(t *testing.T) {
 	}
 
 	settings := acctest.Rows(t, suite.Call(t, "provider_kinds", map[string]any{"provider": "indexer", "kind": "newznab"})["settings"], "settings")
-	if key := named(settings, "name", "apiKey"); key == nil || key["secret"] != true || named(settings, "name", "baseUrl") == nil || named(settings, "name", "baseUrl")["secret"] == true {
+	if key := named(settings, "name", "apiKey"); key == nil || !acctest.BoolOf(key["secret"]) || named(settings, "name", "baseUrl") == nil || acctest.BoolOf(named(settings, "name", "baseUrl")["secret"]) {
 		t.Errorf("a Newznab indexer's settings = %v, want baseUrl, and apiKey as a credential", settings)
 	}
 	// a select says what it takes by name
@@ -162,10 +162,10 @@ func TestIndexerLifecycle(t *testing.T) {
 	}
 	// forced, it is saved untested and switched on all the same, and its own test then says what is wrong with it
 	wrong["force"] = true
-	if forced := acctest.Object(t, suite.Call(t, "indexer_add", wrong)["options"], "options"); forced["enableRss"] != true || forced["enableAutomaticSearch"] != true || forced["enableInteractiveSearch"] != true {
+	if forced := acctest.Object(t, suite.Call(t, "indexer_add", wrong)["options"], "options"); !acctest.BoolOf(forced["enableRss"]) || !acctest.BoolOf(forced["enableAutomaticSearch"]) || !acctest.BoolOf(forced["enableInteractiveSearch"]) {
 		t.Errorf("an indexer added by force = %v, want it switched on", forced)
 	}
-	if results := acctest.Rows(t, suite.Call(t, "indexer_test", map[string]any{"name": "Wrong Key"})["results"], "results"); len(results) != 1 || results[0]["valid"] != false || len(acctest.Strs(t, results[0]["failures"], "failures")) == 0 {
+	if results := acctest.Rows(t, suite.Call(t, "indexer_test", map[string]any{"name": "Wrong Key"})["results"], "results"); len(results) != 1 || !acctest.IsBool(results[0]["valid"], false) || len(acctest.Strs(t, results[0]["failures"], "failures")) == 0 {
 		t.Errorf("a test of an indexer whose key is wrong = %v, want it failed with why", results)
 	}
 	suite.Call(t, "indexer_delete", map[string]any{"name": "Wrong Key", "confirm": true})
@@ -177,12 +177,12 @@ func TestIndexerLifecycle(t *testing.T) {
 	if settings := acctest.Object(t, added["settings"], "settings"); acctest.Str(added["kind"]) != "Newznab" || acctest.Str(settings["baseUrl"]) != indexer.URL() || settings["apiKey"] != nil || !slices.Contains(acctest.Strs(t, added["credentials"], "credentials"), "apiKey") {
 		t.Errorf("the indexer added = %v, want its address shown and its key only named", added)
 	}
-	if options := acctest.Object(t, added["options"], "options"); options["enableRss"] != false || options["enableInteractiveSearch"] != true || acctest.Num(t, options["priority"], "priority") != 40 {
+	if options := acctest.Object(t, added["options"], "options"); !acctest.IsBool(options["enableRss"], false) || !acctest.BoolOf(options["enableInteractiveSearch"]) || acctest.Num(t, options["priority"], "priority") != 40 {
 		t.Errorf("its switches = %v", added["options"])
 	}
 
 	// the list shows it too, with the same settings and no key
-	if row := listed(); row == nil || acctest.Num(t, row["priority"], "priority") != 40 || row["enable_rss"] != false || acctest.Object(t, row["settings"], "settings")["apiKey"] != nil || !slices.Contains(acctest.Strs(t, row["credentials"], "credentials"), "apiKey") {
+	if row := listed(); row == nil || acctest.Num(t, row["priority"], "priority") != 40 || !acctest.IsBool(row["enable_rss"], false) || acctest.Object(t, row["settings"], "settings")["apiKey"] != nil || !slices.Contains(acctest.Strs(t, row["credentials"], "credentials"), "apiKey") {
 		t.Errorf("indexer_list shows it as %v", row)
 	}
 
@@ -191,7 +191,7 @@ func TestIndexerLifecycle(t *testing.T) {
 		t.Errorf("the indexer edited = %v", edited)
 	}
 	// its key was not named in the edit, and is still the one Radarr tests it with
-	if results := acctest.Rows(t, suite.Call(t, "indexer_test", map[string]any{"name": "Second Indexer"})["results"], "results"); len(results) != 1 || results[0]["valid"] != true {
+	if results := acctest.Rows(t, suite.Call(t, "indexer_test", map[string]any{"name": "Second Indexer"})["results"], "results"); len(results) != 1 || !acctest.BoolOf(results[0]["valid"]) {
 		t.Errorf("the indexer tested after the edit = %v, want it still valid with the key it had", results)
 	}
 	if msg := suite.CallErr(t, "indexer_edit", map[string]any{"name": "Second Indexer", "settings": map[string]any{"baseURL2": "x"}}); !strings.Contains(msg, `no setting "baseURL2"`) || !strings.Contains(msg, "baseUrl") {
@@ -226,7 +226,7 @@ func TestAFailingIndexerDoesNotGiveItsKeyAway(t *testing.T) {
 	down.SetFailure(newznab.Failure{Status: 500})
 	results := suite.Call(t, "indexer_test", map[string]any{"name": "Down Indexer"})
 	rows := acctest.Rows(t, results["results"], "results")
-	if len(rows) != 1 || rows[0]["valid"] != false {
+	if len(rows) != 1 || !acctest.IsBool(rows[0]["valid"], false) {
 		t.Fatalf("a test of an indexer that is down = %v, want it failed", results)
 	}
 	if said := strings.Join(acctest.Strs(t, rows[0]["failures"], "failures"), "\n"); strings.Contains(said, key) || !strings.Contains(said, "apikey=REDACTED") || !strings.Contains(said, down.URL()) {
@@ -238,7 +238,7 @@ func TestAFailingIndexerDoesNotGiveItsKeyAway(t *testing.T) {
 	}
 	// and so is every indexer at once, where the one that is down is one row among them
 	every := acctest.Rows(t, suite.Call(t, "indexer_test", nil)["results"], "results")
-	if failed := named(every, "name", "Down Indexer"); failed == nil || failed["valid"] != false || strings.Contains(acctest.Str(failed["failures"]), key) || named(every, "name", "Fake Indexer") == nil || named(every, "name", "Fake Indexer")["valid"] != true {
+	if failed := named(every, "name", "Down Indexer"); failed == nil || !acctest.IsBool(failed["valid"], false) || strings.Contains(acctest.Str(failed["failures"]), key) || named(every, "name", "Fake Indexer") == nil || !acctest.BoolOf(named(every, "name", "Fake Indexer")["valid"]) {
 		t.Errorf("a test of every indexer = %v, want the one that is down failed without its key and the other valid", every)
 	}
 
@@ -259,19 +259,19 @@ func TestDownloadClientLifecycle(t *testing.T) {
 	}
 
 	added := suite.Call(t, "downloadclient_add", map[string]any{"kind": "UsenetBlackhole", "name": "Second Blackhole", "options": map[string]any{"enable": false, "priority": 9}, "settings": map[string]any{"nzbFolder": nzbFolder, "watchFolder": watchFolder}})
-	if acctest.Str(added["kind"]) != "UsenetBlackhole" || acctest.Str(acctest.Object(t, added["settings"], "settings")["nzbFolder"]) != nzbFolder || acctest.Object(t, added["options"], "options")["enable"] != false {
+	if acctest.Str(added["kind"]) != "UsenetBlackhole" || acctest.Str(acctest.Object(t, added["settings"], "settings")["nzbFolder"]) != nzbFolder || !acctest.IsBool(acctest.Object(t, added["options"], "options")["enable"], false) {
 		t.Errorf("the download client added = %v", added)
 	}
 
 	edited := suite.Call(t, "downloadclient_edit", map[string]any{"name": "Second Blackhole", "new_name": "Spare Blackhole", "options": map[string]any{"priority": 7, "removeFailedDownloads": false}})
-	if options := acctest.Object(t, edited["options"], "options"); acctest.Str(edited["name"]) != "Spare Blackhole" || acctest.Num(t, options["priority"], "priority") != 7 || options["removeFailedDownloads"] != false {
+	if options := acctest.Object(t, edited["options"], "options"); acctest.Str(edited["name"]) != "Spare Blackhole" || acctest.Num(t, options["priority"], "priority") != 7 || !acctest.IsBool(options["removeFailedDownloads"], false) {
 		t.Errorf("the download client edited = %v", edited)
 	}
-	if row := listed("Spare Blackhole"); row == nil || listed("Second Blackhole") != nil || row["enabled"] != false || acctest.Num(t, row["priority"], "priority") != 7 || acctest.Str(acctest.Object(t, row["settings"], "settings")["watchFolder"]) != watchFolder {
+	if row := listed("Spare Blackhole"); row == nil || listed("Second Blackhole") != nil || !acctest.IsBool(row["enabled"], false) || acctest.Num(t, row["priority"], "priority") != 7 || acctest.Str(acctest.Object(t, row["settings"], "settings")["watchFolder"]) != watchFolder {
 		t.Errorf("downloadclient_list shows it as %v", row)
 	}
 	// one that is switched off is tested when it is named
-	if results := acctest.Rows(t, suite.Call(t, "downloadclient_test", map[string]any{"name": "Spare Blackhole"})["results"], "results"); len(results) != 1 || results[0]["valid"] != true {
+	if results := acctest.Rows(t, suite.Call(t, "downloadclient_test", map[string]any{"name": "Spare Blackhole"})["results"], "results"); len(results) != 1 || !acctest.BoolOf(results[0]["valid"]) {
 		t.Errorf("the download client tested = %v", results)
 	}
 
@@ -293,14 +293,14 @@ func TestImportListLifecycle(t *testing.T) {
 		"kind": "RadarrImport", "name": "Itself", "settings": map[string]any{"baseUrl": "http://localhost:7878", "apiKey": testenv.Token()},
 		"options": map[string]any{"enabled": true, "enableAuto": false, "searchOnAdd": false, "qualityProfileId": hd["id"], "rootFolderPath": moviesRoot, "minimumAvailability": "released", "monitor": "movieOnly"},
 	})
-	if options := acctest.Object(t, added["options"], "options"); acctest.Str(added["kind"]) != "RadarrImport" || options["enabled"] != true || options["enableAuto"] != false || acctest.Str(options["rootFolderPath"]) != moviesRoot {
+	if options := acctest.Object(t, added["options"], "options"); acctest.Str(added["kind"]) != "RadarrImport" || !acctest.BoolOf(options["enabled"]) || !acctest.IsBool(options["enableAuto"], false) || acctest.Str(options["rootFolderPath"]) != moviesRoot {
 		t.Errorf("the import list added = %v", added)
 	}
 	if row := listed(); row == nil || !slices.Contains(acctest.Strs(t, row["credentials"], "credentials"), "apiKey") || acctest.Object(t, row["settings"], "settings")["apiKey"] != nil {
 		t.Errorf("importlist_list shows it as %v, want its key only named", row)
 	}
 	for _, args := range []map[string]any{{"name": "Itself"}, nil} {
-		if results := acctest.Rows(t, suite.Call(t, "importlist_test", args)["results"], "results"); len(results) != 1 || acctest.Str(results[0]["name"]) != "Itself" || results[0]["valid"] != true {
+		if results := acctest.Rows(t, suite.Call(t, "importlist_test", args)["results"], "results"); len(results) != 1 || acctest.Str(results[0]["name"]) != "Itself" || !acctest.BoolOf(results[0]["valid"]) {
 			t.Errorf("the import list tested with %v = %v", args, results)
 		}
 	}
@@ -311,7 +311,7 @@ func TestImportListLifecycle(t *testing.T) {
 	}
 	offered := suite.Call(t, "importlist_movies", nil)
 	alien := named(acctest.Rows(t, offered["movies"], "movies"), "title", "Alien")
-	if alien == nil || alien["in_library"] != true || alien["excluded"] != false || acctest.Num(t, alien["tmdb_id"], "tmdb_id") != 348 || !slices.Equal(acctest.Strs(t, alien["lists"], "lists"), []string{"Itself"}) || acctest.Num(t, offered["total"], "total") < len(fixtures()) {
+	if alien == nil || !acctest.BoolOf(alien["in_library"]) || !acctest.IsBool(alien["excluded"], false) || acctest.Num(t, alien["tmdb_id"], "tmdb_id") != 348 || !slices.Equal(acctest.Strs(t, alien["lists"], "lists"), []string{"Itself"}) || acctest.Num(t, offered["total"], "total") < len(fixtures()) {
 		t.Errorf("what the list offers = %v films, Alien %v", offered["total"], alien)
 	}
 	if fresh := suite.Call(t, "importlist_movies", map[string]any{"new_only": true}); acctest.Num(t, fresh["total"], "total") != 0 {
@@ -331,7 +331,7 @@ func TestImportListLifecycle(t *testing.T) {
 	}
 
 	edited := suite.Call(t, "importlist_edit", map[string]any{"name": "Itself", "options": map[string]any{"enabled": false}})
-	if acctest.Object(t, edited["options"], "options")["enabled"] != false || !slices.Contains(acctest.Strs(t, edited["credentials"], "credentials"), "apiKey") {
+	if !acctest.IsBool(acctest.Object(t, edited["options"], "options")["enabled"], false) || !slices.Contains(acctest.Strs(t, edited["credentials"], "credentials"), "apiKey") {
 		t.Errorf("the import list edited = %v, want it off and its key kept", edited)
 	}
 	// a list that is off offers nothing, and is not one of every list tested
@@ -368,16 +368,16 @@ func TestNotificationLifecycle(t *testing.T) {
 	if settings := acctest.Object(t, added["settings"], "settings"); acctest.Str(settings["url"]) != "http://127.0.0.1:9/hook" || settings["password"] != nil || acctest.Str(settings["username"]) != "radarr" || settings["headers"] != nil || !slices.Equal(acctest.Strs(t, added["credentials"], "credentials"), []string{"headers", "password"}) {
 		t.Errorf("the notification added = %v, want its address and who it signs in as shown, and its password and its headers only named", added)
 	}
-	if options := acctest.Object(t, added["options"], "options"); options["onGrab"] != false || options["onDownload"] != false || options["onHealthIssue"] != false {
+	if options := acctest.Object(t, added["options"], "options"); !acctest.IsBool(options["onGrab"], false) || !acctest.IsBool(options["onDownload"], false) || !acctest.IsBool(options["onHealthIssue"], false) {
 		t.Errorf("a notification added off = %v, want it sent for nothing", options)
 	}
 	results := acctest.Rows(t, suite.Call(t, "notification_test", map[string]any{"name": "Nowhere"})["results"], "results")
-	if len(results) != 1 || acctest.Str(results[0]["name"]) != "Nowhere" || results[0]["valid"] != false || len(acctest.Strs(t, results[0]["failures"], "failures")) == 0 {
+	if len(results) != 1 || acctest.Str(results[0]["name"]) != "Nowhere" || !acctest.IsBool(results[0]["valid"], false) || len(acctest.Strs(t, results[0]["failures"], "failures")) == 0 {
 		t.Errorf("a test of a notification that points nowhere = %v, want it failed with why", results)
 	}
 
 	edited := suite.Call(t, "notification_edit", map[string]any{"name": "Nowhere", "settings": map[string]any{"url": "http://127.0.0.1:9/other"}, "options": map[string]any{"includeHealthWarnings": true}})
-	if acctest.Str(acctest.Object(t, edited["settings"], "settings")["url"]) != "http://127.0.0.1:9/other" || acctest.Object(t, edited["options"], "options")["includeHealthWarnings"] != true || !slices.Contains(acctest.Strs(t, edited["credentials"], "credentials"), "password") {
+	if acctest.Str(acctest.Object(t, edited["settings"], "settings")["url"]) != "http://127.0.0.1:9/other" || !acctest.BoolOf(acctest.Object(t, edited["options"], "options")["includeHealthWarnings"]) || !slices.Contains(acctest.Strs(t, edited["credentials"], "credentials"), "password") {
 		t.Errorf("the notification edited = %v, want the address changed and the password kept", edited)
 	}
 	// switching it on is a change Radarr tests, and refuses; force saves the change untested
@@ -385,14 +385,14 @@ func TestNotificationLifecycle(t *testing.T) {
 		t.Errorf("switching on a notification that cannot be sent = %q", msg)
 	}
 	forced := suite.Call(t, "notification_edit", map[string]any{"name": "Nowhere", "options": map[string]any{"onHealthIssue": true}, "force": true})
-	if acctest.Object(t, forced["options"], "options")["onHealthIssue"] != true || acctest.Object(t, forced["options"], "options")["onGrab"] != false {
+	if !acctest.BoolOf(acctest.Object(t, forced["options"], "options")["onHealthIssue"]) || !acctest.IsBool(acctest.Object(t, forced["options"], "options")["onGrab"], false) {
 		t.Errorf("the notification switched on untested = %v", forced)
 	}
 	// switched on, it is one of every notification tested. Radarr's test of them all fails whole on one it cannot reach, and this one still gets its answer
-	if all := acctest.Rows(t, suite.Call(t, "notification_test", nil)["results"], "results"); len(all) != 1 || acctest.Str(all[0]["name"]) != "Nowhere" || all[0]["valid"] != false {
+	if all := acctest.Rows(t, suite.Call(t, "notification_test", nil)["results"], "results"); len(all) != 1 || acctest.Str(all[0]["name"]) != "Nowhere" || !acctest.IsBool(all[0]["valid"], false) {
 		t.Errorf("a test of every notification = %v", all)
 	}
-	if row := listed(); row == nil || acctest.Str(row["kind"]) != "Webhook" || acctest.Object(t, row["options"], "options")["onHealthIssue"] != true {
+	if row := listed(); row == nil || acctest.Str(row["kind"]) != "Webhook" || !acctest.BoolOf(acctest.Object(t, row["options"], "options")["onHealthIssue"]) {
 		t.Errorf("notification_list shows it as %v", row)
 	}
 
@@ -406,22 +406,22 @@ func TestMetadataConsumers(t *testing.T) {
 
 	consumers := rowsOf(t, "metadata_list", "items")
 	kodi := named(consumers, "kind", "XbmcMetadata")
-	if len(consumers) < 3 || kodi == nil || acctest.Object(t, kodi["options"], "options")["enable"] != false {
+	if len(consumers) < 3 || kodi == nil || !acctest.IsBool(acctest.Object(t, kodi["options"], "options")["enable"], false) {
 		t.Fatalf("the metadata consumers = %v, want Kodi's among them, off", consumers)
 	}
-	name, before := acctest.Str(kodi["name"]), acctest.Object(t, kodi["settings"], "settings")["useMovieNfo"] == true
+	name, before := acctest.Str(kodi["name"]), acctest.BoolOf(acctest.Object(t, kodi["settings"], "settings")["useMovieNfo"])
 	t.Cleanup(func() {
 		_, _ = suite.Invoke("metadata_edit", map[string]any{"name": name, "settings": map[string]any{"useMovieNfo": before}})
 	})
 
 	edited := suite.Call(t, "metadata_edit", map[string]any{"name": name, "settings": map[string]any{"useMovieNfo": !before}})
-	if after := acctest.Object(t, edited["settings"], "settings")["useMovieNfo"] == true; after == before || acctest.Object(t, edited["options"], "options")["enable"] != false {
+	if after := acctest.BoolOf(acctest.Object(t, edited["settings"], "settings")["useMovieNfo"]); after == before || !acctest.IsBool(acctest.Object(t, edited["options"], "options")["enable"], false) {
 		t.Errorf("the consumer edited = %v, want useMovieNfo changed from %v and the consumer still off", edited, before)
 	}
-	if again := named(rowsOf(t, "metadata_list", "items"), "kind", "XbmcMetadata"); (acctest.Object(t, again["settings"], "settings")["useMovieNfo"] == true) == before {
+	if again := named(rowsOf(t, "metadata_list", "items"), "kind", "XbmcMetadata"); acctest.BoolOf(acctest.Object(t, again["settings"], "settings")["useMovieNfo"]) == before {
 		t.Errorf("read back, the consumer = %v", again)
 	}
-	if results := acctest.Rows(t, suite.Call(t, "metadata_test", map[string]any{"name": name})["results"], "results"); len(results) != 1 || acctest.Str(results[0]["name"]) != name || results[0]["valid"] != true {
+	if results := acctest.Rows(t, suite.Call(t, "metadata_test", map[string]any{"name": name})["results"], "results"); len(results) != 1 || acctest.Str(results[0]["name"]) != name || !acctest.BoolOf(results[0]["valid"]) {
 		t.Errorf("the consumer tested = %v", results)
 	}
 }
@@ -500,7 +500,7 @@ func TestRecordLifecycles(t *testing.T) {
 			t.Fatalf("the release profile added = %v", saved)
 		}
 		edited := acctest.Object(t, suite.Call(t, "releaseprofile_edit", map[string]any{"id": "no cams", "values": map[string]any{"enabled": false}})["saved"], "saved")
-		if edited["enabled"] != false || !slices.Equal(acctest.Strs(t, edited["ignored"], "ignored"), []string{"CAM", "TS"}) {
+		if !acctest.IsBool(edited["enabled"], false) || !slices.Equal(acctest.Strs(t, edited["ignored"], "ignored"), []string{"CAM", "TS"}) {
 			t.Errorf("the release profile edited = %v, want it off and its words kept", edited)
 		}
 		// a release profile is not made of conditions, so its tools do not take any
@@ -518,7 +518,7 @@ func TestRecordLifecycles(t *testing.T) {
 			t.Fatalf("the rule added = %v", saved)
 		}
 		edited := acctest.Object(t, suite.Call(t, "autotagging_edit", map[string]any{"id": "Horror", "values": map[string]any{"removeTagsAutomatically": true}})["saved"], "saved")
-		if edited["removeTagsAutomatically"] != true || len(acctest.Rows(t, edited["conditions"], "conditions")) != 1 {
+		if !acctest.BoolOf(edited["removeTagsAutomatically"]) || len(acctest.Rows(t, edited["conditions"], "conditions")) != 1 {
 			t.Errorf("the rule edited = %v, want the switch changed and its condition kept", edited)
 		}
 		if msg := suite.CallErr(t, "autotagging_edit", map[string]any{"id": "Horror", "conditions": []any{map[string]any{"kind": "MoodSpecification"}}}); !strings.Contains(msg, "no kind of condition") || !strings.Contains(msg, "GenreSpecification") {
@@ -577,7 +577,7 @@ func TestRecordLifecycles(t *testing.T) {
 		}
 
 		edited := acctest.Object(t, suite.Call(t, "customformat_edit", map[string]any{"id": "Scratch x265", "conditions": []any{map[string]any{"kind": "ReleaseTitleSpecification", "name": "x265 or HEVC", "required": true, "settings": map[string]any{"value": `\b(x265|HEVC)\b`}}}})["saved"], "saved")
-		if conditions := acctest.Rows(t, edited["conditions"], "conditions"); len(conditions) != 1 || acctest.Str(conditions[0]["name"]) != "x265 or HEVC" || conditions[0]["required"] != true {
+		if conditions := acctest.Rows(t, edited["conditions"], "conditions"); len(conditions) != 1 || acctest.Str(conditions[0]["name"]) != "x265 or HEVC" || !acctest.BoolOf(conditions[0]["required"]) {
 			t.Errorf("the custom format edited = %v", edited)
 		}
 		if parsed := suite.Call(t, "release_parse", map[string]any{"title": "Alien.1979.1080p.BluRay.HEVC-GRP"}); !slices.Contains(acctest.Strs(t, acctest.OrEmptyList(parsed["custom_formats"]), "custom_formats"), "Scratch x265") {
@@ -587,7 +587,7 @@ func TestRecordLifecycles(t *testing.T) {
 		deleted(t, "customformat_delete", map[string]any{"id": "Scratch x265"}, "Scratch x265", func() bool { return named(rowsOf(t, "customformat_list", "formats"), "name", "Scratch x265") != nil })
 		// and the profile's score for it went with it
 		uhd := named(rowsOf(t, "qualityprofile_list", "profiles"), "name", profileUHD)
-		if scores, _ := uhd["format_scores"].(map[string]any); uhd == nil || scores["Scratch x265"] != nil {
+		if uhd == nil || formatScores(uhd)["Scratch x265"] != nil {
 			t.Errorf("after the format was deleted, the profile still scores it: %v", uhd)
 		}
 	})
@@ -610,7 +610,7 @@ func TestQualityProfileAddAndDelete(t *testing.T) {
 	accepted := acctest.Strs(t, hd["allowed"], "allowed")
 	worst := accepted[len(accepted)-1]
 	made := suite.Call(t, "qualityprofile_add", map[string]any{"name": "Scratch Profile", "copy_of": profileHD, "disallow": []any{worst}, "upgrade_allowed": true, "min_upgrade_format_score": 5})
-	if allowed := acctest.Strs(t, made["allowed"], "allowed"); acctest.Str(made["name"]) != "Scratch Profile" || made["upgrade_allowed"] != true || len(allowed) != len(accepted)-1 || slices.Contains(allowed, worst) || acctest.Str(made["cutoff"]) != acctest.Str(hd["cutoff"]) || acctest.Num(t, made["min_upgrade_format_score"], "min_upgrade_format_score") != 5 {
+	if allowed := acctest.Strs(t, made["allowed"], "allowed"); acctest.Str(made["name"]) != "Scratch Profile" || !acctest.BoolOf(made["upgrade_allowed"]) || len(allowed) != len(accepted)-1 || slices.Contains(allowed, worst) || acctest.Str(made["cutoff"]) != acctest.Str(hd["cutoff"]) || acctest.Num(t, made["min_upgrade_format_score"], "min_upgrade_format_score") != 5 {
 		t.Errorf("the profile added = %v, want %s without %s", made, profileHD, worst)
 	}
 	if msg := suite.CallErr(t, "qualityprofile_add", map[string]any{"name": "Scratch Profile", "copy_of": profileHD}); !strings.Contains(msg, "already a quality profile") {
@@ -721,11 +721,11 @@ func TestRunningRadarr(t *testing.T) {
 
 		out := suite.Call(t, "server_updates", nil)
 		newest := named(acctest.Rows(t, out["updates"], "updates"), "version", "99.1.0.1")
-		if out["update_available"] != true || acctest.Str(out["current"]) == "" || acctest.Str(out["mechanism"]) != "docker" || newest == nil || newest["latest"] != true || newest["installed"] != false || !slices.Equal(acctest.Strs(t, newest["new"], "new"), []string{"Something the suite made up"}) || !slices.Equal(acctest.Strs(t, newest["fixed"], "fixed"), []string{"A fault the suite made up"}) {
+		if !acctest.BoolOf(out["update_available"]) || acctest.Str(out["current"]) == "" || acctest.Str(out["mechanism"]) != "docker" || newest == nil || !acctest.BoolOf(newest["latest"]) || !acctest.IsBool(newest["installed"], false) || !slices.Equal(acctest.Strs(t, newest["new"], "new"), []string{"Something the suite made up"}) || !slices.Equal(acctest.Strs(t, newest["fixed"], "fixed"), []string{"A fault the suite made up"}) {
 			t.Errorf("the updates = %v", out)
 		}
 		testenv.Services.Offer()
-		if none := suite.Call(t, "server_updates", nil); none["update_available"] != false || acctest.Num(t, none["total"], "total") != 0 {
+		if none := suite.Call(t, "server_updates", nil); !acctest.IsBool(none["update_available"], false) || acctest.Num(t, none["total"], "total") != 0 {
 			t.Errorf("with nothing on offer, the updates = %v", none)
 		}
 	})
@@ -781,12 +781,12 @@ func TestRunningRadarr(t *testing.T) {
 		}
 
 		waiting := suite.Call(t, "task_cancel", map[string]any{"command_id": ids[3]})
-		if cmd := acctest.Object(t, waiting["command"], "command"); waiting["cancelled"] != true || acctest.Str(waiting["note"]) != "" || acctest.Num(t, cmd["id"], "id") != ids[3] || acctest.Str(cmd["status"]) != "queued" {
+		if cmd := acctest.Object(t, waiting["command"], "command"); !acctest.BoolOf(waiting["cancelled"]) || acctest.Str(waiting["note"]) != "" || acctest.Num(t, cmd["id"], "id") != ids[3] || acctest.Str(cmd["status"]) != "queued" {
 			t.Errorf("the search that was waiting, cancelled = %v, want it taken out of the queue", waiting)
 		}
 		// one that is running is left to run, and the answer says so
 		running := suite.Call(t, "task_cancel", map[string]any{"command_id": ids[0]})
-		if running["cancelled"] != false || !strings.Contains(acctest.Str(running["note"]), "already running") || status(ids[0]) != "started" {
+		if !acctest.IsBool(running["cancelled"], false) || !strings.Contains(acctest.Str(running["note"]), "already running") || status(ids[0]) != "started" {
 			t.Errorf("a search that was running, asked to stop = %v (now %s), want it left to run", running, status(ids[0]))
 		}
 
@@ -796,7 +796,7 @@ func TestRunningRadarr(t *testing.T) {
 			t.Fatalf("the three searches never finished: %s, %s, %s", status(ids[0]), status(ids[1]), status(ids[2]))
 		}
 		// once it is over, there is nothing to cancel
-		if over := suite.Call(t, "task_cancel", map[string]any{"command_id": ids[0]}); over["cancelled"] != false || !strings.Contains(acctest.Str(over["note"]), "already finished") {
+		if over := suite.Call(t, "task_cancel", map[string]any{"command_id": ids[0]}); !acctest.IsBool(over["cancelled"], false) || !strings.Contains(acctest.Str(over["note"]), "already finished") {
 			t.Errorf("a finished search asked to stop = %v", over)
 		}
 		// and the one that was cancelled never ran: the indexer was asked about three films, and not about the fourth
@@ -846,7 +846,7 @@ func TestReleasePush(t *testing.T) {
 
 	const title = "Alien.1979.1080p.BluRay.x264-PUSH"
 	out := acctest.Rows(t, suite.Call(t, "release_push", map[string]any{"title": title, "download_url": indexer.URL() + "/pushed/" + title + ".nzb", "protocol": "usenet", "size": 8 << 30})["releases"], "releases")
-	if len(out) != 1 || acctest.Str(out[0]["title"]) != title || out[0]["approved"] != false || acctest.Str(out[0]["quality"]) != "Bluray-1080p" || len(acctest.Strs(t, acctest.OrEmptyList(out[0]["rejections"]), "rejections")) == 0 {
+	if len(out) != 1 || acctest.Str(out[0]["title"]) != title || !acctest.IsBool(out[0]["approved"], false) || acctest.Str(out[0]["quality"]) != "Bluray-1080p" || len(acctest.Strs(t, acctest.OrEmptyList(out[0]["rejections"]), "rejections")) == 0 {
 		t.Errorf("the release pushed = %v, want it read as a 1080p BluRay and turned down with why", out)
 	}
 	if _, err := os.Stat(testenv.HostPath(nzbFolder + "/" + title + ".nzb")); !os.IsNotExist(err) {
@@ -860,8 +860,6 @@ func TestReleasePush(t *testing.T) {
 // A release Radarr is holding back is sent on its way: a delay profile made
 // with the tools holds a release the RSS sync finds for a film with its tag,
 // and queue_grab sends it to the download client now.
-//
-//nolint:paralleltest // the steps share one film and one download client, in order
 func TestQueueGrab(t *testing.T) {
 	skipUnlessReady(t)
 
@@ -940,8 +938,6 @@ func TestQueueGrab(t *testing.T) {
 // been made to fail so that Radarr has something to say with a key in it, and
 // with a notification whose address carries a token. It is the last test, so
 // what it leaves Radarr saying of a failing indexer is seen by no other.
-//
-//nolint:paralleltest // it takes an indexer down and reads what every tool then says
 func TestNoAnswerCarriesAKey(t *testing.T) {
 	skipUnlessReady(t)
 

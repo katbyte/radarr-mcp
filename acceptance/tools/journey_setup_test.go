@@ -69,7 +69,6 @@ func recorded(t *testing.T) (state string, audits map[string]int) {
 	return b.String(), audits
 }
 
-//nolint:paralleltest // one Radarr, built up and taken down in order
 func TestJourneyFromNothingToNothing(t *testing.T) {
 	skipUnlessReady(t)
 
@@ -154,17 +153,17 @@ func TestJourneyFromNothingToNothing(t *testing.T) {
 		suite.Call(t, "releaseprofile_add", map[string]any{"values": map[string]any{"name": "Journey No Cams", "enabled": true, "ignored": []any{"CAM"}, "required": []any{}}, "tags": []any{journeyTag}})
 
 		added := suite.Call(t, "indexer_add", map[string]any{"kind": "Newznab", "name": "Journey Indexer", "tags": []any{journeyTag}, "settings": map[string]any{"baseUrl": site.URL(), "apiPath": "/api", "apiKey": suite.Secret("journey-key"), "categories": []any{2000, 2040}}})
-		if !slices.Equal(acctest.Strs(t, added["tags"], "tags"), []string{journeyTag}) || acctest.Object(t, added["options"], "options")["enableAutomaticSearch"] != true {
+		if !slices.Equal(acctest.Strs(t, added["tags"], "tags"), []string{journeyTag}) || !acctest.BoolOf(acctest.Object(t, added["options"], "options")["enableAutomaticSearch"]) {
 			t.Fatalf("the indexer added = %v, want it tagged and switched on", added)
 		}
 		// the new client is the one the journey's grabs go to: the suite's own is switched off while it is tried
 		suite.Call(t, "downloadclient_edit", map[string]any{"name": "Blackhole", "options": map[string]any{"enable": false}})
 		client := suite.Call(t, "downloadclient_add", map[string]any{"kind": "UsenetBlackhole", "name": "Journey Blackhole", "tags": []any{journeyTag}, "settings": map[string]any{"nzbFolder": nzbFolder, "watchFolder": watchFolder}, "options": map[string]any{"removeCompletedDownloads": true}})
-		if acctest.Object(t, client["options"], "options")["enable"] != true {
+		if !acctest.BoolOf(acctest.Object(t, client["options"], "options")["enable"]) {
 			t.Fatalf("the download client added = %v, want it switched on", client)
 		}
 		for _, tool := range []string{"indexer_test", "downloadclient_test"} {
-			if results := acctest.Rows(t, suite.Call(t, tool, nil)["results"], "results"); slices.ContainsFunc(results, func(r map[string]any) bool { return r["valid"] != true }) {
+			if results := acctest.Rows(t, suite.Call(t, tool, nil)["results"], "results"); slices.ContainsFunc(results, func(r map[string]any) bool { return !acctest.BoolOf(r["valid"]) }) {
 				t.Errorf("%s = %v, want every one valid", tool, results)
 			}
 		}
@@ -186,7 +185,7 @@ func TestJourneyFromNothingToNothing(t *testing.T) {
 			t.Fatalf("what the folder holds = %v, want Primer", identified)
 		}
 		taken := suite.Call(t, "movie_add", map[string]any{"movie": "tmdb:14337", "quality_profile": "Journey HD", "root_folder": journeyRoot, "folder": "Primer (2004)", "tags": []any{journeyTag}})
-		if taken["has_file"] != true {
+		if !acctest.BoolOf(taken["has_file"]) {
 			t.Fatalf("Primer taken in = %v, want it with its file", taken)
 		}
 		if left := acctest.Rows(t, suite.Call(t, "audit_unmapped_folders", map[string]any{"root_folder": journeyRoot})["findings"], "findings"); len(left) != 0 {
@@ -196,7 +195,7 @@ func TestJourneyFromNothingToNothing(t *testing.T) {
 
 	t.Run("a film with no file: searched for, grabbed through the new indexer into the new client, and imported", func(t *testing.T) {
 		added := suite.Call(t, "movie_add", map[string]any{"movie": "tmdb:17431", "quality_profile": "Journey HD", "root_folder": journeyRoot, "tags": []any{journeyTag}})
-		if added["has_file"] != false {
+		if !acctest.IsBool(added["has_file"], false) {
 			t.Fatalf("Moon added = %v", added)
 		}
 		if missing := acctest.Rows(t, suite.Call(t, "audit_missing_files", map[string]any{"root_folder": journeyRoot})["findings"], "findings"); len(missing) != 1 || acctest.Str(missing[0]["title"]) != "Moon" {
@@ -209,7 +208,7 @@ func TestJourneyFromNothingToNothing(t *testing.T) {
 			t.Fatal(err)
 		}
 		releases := acctest.Rows(t, suite.Call(t, "release_search", map[string]any{"movie": "Moon"})["releases"], "releases")
-		if best, worst := named(releases, "title", good.Title), named(releases, "title", cam.Title); best == nil || best["approved"] != true || acctest.Str(best["indexer"]) != "Journey Indexer" || !slices.Contains(acctest.Strs(t, best["custom_formats"], "custom_formats"), "Journey x265") || worst == nil || worst["approved"] != false {
+		if best, worst := named(releases, "title", good.Title), named(releases, "title", cam.Title); best == nil || !acctest.BoolOf(best["approved"]) || acctest.Str(best["indexer"]) != "Journey Indexer" || !slices.Contains(acctest.Strs(t, best["custom_formats"], "custom_formats"), "Journey x265") || worst == nil || !acctest.IsBool(worst["approved"], false) {
 			t.Fatalf("the releases = %v, want the x265 approved from the new indexer with the new format on it, and the CAM turned down", releases)
 		}
 
@@ -243,7 +242,7 @@ func TestJourneyFromNothingToNothing(t *testing.T) {
 			t.Fatalf("the files not named by the scheme under the new root = %v, want Moon's", found)
 		}
 		renamed := suite.Call(t, "movie_rename", map[string]any{"movies": []any{"Moon"}, "preview": false})
-		if renamed["renamed"] != true {
+		if !acctest.BoolOf(renamed["renamed"]) {
 			t.Fatalf("the rename = %v", renamed)
 		}
 		if left := acctest.Rows(t, suite.Call(t, "audit_naming", map[string]any{"root_folder": journeyRoot})["findings"], "findings"); len(left) != 0 {

@@ -51,7 +51,6 @@ func removeAfter[T any](ctx context.Context, t *testing.T, what string, del func
 	})
 }
 
-//nolint:paralleltest // the tests share one server
 func TestTags(t *testing.T) {
 	ctx := skipUnlessUp(t)
 
@@ -76,18 +75,17 @@ func TestTags(t *testing.T) {
 	gone(t, "the tag", res, err)
 }
 
-//nolint:paralleltest // the tests share one server
 func TestCustomFilters(t *testing.T) {
 	ctx := skipUnlessUp(t)
 
-	filter := must(sdk.PostCustomFilter(ctx, radarr.CustomFilterResource{
+	filter := must(must(sdk.PostCustomFilter(ctx, radarr.CustomFilterResource{
 		Type: "movieIndex", Label: "SDK Filter", Filters: []map[string]any{{"key": "monitored", "value": []any{true}, "type": "equal"}},
-	})).Answer
+	})).Record())
 	removeAfter(ctx, t, "the filter", func(ctx context.Context) (radarr.DeleteCustomFilterByIdResponse, error) {
 		return sdk.DeleteCustomFilterById(ctx, filter.Id)
 	})
 
-	edit := *filter
+	edit := filter
 	edit.Label = "SDK Filter Renamed"
 	edit.Filters = append(edit.Filters, map[string]any{"key": "hasFile", "value": []any{false}, "type": "equal"})
 	got := must(sdk.PutCustomFilterById(ctx, filter.Id, edit)).Answer
@@ -100,11 +98,10 @@ func TestCustomFilters(t *testing.T) {
 	gone(t, "the filter", res, err)
 }
 
-//nolint:paralleltest // the tests share one server
 func TestCustomFormats(t *testing.T) {
 	ctx := skipUnlessUp(t)
 
-	a := must(sdk.PostCustomFormat(ctx, customFormat("SDK Format A"))).Answer
+	a := must(must(sdk.PostCustomFormat(ctx, customFormat("SDK Format A"))).Record())
 	removeAfter(ctx, t, "format A", func(ctx context.Context) (radarr.DeleteCustomFormatByIdResponse, error) {
 		return sdk.DeleteCustomFormatById(ctx, a.Id)
 	})
@@ -113,7 +110,7 @@ func TestCustomFormats(t *testing.T) {
 		return sdk.DeleteCustomFormatById(ctx, b.Id)
 	})
 
-	edit := *a
+	edit := a
 	edit.Name = "SDK Format A Renamed"
 	if got := must(sdk.PutCustomFormatById(ctx, a.Id, edit)).Answer; got.Name != edit.Name {
 		t.Errorf("renamed to %q", got.Name)
@@ -138,22 +135,21 @@ func TestCustomFormats(t *testing.T) {
 	goneFromCache(t, "format A", res, err)
 }
 
-//nolint:paralleltest // the tests share one server
 func TestDelayProfiles(t *testing.T) {
 	ctx := skipUnlessUp(t)
 
 	// a delay profile other than the default applies to films with its
 	// tags, and no two share a tag
-	var profiles [2]*radarr.DelayProfileResource
+	var profiles [2]radarr.DelayProfileResource
 	for i, label := range []string{"sdk-delay-a", "sdk-delay-b"} {
 		tag := must(sdk.PostTag(ctx, radarr.TagResource{Label: label})).Answer
 		removeAfter(ctx, t, label, func(ctx context.Context) (radarr.DeleteTagByIdResponse, error) {
 			return sdk.DeleteTagById(ctx, tag.Id)
 		})
-		p := must(sdk.PostDelayProfile(ctx, radarr.DelayProfileResource{
+		p := must(must(sdk.PostDelayProfile(ctx, radarr.DelayProfileResource{
 			EnableUsenet: new(true), EnableTorrent: new(true), PreferredProtocol: radarr.DownloadProtocolUsenet,
 			UsenetDelay: 60, Tags: []radarr.TagID{tag.Id}, BypassIfHighestQuality: new(false), BypassIfAboveCustomFormatScore: new(false),
-		})).Answer
+		})).Record())
 		removeAfter(ctx, t, label, func(ctx context.Context) (radarr.DeleteDelayProfileByIdResponse, error) {
 			return sdk.DeleteDelayProfileById(ctx, p.Id)
 		})
@@ -161,7 +157,7 @@ func TestDelayProfiles(t *testing.T) {
 	}
 	a, b := profiles[0], profiles[1]
 
-	edit := *a
+	edit := a
 	edit.UsenetDelay = 120
 	if got := must(sdk.PutDelayProfileById(ctx, a.Id, edit)).Answer; got.UsenetDelay != 120 {
 		t.Errorf("the delay is %d after the update, want 120", got.UsenetDelay)
@@ -185,16 +181,15 @@ func TestDelayProfiles(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // the tests share one server
 func TestReleaseProfiles(t *testing.T) {
 	ctx := skipUnlessUp(t)
 
-	p := must(sdk.PostReleaseProfile(ctx, radarr.ReleaseProfileResource{Name: "SDK Release Profile", Enabled: new(true), Required: []string{"x264"}})).Answer
+	p := must(must(sdk.PostReleaseProfile(ctx, radarr.ReleaseProfileResource{Name: "SDK Release Profile", Enabled: new(true), Required: []string{"x264"}})).Record())
 	removeAfter(ctx, t, "the release profile", func(ctx context.Context) (radarr.DeleteReleaseProfileByIdResponse, error) {
 		return sdk.DeleteReleaseProfileById(ctx, p.Id)
 	})
 
-	edit := *p
+	edit := p
 	edit.Ignored = []string{"cam", "telesync"}
 	got := must(sdk.PutReleaseProfileById(ctx, p.Id, edit)).Answer
 	if ignored, ok := got.Ignored.([]any); !ok || len(ignored) != 2 {
@@ -206,7 +201,6 @@ func TestReleaseProfiles(t *testing.T) {
 	gone(t, "the release profile", res, err)
 }
 
-//nolint:paralleltest // the tests share one server
 func TestAutoTagging(t *testing.T) {
 	ctx := skipUnlessUp(t)
 
@@ -214,12 +208,12 @@ func TestAutoTagging(t *testing.T) {
 	removeAfter(ctx, t, "the tag", func(ctx context.Context) (radarr.DeleteTagByIdResponse, error) {
 		return sdk.DeleteTagById(ctx, tag.Id)
 	})
-	rule := must(sdk.PostAutoTagging(ctx, autoTagging("SDK Auto Tag", tag.Id))).Answer
+	rule := must(must(sdk.PostAutoTagging(ctx, autoTagging("SDK Auto Tag", tag.Id))).Record())
 	removeAfter(ctx, t, "the rule", func(ctx context.Context) (radarr.DeleteAutoTaggingByIdResponse, error) {
 		return sdk.DeleteAutoTaggingById(ctx, rule.Id)
 	})
 
-	edit := *rule
+	edit := rule
 	edit.Name = "SDK Auto Tag Renamed"
 	edit.RemoveTagsAutomatically = new(true)
 	got := must(sdk.PutAutoTaggingById(ctx, rule.Id, edit)).Answer
@@ -232,16 +226,15 @@ func TestAutoTagging(t *testing.T) {
 	goneFromCache(t, "the rule", res, err)
 }
 
-//nolint:paralleltest // the tests share one server
 func TestRemotePathMappings(t *testing.T) {
 	ctx := skipUnlessUp(t)
 
-	m := must(sdk.PostRemotePathMapping(ctx, radarr.RemotePathMappingResource{Host: "sdk-host", RemotePath: "/remote/", LocalPath: "/media/downloads/"})).Answer
+	m := must(must(sdk.PostRemotePathMapping(ctx, radarr.RemotePathMappingResource{Host: "sdk-host", RemotePath: "/remote/", LocalPath: "/media/downloads/"})).Record())
 	removeAfter(ctx, t, "the mapping", func(ctx context.Context) (radarr.DeleteRemotePathMappingByIdResponse, error) {
 		return sdk.DeleteRemotePathMappingById(ctx, m.Id)
 	})
 
-	edit := *m
+	edit := m
 	edit.RemotePath = "/elsewhere/"
 	if got := must(sdk.PutRemotePathMappingById(ctx, m.Id, edit)).Answer; got.RemotePath != "/elsewhere/" {
 		t.Errorf("maps %q after the update", got.RemotePath)
@@ -252,16 +245,15 @@ func TestRemotePathMappings(t *testing.T) {
 	gone(t, "the mapping", res, err)
 }
 
-//nolint:paralleltest // the tests share one server
 func TestExclusions(t *testing.T) {
 	ctx := skipUnlessUp(t)
 
-	one := must(sdk.PostExclusions(ctx, radarr.ImportListExclusionResource{TmdbId: 126889, MovieTitle: "Alien: Covenant", MovieYear: 2017})).Answer
+	one := must(must(sdk.PostExclusions(ctx, radarr.ImportListExclusionResource{TmdbId: 126889, MovieTitle: "Alien: Covenant", MovieYear: 2017})).Record())
 	removeAfter(ctx, t, "the exclusion", func(ctx context.Context) (radarr.DeleteExclusionsByIdResponse, error) {
 		return sdk.DeleteExclusionsById(ctx, one.Id)
 	})
 
-	edit := *one
+	edit := one
 	edit.MovieTitle = "Alien Covenant"
 	if got := must(sdk.PutExclusionsById(ctx, one.Id, edit)).Answer; got.MovieTitle != edit.MovieTitle {
 		t.Errorf("titled %q after the update", got.MovieTitle)
@@ -290,16 +282,15 @@ func TestExclusions(t *testing.T) {
 	gone(t, "the exclusion", res, err)
 }
 
-//nolint:paralleltest // the tests share one server
 func TestQualityProfiles(t *testing.T) {
 	ctx := skipUnlessUp(t)
 
 	// a new profile is a copy of HD-1080p under another name
-	source := must(sdk.GetQualityProfileById(ctx, hd1080)).Answer
-	fresh := *source
+	source := must(must(sdk.GetQualityProfileById(ctx, hd1080)).Record())
+	fresh := source
 	fresh.Id = 0
 	fresh.Name = "SDK Profile"
-	p := must(sdk.PostQualityProfile(ctx, fresh)).Answer
+	p := must(must(sdk.PostQualityProfile(ctx, fresh)).Record())
 	removeAfter(ctx, t, "the profile", func(ctx context.Context) (radarr.DeleteQualityProfileByIdResponse, error) {
 		return sdk.DeleteQualityProfileById(ctx, p.Id)
 	})
@@ -307,7 +298,7 @@ func TestQualityProfiles(t *testing.T) {
 		t.Fatalf("created profile %d with cutoff %d, want a new one with cutoff %d", p.Id, p.Cutoff, source.Cutoff)
 	}
 
-	edit := *p
+	edit := p
 	edit.UpgradeAllowed = new(!isTrue(p.UpgradeAllowed))
 	if got := must(sdk.PutQualityProfileById(ctx, p.Id, edit)).Answer; isTrue(got.UpgradeAllowed) != isTrue(edit.UpgradeAllowed) {
 		t.Errorf("upgrades allowed is %v after the update", isTrue(got.UpgradeAllowed))
@@ -318,7 +309,6 @@ func TestQualityProfiles(t *testing.T) {
 	gone(t, "the profile", res, err)
 }
 
-//nolint:paralleltest // the tests share one server
 func TestQualityDefinitions(t *testing.T) {
 	ctx := skipUnlessUp(t)
 

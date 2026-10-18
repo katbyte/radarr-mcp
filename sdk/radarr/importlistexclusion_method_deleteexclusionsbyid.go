@@ -4,8 +4,8 @@ package radarr
 
 import (
 	"context"
-	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/katbyte/pandorest/client"
 )
@@ -23,12 +23,12 @@ func (c Client) DeleteExclusionsById(ctx context.Context, id int) (result Delete
 		},
 		HTTPMethod: http.MethodDelete,
 		Operation:  "DeleteExclusionsById",
-		Path:       fmt.Sprintf("/api/v3/exclusions/%d", id),
+		Path:       "/api/v3/exclusions/" + strconv.Itoa(id),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -37,8 +37,8 @@ func (c Client) DeleteExclusionsById(ctx context.Context, id int) (result Delete
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

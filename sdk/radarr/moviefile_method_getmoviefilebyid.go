@@ -5,7 +5,6 @@ package radarr
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -49,12 +48,12 @@ func (c Client) GetMovieFileById(ctx context.Context, id MovieFileID) (result Ge
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetMovieFileById",
-		Path:       fmt.Sprintf("/api/v3/moviefile/%s", url.PathEscape(strconv.Itoa(int(id)))),
+		Path:       "/api/v3/moviefile/" + url.PathEscape(strconv.Itoa(int(id))),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -63,15 +62,15 @@ func (c Client) GetMovieFileById(ctx context.Context, id MovieFileID) (result Ge
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer MovieFileResource
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.MovieFileResource = result.Answer
 
-	return
+	return result, nil
 }

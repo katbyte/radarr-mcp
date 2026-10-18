@@ -27,8 +27,7 @@ type GetRenameOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetRenameOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.
@@ -57,7 +56,7 @@ func (c Client) GetRename(ctx context.Context, movieId []MovieID) (result GetRen
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -66,12 +65,12 @@ func (c Client) GetRename(ctx context.Context, movieId []MovieID) (result GetRen
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

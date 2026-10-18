@@ -109,8 +109,6 @@ func TestJourneyLookupsChangeNothing(t *testing.T) {
 
 // Every audit a tool can fix is cleared by it, and put back: the fix is read
 // back through the audit that found the problem, not taken on trust.
-//
-//nolint:paralleltest // the fixes change shared fixtures in turn, each restored
 func TestJourneyEveryFixableAudit(t *testing.T) {
 	skipUnlessReady(t)
 	cleared := func(t *testing.T, audit string, args map[string]any, film string) {
@@ -149,7 +147,7 @@ func TestJourneyEveryFixableAudit(t *testing.T) {
 	t.Run("unmapped folder: add the film for it", func(t *testing.T) {
 		added := suite.Call(t, "movie_add", map[string]any{"movie": "tmdb:8195", "quality_profile": profileHD, "root_folder": moviesRoot, "folder": "Ronin (1998)"})
 		t.Cleanup(func() { _, _ = suite.Invoke("movie_delete", map[string]any{"movie": "tmdb:8195", "confirm": true}) })
-		if acctest.Str(added["path"]) != unmappedRonin || added["has_file"] != true {
+		if acctest.Str(added["path"]) != unmappedRonin || !acctest.BoolOf(added["has_file"]) {
 			t.Errorf("Ronin added = %v", added)
 		}
 		cleared(t, "audit_unmapped_folders", nil, "Ronin (1998)")
@@ -173,7 +171,7 @@ func TestJourneyEveryFixableAudit(t *testing.T) {
 			t.Errorf("the collection now = %v", gap["detail"])
 		}
 
-		var ids []any
+		ids := make([]any, 0, 2)
 		for _, tmdb := range []string{"605", "624860"} {
 			out := suite.Call(t, "exclusion_add", map[string]any{"movie": "tmdb:" + tmdb})
 			ids = append(ids, out["id"])
@@ -331,7 +329,7 @@ func TestJourneyWritesDoneTwice(t *testing.T) {
 		_, _ = suite.Invoke("tag_delete", map[string]any{"tag": "twice"})
 	})
 	got := suite.Call(t, "movie_get", map[string]any{"movie": "Arrival"})
-	if got["monitored"] != false || !slices.Equal(acctest.Strs(t, acctest.OrEmptyList(got["tags"]), "tags"), []string{"twice"}) {
+	if !acctest.IsBool(got["monitored"], false) || !slices.Equal(acctest.Strs(t, acctest.OrEmptyList(got["tags"]), "tags"), []string{"twice"}) {
 		t.Errorf("after two edits = monitored %v, tags %v", got["monitored"], got["tags"])
 	}
 
@@ -375,8 +373,9 @@ func TestJourneyCallsAtOnce(t *testing.T) {
 			case err != nil:
 				errs <- err.Error()
 			case name == "audit_year_mismatch":
-				var got []string
-				for _, f := range acctest.RowsOf(out["findings"]) {
+				rows := acctest.RowsOf(out["findings"])
+				got := make([]string, 0, len(rows))
+				for _, f := range rows {
 					got = append(got, titleYear(acctest.Str(f["title"]), acctest.NumOr0(f["year"])))
 				}
 				if !slices.Equal(got, want) {
@@ -435,7 +434,7 @@ func TestJourneyADeletedFilmLeavesNothingBehind(t *testing.T) {
 		_, err := os.Stat(testenv.HostPath(scratchFolder))
 		return os.IsNotExist(err)
 	}) {
-		t.Errorf("the folder is still on disk a minute after the delete")
+		t.Error("the folder is still on disk a minute after the delete")
 	}
 	if got := acctest.Rows(t, suite.Call(t, "movie_list", map[string]any{"query": "moon"})["movies"], "movies"); len(got) != 0 {
 		t.Errorf("still in the library: %v", got)

@@ -11,8 +11,6 @@ import (
 
 // TestBackups makes a backup and deletes it. Restoring one is left alone
 // (see notExercised): it replaces the database the suite is using.
-//
-//nolint:paralleltest // the tests share one server
 func TestBackups(t *testing.T) {
 	ctx := skipUnlessUp(t)
 
