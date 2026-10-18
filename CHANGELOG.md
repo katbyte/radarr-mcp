@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 (2026-10-18)
 
 ### Added
 
@@ -23,6 +23,7 @@
 
 ### Changed
 
+- moved to `golang.org/x/text` v0.41.0, which fixes a crash on some text (CVE-2026-56851) that the binary scan reported against v0.39.0
 - moved to go-kt v0.9.0 and pandorest v0.11.0. Five small helpers that were radarr's own (limits, paging, waits, "a" or "an", and the first sentence of a description) are now the shared ones
 - `radarr-mcp tools` cuts a description at its first real sentence: a full stop in an abbreviation such as "e.g." no longer ends it
 
