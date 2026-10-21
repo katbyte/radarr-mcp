@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.2 (2026-10-20)
+
+### Fixed
+
+- a bare `make` formats and builds, where it built a lint tool and stopped: the lint tools' rules come first in the makefile, so `make` with no target ran one of them
+
 ## 0.5.1 (2026-10-18)
 
 ### Changed
