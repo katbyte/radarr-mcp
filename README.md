@@ -123,17 +123,17 @@ docker compose up -d
 
 ## Tools
 
-There are 140 tools: everything Radarr's own web interface can do. Loading them all would fill much of an assistant's memory before it had done anything, so they come in groups called toolsets and only `core` loads by default.
+There are 141 tools: everything Radarr's own web interface can do. Loading them all would fill much of an assistant's memory before it had done anything, so they come in groups called toolsets and only `core` loads by default.
 
 | Toolset | What it is for | Tools |
 |---|---|---|
 | `core` | Finding and reading films. Always loaded. | 6 |
 | `organise` | Tags, root folders and quality profiles | 15 |
 | `acquire` | Searching, grabbing and following downloads | 19 |
-| `admin` | Health, logs, backups and tasks | 23 |
+| `admin` | Health, logs, backups and tasks | 24 |
 | `curation` | The audits and everything that fixes what they find | 49 |
 | `setup` | Indexers, download clients, lists, notifications, settings | 58 |
-| `all` | Everything | 140 |
+| `all` | Everything | 141 |
 
 The counts include `core`. To curate a library, use `RADARR_TOOLSETS=curation`.
 
@@ -142,7 +142,7 @@ The counts include `core`. To curate a library, use `RADARR_TOOLSETS=curation`.
 
 ### Safety
 
-- **Nothing is deleted by accident.** The 14 tools that delete are not loaded unless `--enable-delete` is set. Even then, each only says what it would delete until called again with `confirm`.
+- **Nothing is deleted by accident.** The 15 tools that delete are not loaded unless `--enable-delete` is set. Even then, each only says what it would delete until called again with `confirm`.
 - **Restarts and restores ask twice too.** So does any change to how Radarr is reached or who can sign in.
 - **`--read-only` loads only the 70 tools that change nothing.**
 - **Passwords and keys are never shown.** A tool says that one is set, not what it is. The same holds for the log.

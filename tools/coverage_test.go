@@ -84,7 +84,6 @@ var notWrapped = map[string]string{
 	"PutImportListBulk":          severalAtOnce,
 	"DeleteIndexerBulk":          severalAtOnce,
 	"PutIndexerBulk":             severalAtOnce,
-	"DeleteMovieEditor":          severalAtOnce,
 	"DeleteMovieFileBulk":        severalAtOnce,
 	"DeleteQueueBulk":            severalAtOnce,
 	"PostQueueGrabBulk":          severalAtOnce,
