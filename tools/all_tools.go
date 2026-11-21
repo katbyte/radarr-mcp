@@ -115,7 +115,7 @@ var Toolsets = map[string][]string{
 		"server_health", "server_disk_space", "server_logs", "server_log_file", "server_updates",
 		"server_backups", "server_backup_create", "server_backup_restore", "server_backup_delete", "server_restart", "server_shutdown",
 		"task_list", "task_run", "task_cancel", "filesystem_browse",
-		"movie_delete", "moviefile_delete",
+		"movie_delete", "movie_batch_delete", "moviefile_delete",
 	},
 }
 

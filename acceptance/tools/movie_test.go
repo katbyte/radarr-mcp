@@ -518,3 +518,30 @@ func TestMovieDelete(t *testing.T) {
 		}
 	}
 }
+
+// movie_batch_delete removes several films in one call, and only once it is confirmed: before that it counts them and shows what would go.
+func TestMovieBatchDelete(t *testing.T) {
+	addScratch(t)
+	suite.Call(t, "movie_add", map[string]any{"movie": "tmdb:8195", "quality_profile": profileHD, "root_folder": moviesRoot, "folder": "Ronin (1998)"})
+	t.Cleanup(func() { _, _ = suite.Invoke("movie_delete", map[string]any{"movie": "tmdb:8195", "confirm": true}) })
+	films := []any{"tmdb:17431", "tmdb:8195"}
+
+	would := suite.Call(t, "movie_batch_delete", map[string]any{"movies": films})
+	if shown := acctest.Rows(t, would["would_delete"], "would_delete"); len(shown) != 2 || acctest.Str(shown[0]["title"]) != scratchTitle || acctest.Num(t, would["total"], "total") != 2 || would["deleted"] != nil {
+		t.Errorf("without confirm = %v", would)
+	}
+	for _, film := range films {
+		suite.Call(t, "movie_get", map[string]any{"movie": film})
+	}
+
+	out := suite.Call(t, "movie_batch_delete", map[string]any{"movies": films, "confirm": true})
+	if gone := acctest.Rows(t, out["deleted"], "deleted"); len(gone) != 2 || acctest.Num(t, out["total"], "total") != 2 || !acctest.IsBool(out["files_deleted"], false) || out["would_delete"] != nil {
+		t.Errorf("deleted = %v", out)
+	}
+	if _, err := os.Stat(testenv.HostPath(scratchFile)); err != nil {
+		t.Errorf("a delete without delete_files took the file: %v", err)
+	}
+	for _, film := range films {
+		suite.CallErr(t, "movie_get", map[string]any{"movie": film})
+	}
+}

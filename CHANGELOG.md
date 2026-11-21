@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- `movie_batch_delete` removes many films in one call, where each took a call of its own: 4,000 films were 4,000 calls. It waits for `confirm` like every delete, counts the films it would remove and shows the first hundred, and takes `delete_files` and `add_exclusion` as `movie_delete` does. It is in the `admin` toolset and needs `--enable-delete`
+
 ### Changed
 
 - on a large library, calls that follow one another no longer each wait for Radarr to answer every film again: a read of the library that took more than a second is kept for 30 seconds, and dropped as soon as any tool changes something. On 30,000 films `movie_list` and `qualityprofile_list` went from 11 seconds or more to a tenth of one after the first call. A change made in Radarr itself, or by a command still running, can take up to 30 seconds to show in a list, a count or an audit

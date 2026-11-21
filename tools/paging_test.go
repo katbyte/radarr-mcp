@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/katbyte/radarr-mcp/sdk/radarr"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // A page is at most the limit asked for from the offset asked for, says how
@@ -142,8 +143,8 @@ func TestEveryListPagesAndEveryDeleteConfirms(t *testing.T) {
 			}
 		}
 	}
-	if lists != 24 || deletes != 14 {
-		t.Errorf("held %d lists and %d deletes to the rule, want 24 and 14", lists, deletes)
+	if lists != 24 || deletes != 15 {
+		t.Errorf("held %d lists and %d deletes to the rule, want 24 and 15", lists, deletes)
 	}
 }
 
@@ -229,6 +230,75 @@ func TestDeletesWaitForConfirm(t *testing.T) {
 	if sent := f.requests(http.MethodDelete, "/api/v3/movie/1"); len(sent) != 1 || !strings.Contains(sent[0].Query, "deleteFiles=true") || !strings.Contains(sent[0].Query, "addImportExclusion=true") {
 		t.Errorf("the deletes sent = %+v, want one, with the files and the exclusion", sent)
 	}
+}
+
+// Many films go in one call: nothing without confirm, then Radarr is asked for them a hundred at a time, and the answer counts them all while
+// showing only the first. A delete Radarr refuses part way says how many films had already gone.
+func TestBatchDeleteRemovesManyFilmsAtOnce(t *testing.T) {
+	t.Parallel()
+
+	// serving is a library of 250 films whose bulk delete answers what refuse says of each request, counted from one
+	serving := func(refuse func(request int) bool) (*fakeRadarr, *mcp.ClientSession, []any) {
+		f := newFakeRadarr(t)
+		films, named := make([]map[string]any, 0, 250), make([]any, 0, 250)
+		for id := 1; id <= 250; id++ {
+			films = append(films, movie(id, fmt.Sprintf("Film %d", id), 2000, "", "", ""))
+			named = append(named, strconv.Itoa(id))
+		}
+		f.library(films...)
+		f.mux.HandleFunc("DELETE /api/v3/movie/editor", func(w http.ResponseWriter, _ *http.Request) {
+			if refuse(len(f.requests(http.MethodDelete, "/api/v3/movie/editor"))) {
+				http.Error(w, "BadRequest", http.StatusBadRequest)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+		})
+
+		return f, session(t, f, Options{EnableDelete: true}), named
+	}
+
+	f, cs, named := serving(func(int) bool { return false })
+	would := mustCall(t, cs, "movie_batch_delete", map[string]any{"movies": named, "delete_files": true, "add_exclusion": true})
+	if would["total"] != 250.0 || len(rowsOf(would["would_delete"])) != 100 || would["deleted"] != nil || !is(would["files_deleted"], false) || !is(would["excluded"], false) {
+		t.Errorf("movie_batch_delete without confirm = total %v, %d shown, deleted %v", would["total"], len(rowsOf(would["would_delete"])), would["deleted"])
+	}
+	if sent := f.requests(http.MethodDelete, "/api/v3/movie/editor"); len(sent) != 0 {
+		t.Fatalf("%d deletes were sent without confirm", len(sent))
+	}
+
+	done := mustCall(t, cs, "movie_batch_delete", map[string]any{"movies": named, "delete_files": true, "add_exclusion": true, "limit": 2, "confirm": true})
+	if shown := rowsOf(done["deleted"]); done["total"] != 250.0 || len(shown) != 2 || shown[0]["title"] != "Film 1" || done["would_delete"] != nil || !is(done["files_deleted"], true) || !is(done["excluded"], true) {
+		t.Errorf("movie_batch_delete with confirm = %v", done)
+	}
+
+	sent := f.requests(http.MethodDelete, "/api/v3/movie/editor")
+	if len(sent) != 3 {
+		t.Fatalf("250 films were deleted in %d requests, want 3 of a hundred at most", len(sent))
+	}
+	asked := map[int]bool{}
+	for _, req := range sent {
+		var body struct {
+			MovieIDs           []int `json:"movieIds"`
+			DeleteFiles        bool  `json:"deleteFiles"`
+			AddImportExclusion bool  `json:"addImportExclusion"`
+		}
+		if err := json.Unmarshal([]byte(req.Body), &body); err != nil {
+			t.Fatal(err)
+		}
+		if len(body.MovieIDs) > 100 || !body.DeleteFiles || !body.AddImportExclusion {
+			t.Errorf("one request named %d films, files %v, exclusion %v", len(body.MovieIDs), body.DeleteFiles, body.AddImportExclusion)
+		}
+		for _, id := range body.MovieIDs {
+			asked[id] = true
+		}
+	}
+	if len(asked) != 250 {
+		t.Errorf("the requests named %d films between them, want 250", len(asked))
+	}
+
+	_, cs, named = serving(func(request int) bool { return request == 2 })
+	mustFail(t, cs, "movie_batch_delete", map[string]any{"movies": named, "confirm": true}, "100 of the 250 films were removed before Radarr refused the rest")
+	mustFail(t, cs, "movie_batch_delete", map[string]any{"movies": []any{}, "confirm": true}, "no films named")
 }
 
 // A list answers the page asked for and where the next one starts, through

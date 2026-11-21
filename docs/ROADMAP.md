@@ -20,7 +20,7 @@ Design rules, in priority order:
 | acquire | `movie_download`, `release_search` → `release_grab`, `release_push`, `queue_list`, `queue_grab`, `history_list`, `blocklist_list`, `blocklist_remove`, `exclusion_list`, `exclusion_add`, `exclusion_remove` | "get it, and see where it is" |
 | organise | `tag_*`, `rootfolder_add`, `rootfolder_delete`, `qualityprofile_add`, `qualityprofile_edit`, `qualityprofile_delete` | "group and hold these" |
 | setup | `provider_kinds` and `provider_options`, then list, add, edit, test and delete for `indexer_*`, `downloadclient_*`, `importlist_*` (and `importlist_movies`), `notification_*` and `metadata_*`; list, add, edit and delete for `delayprofile_*` (and `delayprofile_reorder`), `releaseprofile_*`, `autotagging_*`, `remotepathmapping_*`, `customfilter_*` and `customformat_*`; `server_settings`, `server_settings_edit` | "set Radarr up, and change how it is set up" |
-| admin | `server_health`, `server_disk_space`, `server_logs`, `server_log_file`, `server_updates`, `server_backups`, `server_backup_create`, `server_backup_restore`, `server_backup_delete`, `server_restart`, `server_shutdown`, `task_list`, `task_run`, `task_cancel`, `filesystem_browse`, `movie_delete`, `moviefile_delete` | "keep it running" |
+| admin | `server_health`, `server_disk_space`, `server_logs`, `server_log_file`, `server_updates`, `server_backups`, `server_backup_create`, `server_backup_restore`, `server_backup_delete`, `server_restart`, `server_shutdown`, `task_list`, `task_run`, `task_cancel`, `filesystem_browse`, `movie_delete`, `movie_batch_delete`, `moviefile_delete` | "keep it running" |
 
 ## Candidates
 

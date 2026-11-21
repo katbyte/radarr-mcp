@@ -252,6 +252,68 @@ func registerMovieEditTools(r *registry) {
 		return nil, out, nil
 	})
 
+	type movieBatchDeleteIn struct {
+		Movies       []string `json:"movies"                  jsonschema:"the films: ids, tmdb:<id>, imdb:<tt id> or titles"`
+		DeleteFiles  bool     `json:"delete_files,omitempty"  jsonschema:"also delete their folders and files from disk; default false leaves them there"`
+		AddExclusion bool     `json:"add_exclusion,omitempty" jsonschema:"also add them to the import list exclusions, so a list does not add them back"`
+		Limit        int      `json:"limit,omitempty"         jsonschema:"films to show in the answer, default 100; every film named is deleted whatever this is"`
+		Confirm      bool     `json:"confirm,omitempty"       jsonschema:"true to delete; without it nothing changes and the answer says what a confirmed call would remove"`
+	}
+	type movieBatchDeleteOut struct {
+		Total        int        `json:"total"                  jsonschema:"how many films were removed, or without confirm would be"`
+		Deleted      []movieRow `json:"deleted,omitempty"      jsonschema:"the films removed from the library: the first limit of them, in the order named"`
+		WouldDelete  []movieRow `json:"would_delete,omitempty" jsonschema:"without confirm: the films a confirmed call removes, the first limit of them; nothing has changed"`
+		Files        string     `json:"files,omitempty"        jsonschema:"with delete_files: what is erased from disk, each film's folder and everything in it"`
+		FilesDeleted bool       `json:"files_deleted"          jsonschema:"their folders and files are being deleted: Radarr does it in the background, so they can still be on disk for a moment after this answers"`
+		Excluded     bool       `json:"excluded"               jsonschema:"they are being added to the exclusions, likewise in the background"`
+	}
+	add(r, deleteTool, &mcp.Tool{
+		Name: "movie_batch_delete",
+		Description: "Remove many films from the library at once; with delete_files, delete their folders and files from disk as well (to the recycle bin, when Radarr has one set up). add_exclusion stops an import list adding them back. " +
+			"Nothing changes without confirm: the answer says how many films a confirmed call would remove, and shows the first of them.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in movieBatchDeleteIn) (*mcp.CallToolResult, movieBatchDeleteOut, error) {
+		movies, err := resolveMovies(ctx, client, in.Movies)
+		if err != nil {
+			return nil, movieBatchDeleteOut{}, err
+		}
+		lk, err := loadLookups(ctx, client)
+		if err != nil {
+			return nil, movieBatchDeleteOut{}, err
+		}
+
+		// an edit of any of these films in the same turn finishes first, rather than writing back a film that has just gone
+		ids := movieIDs(movies)
+		unlock := r.locking().By(movieLocks(ids...)...)
+		defer unlock()
+
+		// the answer shows the first of them and counts the rest: thousands of films are too many to read back
+		shown := make([]movieRow, 0, min(len(movies), mcpregistry.LimitOr(in.Limit, 100)))
+		for i := range movies[:cap(shown)] {
+			shown = append(shown, rowOf(&movies[i], lk))
+		}
+
+		out := movieBatchDeleteOut{Total: len(movies)}
+		if in.DeleteFiles {
+			out.Files = "the folder of each film and everything in it"
+		}
+		if !in.Confirm {
+			out.WouldDelete = shown
+
+			return nil, out, nil
+		}
+
+		removed := 0
+		for some := range slices.Chunk(ids, deletedAtOnce) {
+			if _, err := client.DeleteMovieEditor(ctx, radarr.MovieEditorResource{MovieIds: some, DeleteFiles: new(in.DeleteFiles), AddImportExclusion: new(in.AddExclusion)}); err != nil {
+				return nil, movieBatchDeleteOut{}, fmt.Errorf("%d of the %d films were removed before Radarr refused the rest: %w", removed, len(ids), err)
+			}
+			removed += len(some)
+		}
+		out.Deleted, out.FilesDeleted, out.Excluded = shown, in.DeleteFiles, in.AddExclusion
+
+		return nil, out, nil
+	})
+
 	type commandsOut struct {
 		Commands []commandOut `json:"commands"`
 		Movies   []movieRow   `json:"movies"   jsonschema:"the films as they stand once Radarr finished (or the wait ran out)"`
@@ -535,6 +597,10 @@ func minimumAvailability(s string) (radarr.MovieStatusType, error) {
 
 	return "", fmt.Errorf("minimum availability %q: want announced, inCinemas or released", s)
 }
+
+// deletedAtOnce is how many films one request asks Radarr to delete: it answers when they are all gone, folders and all when those are asked for,
+// so a request for thousands could outlast the wait for its answer. Asked in parts, a failure also says how many had already gone.
+const deletedAtOnce = 100
 
 func movieIDs(movies []radarr.MovieResource) []radarr.MovieID {
 	ids := make([]radarr.MovieID, 0, len(movies))

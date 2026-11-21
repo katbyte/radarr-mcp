@@ -11,7 +11,7 @@ All options can be passed as command-line flags, environment variables, or via a
 | `RADARR_SERVER` | `--server`, `-s` | Radarr's URL, e.g. `http://nas:7878`, with its URL base if it has one |
 | `RADARR_TOKEN` | `--token`, `-t` | API key (Radarr: Settings → General → Security → API Key) |
 | `RADARR_READ_ONLY` | `--read-only` | register only tools that never change server state |
-| `RADARR_ENABLE_DELETE` | `--enable-delete` | register the 14 tools that delete: `movie_delete`, `moviefile_delete` and the `_delete` of each thing Radarr is set up with |
+| `RADARR_ENABLE_DELETE` | `--enable-delete` | register the 15 tools that delete: `movie_delete`, `movie_batch_delete`, `moviefile_delete` and the `_delete` of each thing Radarr is set up with |
 | `RADARR_TOOLSETS` | `--toolsets` | groups of tools to register, default `core`: `all`, `core`, `curation`, `acquire`, `organise`, `setup`, `admin`, or a resource family like `movie` (`core` is always included) |
 | `RADARR_ALLOW_TOOLS` | `--allow-tools` | register these tools as well as the toolsets asked for, or only these when no toolset is (names, `movie_*` globs, or `essential`) |
 | `RADARR_DENY_TOOLS` | `--deny-tools` | never register these tools, whatever asked for them (names or globs such as `*_delete`) |
