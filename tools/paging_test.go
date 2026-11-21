@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -468,25 +469,83 @@ func TestOutsideTextIsMadeSafeToShow(t *testing.T) {
 	}
 }
 
-// What a client is told on connecting stays true of the tools: it names every
-// tool that deletes, since those are the ones that wait for confirm, and says
-// how a list is paged in the words the lists use.
-func TestInstructionsNameWhatTheyDescribe(t *testing.T) {
-	t.Parallel()
+// told is what a client given these options' tools is told on connecting, as one text.
+func told(t *testing.T, opts Options) string {
+	t.Helper()
 
-	told := strings.Join(Instructions, "\n")
-	described, err := Describe(Options{Toolsets: []string{"all"}, EnableDelete: true})
+	own, err := Instructions(opts)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, d := range described {
-		if d.Kind == deleteTool.String() && !strings.Contains(told, d.Name) {
+
+	return strings.Join(own, "\n")
+}
+
+// toolsOf is the tools these options register.
+func toolsOf(t *testing.T, opts Options) []ToolInfo {
+	t.Helper()
+
+	described, err := Describe(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return described
+}
+
+// What a client is told on connecting stays true of the tools: it names every tool that deletes, since those are the ones that wait for confirm,
+// and says how a list is paged in the words the lists use.
+func TestInstructionsNameWhatTheyDescribe(t *testing.T) {
+	t.Parallel()
+
+	everything := Options{Toolsets: []string{"all"}, EnableDelete: true}
+	words := told(t, everything)
+
+	for _, d := range toolsOf(t, everything) {
+		if d.Kind == deleteTool.String() && !strings.Contains(words, d.Name) {
 			t.Errorf("%s deletes and the instructions do not name it", d.Name)
 		}
 	}
-	for _, word := range []string{"limit", "offset", "total", "next_offset", "confirm", "would_delete", "audit_all"} {
-		if !strings.Contains(told, word) {
+	for _, word := range []string{"limit", "offset", "total", "next_offset", "confirm", "would_delete", "audit_all", "tmdb:<id>", "server_restart", "server_settings_edit", "written outside Radarr"} {
+		if !strings.Contains(words, word) {
 			t.Errorf("the instructions do not mention %s", word)
 		}
+	}
+}
+
+// What a client is told is about the tools it was given: every tool the words name is one the session has, so the core tools alone hear nothing
+// of audits or deleting, and a session with no delete tools is still told which of its tools wait for confirm.
+func TestInstructionsFollowTheToolsRegistered(t *testing.T) {
+	t.Parallel()
+
+	every := toolsOf(t, Options{Toolsets: []string{"all"}, EnableDelete: true})
+	for name, opts := range map[string]Options{
+		"core":                {Toolsets: []string{"core"}},
+		"core, read only":     {Toolsets: []string{"core"}, ReadOnly: true},
+		"all without deletes": {Toolsets: []string{"all"}},
+		"all, read only":      {Toolsets: []string{"all"}, ReadOnly: true},
+		"one tool":            {Allow: []string{"server_info"}},
+	} {
+		words := told(t, opts)
+		has := map[string]bool{}
+		for _, d := range toolsOf(t, opts) {
+			has[d.Name] = true
+		}
+
+		for _, d := range every {
+			if !has[d.Name] && regexp.MustCompile(`\b`+d.Name+`\b`).MatchString(words) {
+				t.Errorf("%s: the instructions name %s, which is not registered:\n%s", name, d.Name, words)
+			}
+		}
+		if !strings.Contains(words, "tmdb:<id>") {
+			t.Errorf("%s: the instructions do not say how a film is named:\n%s", name, words)
+		}
+	}
+
+	if words := told(t, Options{Toolsets: []string{"core"}}); !strings.Contains(words, "next_offset") || strings.Contains(words, "confirm") {
+		t.Errorf("the core tools are told:\n%s", words)
+	}
+	if words := told(t, Options{Toolsets: []string{"all"}}); strings.Contains(words, "would_delete") || !strings.Contains(words, "Nothing is changed by server_backup_restore, server_restart and server_shutdown without confirm") {
+		t.Errorf("every tool but the deletes is told:\n%s", words)
 	}
 }

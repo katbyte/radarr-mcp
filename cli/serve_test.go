@@ -57,13 +57,21 @@ func TestServeRoutes(t *testing.T) {
 func TestServeInstructions(t *testing.T) {
 	t.Parallel()
 
-	told := server.Instructions(tools.Instructions...)
+	own, err := tools.Instructions((&FlagData{}).ToolOptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	told := server.Instructions(own...)
 	if !strings.HasPrefix(told, server.DefaultInstructions) {
 		t.Errorf("the instructions do not open with go-kt's: %q", told)
 	}
-	for _, own := range tools.Instructions {
-		if !strings.Contains(told, own) {
-			t.Errorf("the instructions leave out %q", own)
+	if len(own) == 0 {
+		t.Error("the tools registered by default have no instructions of their own")
+	}
+	for _, o := range own {
+		if !strings.Contains(told, o) {
+			t.Errorf("the instructions leave out %q", o)
 		}
 	}
 }

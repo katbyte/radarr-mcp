@@ -16,6 +16,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -26,13 +27,25 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-// allMovies reads every film in the library. Radarr answers the whole list in
-// one call, each film with its file and the file's media info, which is what
-// makes a sweep over the library one request rather than one per film.
+// allMovies reads every film in the library. Radarr answers the whole list in one call, each film with its file and the file's media info, which
+// is what makes a sweep over the library one request rather than one per film. A read that was slow is kept for a short while (see library), so
+// the calls that follow it do not each wait for another.
 func allMovies(ctx context.Context, c *radarr.Client) ([]radarr.MovieResource, error) {
-	shared, err, _ := libraryReads.Do(fmt.Sprintf("%p", c), func() (any, error) {
+	l := libraryOf(c)
+	if movies, ok := l.current(); ok {
+		// each caller has a list of its own to sort and cut
+		return slices.Clone(movies), nil
+	}
+
+	shared, err, _ := l.reads.Do("", func() (any, error) {
+		changes, started := l.changesSoFar(), time.Now()
+
 		// the read is shared, so one caller giving up does not end it for the others
 		res, err := c.GetMovie(context.WithoutCancel(ctx))
+		if err == nil {
+			l.keep(res.Answer, changes, time.Since(started))
+		}
+
 		return res.Answer, err
 	})
 	if err != nil {
@@ -44,13 +57,98 @@ func allMovies(ctx context.Context, c *radarr.Client) ([]radarr.MovieResource, e
 		return nil, fmt.Errorf("reading the library came back as %T, not films", shared)
 	}
 
-	// each caller has a list of its own to sort and cut
 	return slices.Clone(movies), nil
 }
 
-// libraryReads lets calls that want the whole library at the same time share one read of it: on a large library it is a hundred megabytes,
-// and two read side by side were enough to make Radarr stop answering.
-var libraryReads singleflight.Group
+const (
+	// librarySlowerThan is how long a read of the library has to take before it is kept: a library Radarr answers quickly is read afresh every time.
+	librarySlowerThan = time.Second
+	// libraryKeptFor is how long a slow read is kept, and so how far behind Radarr a list, a count or an audit of a large library can be.
+	libraryKeptFor = 30 * time.Second
+)
+
+// library is one Radarr's films as last read, kept for a short while when the read was slow: on a library of thirty thousand films Radarr takes
+// ten seconds to answer, which every list, count and audit would otherwise wait for again. A tool here that changes something drops it (see add),
+// so a change made through this server is never hidden. One made in Radarr itself, or by a command still running, can go unseen for libraryKeptFor.
+type library struct {
+	// reads lets calls that want the whole library at the same time share one read of it: on a large library it is a hundred megabytes, and
+	// two read side by side were enough to make Radarr stop answering
+	reads singleflight.Group
+
+	mu     sync.Mutex
+	movies []radarr.MovieResource
+	held   bool
+	until  time.Time
+	// changes counts the calls of tools that change something, so a read begun before one is not kept after it
+	changes int
+	// slowerThan and keptFor are librarySlowerThan and libraryKeptFor, here for a test to set
+	slowerThan, keptFor time.Duration
+}
+
+// libraries is the library kept for each Radarr this process talks to: one, outside the tests.
+var libraries = struct {
+	mu sync.Mutex
+	of map[*radarr.Client]*library
+}{of: map[*radarr.Client]*library{}}
+
+// libraryOf is the library kept for the Radarr behind c, empty until a slow read fills it.
+func libraryOf(c *radarr.Client) *library {
+	libraries.mu.Lock()
+	defer libraries.mu.Unlock()
+
+	l, ok := libraries.of[c]
+	if !ok {
+		l = &library{slowerThan: librarySlowerThan, keptFor: libraryKeptFor}
+		libraries.of[c] = l
+	}
+
+	return l
+}
+
+// current is the films kept, and whether any are: a read past its time is let go first.
+func (l *library) current() ([]radarr.MovieResource, bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	if l.held && !time.Now().Before(l.until) {
+		l.movies, l.held = nil, false
+	}
+
+	return l.movies, l.held
+}
+
+// changesSoFar is how many changes have been made, for a read to hand back to keep when it is done.
+func (l *library) changesSoFar() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	return l.changes
+}
+
+// keep holds a read that took long enough to be worth keeping, unless something was changed while it was under way.
+func (l *library) keep(movies []radarr.MovieResource, changes int, took time.Duration) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	if took < l.slowerThan || changes != l.changes {
+		return
+	}
+
+	l.movies, l.held, l.until = movies, true, time.Now().Add(l.keptFor)
+
+	// let go of it on time even when no call comes to find it stale: it is a few hundred megabytes on a large library
+	time.AfterFunc(l.keptFor, func() { _, _ = l.current() })
+}
+
+// changed drops what is kept because a tool changed something, and has a read under way neither kept nor joined by the calls that come after.
+func (l *library) changed() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	l.changes++
+	l.movies, l.held = nil, false
+	l.reads.Forget("")
+}
 
 // cleanTitle folds a title for comparison: case, punctuation and spacing
 // never decide whether two titles name the same film.
@@ -165,6 +263,22 @@ func resolveMovie(ctx context.Context, c *radarr.Client, ref string) (*radarr.Mo
 		}
 		return res.Answer, nil
 	}
+
+	// so is a TMDB id: Radarr answers the one film that has it, and matchMovie says so when there is none
+	if tmdb := strings.TrimSpace(ref); strings.HasPrefix(strings.ToLower(tmdb), "tmdb:") {
+		id, _ := strconv.Atoi(strings.TrimSpace(tmdb[5:]))
+		if id <= 0 {
+			return matchMovie(nil, ref)
+		}
+
+		res, err := c.GetMovie(ctx, radarr.GetMovieOptions{TmdbId: radarr.TmdbID(id)})
+		if err != nil {
+			return nil, err
+		}
+
+		return matchMovie(res.Answer, ref)
+	}
+
 	movies, err := allMovies(ctx, c)
 	if err != nil {
 		return nil, err

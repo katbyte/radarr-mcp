@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- on a large library, calls that follow one another no longer each wait for Radarr to answer every film again: a read of the library that took more than a second is kept for 30 seconds, and dropped as soon as any tool changes something. On 30,000 films `movie_list` and `qualityprofile_list` went from 11 seconds or more to a tenth of one after the first call. A change made in Radarr itself, or by a command still running, can take up to 30 seconds to show in a list, a count or an audit
+- `tmdb:<id>` asks Radarr for that one film, as a Radarr id already did, where it read the whole library to find it
+
+### Fixed
+
+- a client is told on connecting only about the tools it was given: with the default tools it was told to start with `audit_all` and given the names of fourteen delete tools, none of which it had
+
 ## 0.5.2 (2026-10-20)
 
 ### Fixed

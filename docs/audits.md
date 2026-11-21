@@ -4,6 +4,8 @@ Each audit sweeps the whole library for one kind of problem and answers with a w
 
 Most audits are one request for the whole library, because Radarr answers every film with its file and what its probe found inside it. Two are slower, `audit_naming` and `audit_untracked_files`: they ask Radarr about every film in turn, so `audit_all` leaves them out unless called with `deep`.
 
+On a large library that one request is slow: Radarr takes about ten seconds to answer thirty thousand films. A read that took more than a second is kept for 30 seconds, so the audits, lists and counts that follow it answer at once. Any tool that changes something drops it, so a change made through this server always shows; one made in Radarr itself, or by a command still running, can take up to 30 seconds to show.
+
 Every audit takes `limit` (100 findings unless given) and answers `total_findings`, the real count. Most take `root_folder` and `tag` to look at part of the library.
 
 ## audit_all
