@@ -361,6 +361,16 @@ func TestMovieResolution(t *testing.T) {
 		t.Errorf("movie_get by id read the whole library (%d reads, was %d)", after, before)
 	}
 	mustFail(t, cs, "movie_get", map[string]any{"movie": "9"}, "no film in the library has id 9")
+
+	// so is a TMDB id: Radarr is asked for the one film that has it
+	if out := mustCall(t, cs, "movie_get", map[string]any{"movie": "tmdb:20"}); out["id"] != 2.0 {
+		t.Errorf("tmdb:20 = %v", out["id"])
+	}
+	if reads := f.requests(http.MethodGet, "/api/v3/movie"); !strings.Contains(reads[len(reads)-1].Query, "tmdbId=20") {
+		t.Errorf("movie_get by tmdb id asked Radarr for %q, want the one film", reads[len(reads)-1].Query)
+	}
+	mustFail(t, cs, "movie_get", map[string]any{"movie": "tmdb:999"}, "no film in the library has tmdb id 999")
+	mustFail(t, cs, "movie_get", map[string]any{"movie": "tmdb:x"}, "a tmdb id is a number")
 }
 
 func TestMovieListFiltersAndSorts(t *testing.T) {
@@ -978,6 +988,77 @@ func TestCallsAtOnceShareOneReadOfTheLibrary(t *testing.T) {
 	lists[0][0].Title = "changed"
 	if lists[1][0].Title != "Alien" {
 		t.Error("one call's change to its list reached the other's")
+	}
+}
+
+// A read of the library that was slow is kept, so the calls that follow do not each wait for another, until a tool changes something: the next
+// call then reads it afresh. A library Radarr answers quickly is read every time.
+func TestASlowReadOfTheLibraryIsKept(t *testing.T) {
+	t.Parallel()
+
+	serving := func(slow bool) (*fakeRadarr, *mcp.ClientSession) {
+		f := newFakeRadarr(t)
+		f.library(movie(1, "Alien", 1979, "", "", ""))
+		f.answer("GET /api/v3/tag/detail", http.StatusOK, []any{})
+		f.answer("POST /api/v3/tag", http.StatusCreated, map[string]any{"id": 2, "label": "new"})
+		c, err := radarr.New(f.srv.URL, "k")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// the fake answers at once, so a slow library is one where every read counts as slow
+		if slow {
+			libraryOf(c).slowerThan = 0
+		}
+
+		return f, hostRegistry(t, queuedFor(c, Options{}))
+	}
+	reads := func(f *fakeRadarr) int { return len(f.requests(http.MethodGet, "/api/v3/movie")) }
+
+	f, cs := serving(true)
+	mustCall(t, cs, "movie_list", nil)
+	mustCall(t, cs, "rootfolder_list", nil)
+	mustCall(t, cs, "qualityprofile_list", nil)
+	if got := reads(f); got != 1 {
+		t.Errorf("three calls on a slow library read it %d times, want once", got)
+	}
+
+	mustCall(t, cs, "tag_create", map[string]any{"label": "new"})
+	mustCall(t, cs, "movie_list", nil)
+	mustCall(t, cs, "movie_list", nil)
+	if got := reads(f); got != 2 {
+		t.Errorf("after a change the library was read %d times in all, want twice: once before it and once after", got)
+	}
+
+	f, cs = serving(false)
+	mustCall(t, cs, "movie_list", nil)
+	mustCall(t, cs, "movie_list", nil)
+	if got := reads(f); got != 2 {
+		t.Errorf("two calls on a quick library read it %d times, want twice", got)
+	}
+}
+
+// A read is let go when its time is up, and one begun before a change is not kept after it.
+func TestAKeptLibraryIsLetGo(t *testing.T) {
+	t.Parallel()
+
+	films := []radarr.MovieResource{{Id: 1, Title: "Alien"}}
+	l := &library{keptFor: 20 * time.Millisecond}
+
+	l.keep(films, l.changesSoFar(), time.Second)
+	if _, ok := l.current(); !ok {
+		t.Fatal("a slow read was not kept")
+	}
+	time.Sleep(60 * time.Millisecond)
+	if _, ok := l.current(); ok {
+		t.Error("a read was still kept after its time was up")
+	}
+
+	before := l.changesSoFar()
+	l.changed()
+	l.keep(films, before, time.Second)
+	if _, ok := l.current(); ok {
+		t.Error("a read begun before a change was kept after it")
 	}
 }
 

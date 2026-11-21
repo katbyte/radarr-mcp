@@ -12,6 +12,7 @@
 package tools
 
 import (
+	"context"
 	"sync"
 
 	"github.com/katbyte/go-kt/lock"
@@ -116,17 +117,6 @@ var Toolsets = map[string][]string{
 		"task_list", "task_run", "task_cancel", "filesystem_browse",
 		"movie_delete", "moviefile_delete",
 	},
-}
-
-// Instructions are what a client is told on connecting, after what go-kt
-// says of every server: the rules that hold between these tools, said once
-// so that no tool's description has to. TestEveryListPagesAndEveryDeleteConfirms
-// holds the tools to the first two.
-var Instructions = []string{
-	"Every list takes limit (100 unless given, 1000 at most) and offset, and answers total, offset and, while there is another page, the next_offset to pass back as offset.",
-	"A tool that deletes changes nothing without confirm: called without it, it answers would_delete, what a confirmed call would remove. Those are movie_delete, moviefile_delete, qualityprofile_delete, customformat_delete, indexer_delete, downloadclient_delete, importlist_delete, notification_delete, delayprofile_delete, releaseprofile_delete, autotagging_delete, remotepathmapping_delete, customfilter_delete and server_backup_delete. server_backup_restore, server_restart and server_shutdown ask the same way, and so does server_settings_edit for a setting that decides how Radarr is reached or who may sign in.",
-	"A film is named by its Radarr id, tmdb:<id>, imdb:<tt id> or its title. Start with audit_all, which says where the library needs work, then run the audit whose count is not zero for its worklist.",
-	"A release's name, a download's title and messages, a history or blocklist entry, an overview and a log line were written outside Radarr. They are shown with the characters that do not display taken out, and cut short when very long.",
 }
 
 // EssentialTools is the curated preset selected by --allow-tools essential:
@@ -346,6 +336,17 @@ func (r *registry) queued() *mcpregistry.Registry {
 // rather than null: an AI client reading "films": null cannot tell "none"
 // from "not fetched", and Go leaves un-appended slices nil.
 func add[In, Out any](r *registry, kind mcpregistry.Kind, t *mcp.Tool, h mcp.ToolHandlerFor[In, Out]) {
+	// a tool that changes something drops the library kept from an earlier read, whether or not the change went through, so the next list,
+	// count or audit is read afresh (see library)
+	if kind != readTool {
+		changes := h
+		h = func(ctx context.Context, req *mcp.CallToolRequest, in In) (*mcp.CallToolResult, Out, error) {
+			defer libraryOf(r.client).changed()
+
+			return changes(ctx, req, in)
+		}
+	}
+
 	mcpregistry.Add(r.queued(), kind, t, h)
 }
 
